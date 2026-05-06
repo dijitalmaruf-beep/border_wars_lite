@@ -1,0 +1,54 @@
+workflows:
+  android-debug-apk:
+    name: Android Debug APK
+    max_build_duration: 60
+    environment:
+      flutter: stable
+    scripts:
+      - name: Generate Flutter platform wrappers
+        script: flutter create . --platforms=android,web --project-name border_wars_lite
+      - name: Get dependencies
+        script: flutter pub get
+      - name: Analyze
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+      - name: Build debug APK
+        script: flutter build apk --debug
+    artifacts:
+      - build/app/outputs/flutter-apk/app-debug.apk
+
+  web-release:
+    name: Web Release Build
+    max_build_duration: 45
+    environment:
+      flutter: stable
+    scripts:
+      - name: Generate Flutter platform wrappers
+        script: flutter create . --platforms=android,web --project-name border_wars_lite
+      - name: Get dependencies
+        script: flutter pub get
+      - name: Analyze
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+      - name: Build web
+        script: flutter build web --release
+    artifacts:
+      - build/web/**
+
+  tests:
+    name: Tests
+    max_build_duration: 30
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get dependencies
+        script: flutter pub get
+      - name: Analyze
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+
+# iOS release workflow will be added later in Codemagic after Apple Developer
+# credentials, signing certificates, and provisioning profiles are available.

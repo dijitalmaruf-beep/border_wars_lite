@@ -1,0 +1,136 @@
+import 'package:flutter/material.dart';
+
+import '../../../core/constants/app_colors.dart';
+import '../../models/game_state.dart';
+
+class TurnPanel extends StatelessWidget {
+  const TurnPanel({
+    required this.state,
+    required this.isBotThinking,
+    required this.onEndTurn,
+    super.key,
+  });
+
+  final GameState state;
+  final bool isBotThinking;
+  final VoidCallback onEndTurn;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentPlayer = state.currentPlayer;
+    final ownedCount = state.ownedTerritoryCount(currentPlayer.id);
+    final canEndTurn = !currentPlayer.isBot && state.winnerId == null;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: AppColors.panelBackground,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.panelBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: Color(currentPlayer.colorValue),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    currentPlayer.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.ink,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: <Widget>[
+                _StatPill(
+                  icon: Icons.sync,
+                  label: state.phase.name.toUpperCase(),
+                ),
+                _StatPill(
+                  icon: Icons.map,
+                  label: '$ownedCount owned',
+                ),
+                _StatPill(
+                  icon: Icons.add_circle,
+                  label: '${state.remainingReinforcements} reinf.',
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 160),
+              child: Text(
+                isBotThinking ? 'Bot turn in progress...' : state.statusMessage,
+                key: ValueKey<String>(
+                  isBotThinking ? 'thinking' : state.statusMessage,
+                ),
+                style: const TextStyle(color: AppColors.mutedInk),
+              ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: canEndTurn ? onEndTurn : null,
+              icon: const Icon(Icons.skip_next),
+              label: const Text('End Turn'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StatPill extends StatelessWidget {
+  const _StatPill({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.screenBackground,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 16, color: AppColors.mutedInk),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.ink,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
