@@ -6,7 +6,7 @@ workflows:
       flutter: stable
     scripts:
       - name: Generate Flutter platform wrappers
-        script: flutter create . --platforms=android,web --project-name border_wars_lite
+        script: flutter create . --platforms=android,web
       - name: Get dependencies
         script: flutter pub get
       - name: Analyze
@@ -25,7 +25,7 @@ workflows:
       flutter: stable
     scripts:
       - name: Generate Flutter platform wrappers
-        script: flutter create . --platforms=android,web --project-name border_wars_lite
+        script: flutter create . --platforms=android,web
       - name: Get dependencies
         script: flutter pub get
       - name: Analyze
@@ -43,6 +43,8 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Generate Flutter platform wrappers
+        script: flutter create . --platforms=android,web
       - name: Get dependencies
         script: flutter pub get
       - name: Analyze
