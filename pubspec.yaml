@@ -11,6 +11,7 @@ dependencies:
     sdk: flutter
   firebase_core: ^4.7.0
   cloud_firestore: ^6.3.0
+  flutter_svg: ^2.2.4
 
 dev_dependencies:
   flutter_test:
@@ -19,3 +20,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/maps/world_base.png
+    - assets/maps/world_borders.svg

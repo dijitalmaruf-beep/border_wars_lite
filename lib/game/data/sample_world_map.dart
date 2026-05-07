@@ -1,3 +1,3 @@
-import 'world_map_data.dart';
+import 'world_territories.dart';
 
 final sampleWorldTerritories = worldMapTerritories;
