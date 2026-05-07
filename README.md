@@ -7,7 +7,7 @@ Border Wars Lite is a first playable Flutter MVP for a simplified territory conq
 - Android and Web first.
 - Local single-player game state.
 - 1 human player and 3 bots: Atlas Bot, Nova Bot, Terra Bot.
-- 30 clickable territories with owners, armies, neighbors, and continent groups.
+- 48 clickable world-map territories with owners, armies, neighbors, polygon borders, and continent groups.
 - Reinforcement, attack, bot, and victory rules implemented outside the UI.
 - Firebase Core and Cloud Firestore dependencies included, with multiplayer methods stubbed.
 - Codemagic workflows for Android debug APK, Web release, and tests.

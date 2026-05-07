@@ -34,7 +34,13 @@ void main() {
     final neutralTerritories = state.territories
         .where((territory) => territory.ownerId == null)
         .toList();
-    expect(neutralTerritories, hasLength(18));
+    expect(
+      neutralTerritories,
+      hasLength(
+        GameConstants.totalTerritories -
+            state.players.length * GameConstants.startingTerritoriesPerPlayer,
+      ),
+    );
     expect(
       neutralTerritories.map((territory) => territory.armyCount),
       everyElement(GameConstants.neutralArmies),
@@ -50,31 +56,31 @@ void main() {
     expect(
       engine.canAttack(
         state,
-        sourceId: 'frost_bay',
-        targetId: 'westport',
+        sourceId: 'western_us',
+        targetId: 'central_us',
       ),
       isTrue,
     );
     expect(
       engine.canAttack(
         state,
-        sourceId: 'frost_bay',
-        targetId: 'aurora_gate',
+        sourceId: 'western_us',
+        targetId: 'greenland',
       ),
       isFalse,
     );
     expect(
       engine.canAttack(
         state,
-        sourceId: 'westport',
-        targetId: 'frost_bay',
+        sourceId: 'central_us',
+        targetId: 'western_us',
       ),
       isFalse,
     );
 
     final weakSourceState = state.copyWith(
       territories: state.territories.map((territory) {
-        if (territory.id == 'frost_bay') {
+        if (territory.id == 'western_us') {
           return territory.copyWith(armyCount: 1);
         }
         return territory;
@@ -84,8 +90,8 @@ void main() {
     expect(
       engine.canAttack(
         weakSourceState,
-        sourceId: 'frost_bay',
-        targetId: 'westport',
+        sourceId: 'western_us',
+        targetId: 'central_us',
       ),
       isFalse,
     );
@@ -93,10 +99,14 @@ void main() {
 
   test('detects victory at seventy percent territory control', () {
     final state = newState();
+    final requiredTerritories =
+        (state.territories.length * GameConstants.victoryTerritoryRatio).ceil();
     final conqueredState = state.copyWith(
       territories: state.territories.asMap().entries.map((entry) {
         return entry.value.copyWith(
-          ownerId: entry.key < 21 ? GameConstants.humanPlayerId : null,
+          ownerId: entry.key < requiredTerritories
+              ? GameConstants.humanPlayerId
+              : null,
         );
       }).toList(),
     );

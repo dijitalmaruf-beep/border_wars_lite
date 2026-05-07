@@ -30,7 +30,7 @@ class HomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'Conquer the abstract world map before the bots do.',
+                    'Conquer the world map before the bots do.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: AppColors.mutedInk,

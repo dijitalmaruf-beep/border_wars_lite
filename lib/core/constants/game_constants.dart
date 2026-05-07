@@ -6,7 +6,7 @@ class GameConstants {
   static const defaultHumanName = 'Commander';
 
   static const totalBotPlayers = 3;
-  static const totalTerritories = 30;
+  static const totalTerritories = 48;
   static const startingTerritoriesPerPlayer = 3;
   static const startingArmies = 6;
   static const neutralArmies = 2;

@@ -3,7 +3,6 @@ import '../data/sample_world_map.dart';
 import '../models/bot_personality.dart';
 import '../models/game_state.dart';
 import '../models/player.dart';
-import '../models/territory.dart';
 import 'reinforcement_calculator.dart';
 
 class MapGenerator {
@@ -97,10 +96,10 @@ class MapGenerator {
 
   Map<String, String> _startingTerritoryOwners(List<Player> players) {
     final assignments = <String, List<String>>{
-      players[0].id: const ['frost_bay', 'crown_city', 'pearl_delta'],
-      players[1].id: const ['aurora_gate', 'westport', 'dune_crossing'],
-      players[2].id: const ['reef_crown', 'eastwatch', 'southreach'],
-      players[3].id: const ['storm_isle', 'sunspire', 'obsidian'],
+      players[0].id: const ['western_us', 'western_europe', 'australia_east'],
+      players[1].id: const ['eastern_canada', 'north_africa', 'china_north'],
+      players[2].id: const ['brazil', 'siberia', 'india'],
+      players[3].id: const ['eastern_us', 'southern_africa', 'indonesia'],
     };
 
     return <String, String>{

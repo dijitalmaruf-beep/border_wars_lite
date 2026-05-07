@@ -2,7 +2,7 @@
 
 ## Premise
 
-Border Wars Lite is a compact territory conquest game inspired by classic map-control strategy. The MVP uses a stylized abstract world map instead of GeoJSON so the first version can be played quickly on Android and Web.
+Border Wars Lite is a compact territory conquest game inspired by classic map-control strategy. The MVP uses a committed, simplified world-map dataset so the first version feels like a global conquest game without parsing a huge GeoJSON file at runtime.
 
 ## Players
 
@@ -14,15 +14,16 @@ Border Wars Lite is a compact territory conquest game inspired by classic map-co
 
 ## Map
 
-The MVP map has 30 territories. Each territory has:
+The MVP map has 48 larger real-world-style territories. Each territory has:
 
 - Stable id.
 - Display name.
-- Normalized x/y render position.
+- Normalized label anchor position.
 - Owner id or neutral owner.
 - Army count.
 - Neighbor territory ids.
 - Continent/group name.
+- Simplified polygon boundary points.
 
 ## Turn Loop
 

@@ -1,5 +1,26 @@
 const Object _territorySentinel = Object();
 
+class MapPoint {
+  const MapPoint(this.x, this.y);
+
+  final double x;
+  final double y;
+
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{
+      'x': x,
+      'y': y,
+    };
+  }
+
+  factory MapPoint.fromMap(Map<String, dynamic> map) {
+    return MapPoint(
+      (map['x'] as num).toDouble(),
+      (map['y'] as num).toDouble(),
+    );
+  }
+}
+
 class Territory {
   Territory({
     required this.id,
@@ -10,7 +31,9 @@ class Territory {
     required this.armyCount,
     required List<String> neighbors,
     required this.continent,
-  }) : neighbors = List<String>.unmodifiable(neighbors);
+    List<MapPoint> boundary = const <MapPoint>[],
+  })  : neighbors = List<String>.unmodifiable(neighbors),
+        boundary = List<MapPoint>.unmodifiable(boundary);
 
   final String id;
   final String name;
@@ -20,6 +43,7 @@ class Territory {
   final int armyCount;
   final List<String> neighbors;
   final String continent;
+  final List<MapPoint> boundary;
 
   Territory copyWith({
     String? id,
@@ -30,6 +54,7 @@ class Territory {
     int? armyCount,
     List<String>? neighbors,
     String? continent,
+    List<MapPoint>? boundary,
   }) {
     return Territory(
       id: id ?? this.id,
@@ -42,6 +67,7 @@ class Territory {
       armyCount: armyCount ?? this.armyCount,
       neighbors: neighbors ?? this.neighbors,
       continent: continent ?? this.continent,
+      boundary: boundary ?? this.boundary,
     );
   }
 
@@ -57,6 +83,7 @@ class Territory {
       'armyCount': armyCount,
       'neighbors': neighbors,
       'continent': continent,
+      'boundary': boundary.map((point) => point.toMap()).toList(),
     };
   }
 
@@ -70,6 +97,13 @@ class Territory {
       armyCount: map['armyCount'] as int,
       neighbors: List<String>.from(map['neighbors'] as List<dynamic>),
       continent: map['continent'] as String,
+      boundary: (map['boundary'] as List<dynamic>? ?? const <dynamic>[])
+          .map(
+            (point) => MapPoint.fromMap(
+              Map<String, dynamic>.from(point as Map<dynamic, dynamic>),
+            ),
+          )
+          .toList(),
     );
   }
 }

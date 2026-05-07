@@ -3,7 +3,7 @@
 ## Done in First Playable
 
 - Flutter app shell with home, setup, game, and victory screens.
-- 30-territory abstract map.
+- 48-territory simplified world map with polygon borders.
 - Human setup with name and color.
 - 3 bot players with fixed personalities.
 - Reinforcement, attack, combat, bot turn, and victory rules.
@@ -14,7 +14,7 @@
 ## Next
 
 - Local continue game using device storage.
-- Better territory labels and zoomable map.
+- Better territory labels and optional zoomable map.
 - Bot difficulty selection.
 - Map balancing pass after device playtests.
 - Firestore-backed save/load.
