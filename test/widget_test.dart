@@ -14,6 +14,7 @@ void main() {
 
     await tester.pump();
 
-    expect(find.text('Border Wars Lite'), findsOneWidget);
+    expect(find.text('BORDER'), findsOneWidget);
+    expect(find.text('WARS'), findsOneWidget);
   });
 }

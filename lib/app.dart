@@ -14,10 +14,17 @@ class BorderWarsLiteApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.humanBlue,
-          brightness: Brightness.light,
+          brightness: Brightness.dark,
         ),
-        scaffoldBackgroundColor: AppColors.screenBackground,
+        scaffoldBackgroundColor: AppColors.premiumBackground,
         useMaterial3: true,
+        fontFamily: 'Roboto',
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          foregroundColor: AppColors.premiumText,
+          elevation: 0,
+          centerTitle: true,
+        ),
       ),
       home: const HomeScreen(),
     );
