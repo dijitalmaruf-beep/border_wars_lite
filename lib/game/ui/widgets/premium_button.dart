@@ -57,22 +57,29 @@ class PremiumButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: onPressed,
             child: Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Icon(icon, color: AppColors.premiumText, size: 24),
-                  const SizedBox(width: 14),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: AppColors.premiumText,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.1,
-                    ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Icon(icon, color: AppColors.premiumText, size: 22),
+                      const SizedBox(width: 9),
+                      Text(
+                        label,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: AppColors.premiumText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

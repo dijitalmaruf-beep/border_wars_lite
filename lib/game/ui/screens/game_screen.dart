@@ -263,10 +263,10 @@ class _PlayerStrip extends StatelessWidget {
     return PremiumPanel(
       padding: EdgeInsets.zero,
       child: SizedBox(
-        height: 58,
+        height: 54,
         child: ListView.separated(
           scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
           itemBuilder: (context, index) {
             final player = state.players[index];
             return _PlayerCard(
@@ -300,7 +300,7 @@ class _PlayerCard extends StatelessWidget {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
       width: 102,
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: isCurrent
             ? color.withValues(alpha: 0.20)
@@ -336,21 +336,37 @@ class _PlayerCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.premiumText,
-                    fontSize: 12,
+                    fontSize: 11,
+                    height: 1,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 3),
-          Text(
-            '$territoryCount ★',
-            style: const TextStyle(
-              color: Color(0xFFFFD27A),
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-            ),
+          const SizedBox(height: 2),
+          Row(
+            children: <Widget>[
+              Flexible(
+                child: Text(
+                  '$territoryCount',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFFFD27A),
+                    fontSize: 11,
+                    height: 1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 3),
+              const Icon(
+                Icons.star,
+                color: Color(0xFFFFD27A),
+                size: 11,
+              ),
+            ],
           ),
         ],
       ),
@@ -514,27 +530,27 @@ class _BattleCommandPanel extends StatelessWidget {
                 icon: Icons.shield,
                 onPressed: null,
                 tone: PremiumButtonTone.blue,
-                height: 50,
+                height: 46,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Expanded(
               child: PremiumButton(
                 label: 'ATTACK',
                 icon: Icons.sports_martial_arts,
                 onPressed: canAttack ? onAttack : null,
                 tone: PremiumButtonTone.red,
-                height: 50,
+                height: 46,
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             Expanded(
               child: PremiumButton(
                 label: 'TRANSFER',
                 icon: Icons.swap_horiz,
                 onPressed: null,
                 tone: PremiumButtonTone.teal,
-                height: 50,
+                height: 46,
               ),
             ),
           ],
