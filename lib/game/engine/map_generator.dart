@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../../core/constants/game_constants.dart';
 import '../data/sample_world_map.dart';
 import '../models/bot_personality.dart';
@@ -19,12 +21,14 @@ class MapGenerator {
   GameState createInitialState({
     required String humanName,
     required int humanColorValue,
+    int? seed,
   }) {
     final players = createPlayers(
       humanName: humanName,
       humanColorValue: humanColorValue,
     );
-    final startingOwners = _startingTerritoryOwners(players);
+    final random = seed == null ? Random() : Random(seed);
+    final startingOwners = _startingTerritoryOwners(players, random);
     final territories = sampleWorldTerritories.map((territory) {
       final ownerId = startingOwners[territory.id];
       return territory.copyWith(
@@ -94,17 +98,128 @@ class MapGenerator {
     ];
   }
 
-  Map<String, String> _startingTerritoryOwners(List<Player> players) {
-    final assignments = <String, List<String>>{
-      players[0].id: const ['western_us', 'western_europe', 'australia_east'],
-      players[1].id: const ['eastern_canada', 'north_africa', 'china_north'],
-      players[2].id: const ['brazil', 'siberia', 'india'],
-      players[3].id: const ['eastern_us', 'southern_africa', 'indonesia'],
-    };
+  Map<String, String> _startingTerritoryOwners(
+    List<Player> players,
+    Random random,
+  ) {
+    for (var attempt = 0; attempt < 8; attempt += 1) {
+      final assignment = _balancedStartingTerritoryOwners(players, random);
+      if (_hasExpectedStartingCounts(assignment, players)) {
+        return assignment;
+      }
+    }
+    return _fallbackStartingTerritoryOwners(players, random);
+  }
 
-    return <String, String>{
-      for (final entry in assignments.entries)
-        for (final territoryId in entry.value) territoryId: entry.key,
+  Map<String, String> _balancedStartingTerritoryOwners(
+    List<Player> players,
+    Random random,
+  ) {
+    final continentPools = <String, List<String>>{};
+    for (final territory in sampleWorldTerritories) {
+      continentPools
+          .putIfAbsent(territory.continent, () => <String>[])
+          .add(territory.id);
+    }
+
+    for (final pool in continentPools.values) {
+      pool.shuffle(random);
+    }
+
+    final continents = continentPools.keys.toList()..shuffle(random);
+    final usedContinentsByPlayer = <String, Set<String>>{
+      for (final player in players) player.id: <String>{},
     };
+    final assignment = <String, String>{};
+
+    for (
+      var round = 0;
+      round < GameConstants.startingTerritoriesPerPlayer;
+      round += 1
+    ) {
+      final playerOrder = <Player>[
+        ...players.skip(round % players.length),
+        ...players.take(round % players.length),
+      ];
+
+      for (final player in playerOrder) {
+        final continent = _chooseStartingContinent(
+          continents,
+          continentPools,
+          usedContinentsByPlayer[player.id]!,
+        );
+        if (continent == null) {
+          return assignment;
+        }
+
+        final territoryId = continentPools[continent]!.removeLast();
+        assignment[territoryId] = player.id;
+        usedContinentsByPlayer[player.id]!.add(continent);
+      }
+    }
+
+    return assignment;
+  }
+
+  String? _chooseStartingContinent(
+    List<String> continents,
+    Map<String, List<String>> continentPools,
+    Set<String> usedContinents,
+  ) {
+    for (final continent in continents) {
+      if (!usedContinents.contains(continent) &&
+          (continentPools[continent]?.isNotEmpty ?? false)) {
+        return continent;
+      }
+    }
+
+    for (final continent in continents) {
+      if (continentPools[continent]?.isNotEmpty ?? false) {
+        return continent;
+      }
+    }
+
+    return null;
+  }
+
+  bool _hasExpectedStartingCounts(
+    Map<String, String> assignment,
+    List<Player> players,
+  ) {
+    if (assignment.length !=
+        players.length * GameConstants.startingTerritoriesPerPlayer) {
+      return false;
+    }
+    for (final player in players) {
+      final count = assignment.values
+          .where((playerId) => playerId == player.id)
+          .length;
+      if (count != GameConstants.startingTerritoriesPerPlayer) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Map<String, String> _fallbackStartingTerritoryOwners(
+    List<Player> players,
+    Random random,
+  ) {
+    final territoryIds =
+        sampleWorldTerritories.map((territory) => territory.id).toList()
+          ..shuffle(random);
+    final assignment = <String, String>{};
+    var territoryIndex = 0;
+    for (
+      var round = 0;
+      round < GameConstants.startingTerritoriesPerPlayer;
+      round += 1
+    ) {
+      for (final player in players) {
+        assignment[territoryIds[territoryIndex]] = player.id;
+        territoryIndex += 1;
+      }
+    }
+    return assignment;
   }
 }

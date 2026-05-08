@@ -13,6 +13,7 @@ void main() {
     return generator.createInitialState(
       humanName: 'Alex',
       humanColorValue: AppColors.humanBlueValue,
+      seed: 7,
     );
   }
 
@@ -85,10 +86,7 @@ void main() {
   test(
     'validates attacks by ownership, armies, neighbor, and target owner',
     () {
-      final state = newState().copyWith(
-        phase: GamePhase.attack,
-        remainingReinforcements: 0,
-      );
+      final state = transferState(targetOwnerId: null);
 
       expect(
         engine.canAttack(state, sourceId: 'western_us', targetId: 'central_us'),
@@ -124,10 +122,16 @@ void main() {
   );
 
   test('does not select non-neighbor attack targets', () {
-    final state = newState().copyWith(
-      phase: GamePhase.attack,
-      remainingReinforcements: 0,
-      selectedSourceId: 'western_us',
+    final state = transferState(targetOwnerId: null).copyWith(
+      selectedTargetId: null,
+      territories: transferState(targetOwnerId: null).territories.map((
+        territory,
+      ) {
+        if (territory.id == 'middle_east') {
+          return territory.copyWith(ownerId: null);
+        }
+        return territory;
+      }).toList(),
     );
 
     final nextState = engine.selectTerritory(state, 'middle_east');
@@ -141,11 +145,9 @@ void main() {
   });
 
   test('selects only valid neighboring attack targets', () {
-    final state = newState().copyWith(
-      phase: GamePhase.attack,
-      remainingReinforcements: 0,
-      selectedSourceId: 'western_us',
-    );
+    final state = transferState(
+      targetOwnerId: null,
+    ).copyWith(selectedTargetId: null);
 
     final nextState = engine.selectTerritory(state, 'central_us');
 
@@ -267,6 +269,42 @@ void main() {
 
     expect(nextState.transferUsedThisTurn, isFalse);
     expect(nextState.currentPlayer.id, 'atlas_bot');
+  });
+
+  test('new turn clears selections and starts in reinforce phase', () {
+    final state = newState().copyWith(
+      currentPlayerIndex: 0,
+      phase: GamePhase.attack,
+      transferUsedThisTurn: true,
+      selectedSourceId: 'western_us',
+      selectedTargetId: 'central_us',
+      territories: newState().territories.map((territory) {
+        if (territory.id == 'western_us') {
+          return territory.copyWith(ownerId: GameConstants.humanPlayerId);
+        }
+        if (territory.id == 'eastern_canada') {
+          return territory.copyWith(ownerId: 'atlas_bot');
+        }
+        return territory.copyWith(ownerId: null);
+      }).toList(),
+    );
+
+    final botTurn = engine.endTurn(state);
+    final humanTurn = engine.endTurn(
+      botTurn.copyWith(
+        phase: GamePhase.attack,
+        transferUsedThisTurn: true,
+        selectedSourceId: 'eastern_canada',
+        selectedTargetId: 'western_us',
+      ),
+    );
+
+    expect(humanTurn.currentPlayer.id, GameConstants.humanPlayerId);
+    expect(humanTurn.phase, GamePhase.reinforce);
+    expect(humanTurn.selectedSourceId, isNull);
+    expect(humanTurn.selectedTargetId, isNull);
+    expect(humanTurn.transferUsedThisTurn, isFalse);
+    expect(humanTurn.statusMessage, 'Choose a territory to reinforce.');
   });
 
   test('detects victory at seventy percent territory control', () {

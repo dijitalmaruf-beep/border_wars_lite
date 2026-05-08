@@ -32,8 +32,20 @@ Each turn starts in `reinforce`, moves to `attack`, then ends.
 Reinforcements are:
 
 ```text
-max(3, floor(ownedTerritories / 3))
+base = max(3, floor(ownedTerritories / 3))
+total = base + controlledContinentBonuses
 ```
+
+Strategic region bonuses use each territory's `continent` field:
+
+- North America: +5
+- South America: +3
+- Europe: +5
+- Africa: +4
+- Asia: +7
+- Oceania: +2
+
+All playable territories are assigned to one of those six groups in `world_territories.dart`. A player receives a group's bonus only while they own every playable territory in that group.
 
 The human applies all reinforcements by selecting an owned territory. Bots reinforce the border territory with the highest enemy pressure.
 

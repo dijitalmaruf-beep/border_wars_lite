@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../engine/game_engine.dart';
+import '../../engine/reinforcement_calculator.dart';
 import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../../models/territory.dart';
@@ -13,6 +14,7 @@ import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
 import '../widgets/territory_map.dart';
+import 'home_screen.dart';
 import 'victory_screen.dart';
 
 class GameScreen extends StatefulWidget {
@@ -25,6 +27,8 @@ class GameScreen extends StatefulWidget {
 }
 
 enum _MapCommandMode { attack, transfer }
+
+enum _GameMenuAction { continueGame, exitToHome }
 
 class _GameScreenState extends State<GameScreen> {
   final GameEngine _engine = const GameEngine();
@@ -61,6 +65,8 @@ class _GameScreenState extends State<GameScreen> {
         );
     final canTransfer = _canTransferSelection(_state);
     final winChance = canAttack ? _engine.winChanceForSelection(_state) : 0.0;
+    final reinforcementBreakdown = _engine.reinforcementCalculator
+        .breakdownForPlayer(_state, _state.currentPlayer.id);
     final validSourceIds = _validSourceIdsFor(_state);
     final validTargetIds = _validTargetIdsFor(_state);
 
@@ -80,7 +86,10 @@ class _GameScreenState extends State<GameScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: <Widget>[
-                        _WorldHeader(state: _state),
+                        _WorldHeader(
+                          state: _state,
+                          onMenuPressed: _showGameMenu,
+                        ),
                         const SizedBox(height: 8),
                         _PlayerStrip(state: _state),
                         const SizedBox(height: 8),
@@ -99,6 +108,7 @@ class _GameScreenState extends State<GameScreen> {
                           canAttack: canAttack,
                           canTransfer: canTransfer,
                           winChance: winChance,
+                          reinforcementBreakdown: reinforcementBreakdown,
                           isBotThinking: _isBotThinking,
                           onAttack: _handleAttack,
                           onSelectAttackMode: _enterAttackMode,
@@ -160,9 +170,12 @@ class _GameScreenState extends State<GameScreen> {
     _setGameState(_engine.endTurn(_state));
   }
 
-  void _setGameState(GameState nextState) {
+  void _setGameState(GameState nextState, {bool? isBotThinking}) {
     setState(() {
       _state = nextState;
+      if (isBotThinking != null) {
+        _isBotThinking = isBotThinking;
+      }
       if (_state.phase != GamePhase.attack || _state.currentPlayer.isBot) {
         _commandMode = _MapCommandMode.attack;
       }
@@ -181,6 +194,74 @@ class _GameScreenState extends State<GameScreen> {
         statusMessage: 'Select a neighboring enemy territory to attack.',
       );
     });
+  }
+
+  Future<void> _showGameMenu() async {
+    final action = await showDialog<_GameMenuAction>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF101923),
+        title: const Text(
+          'Game Menu',
+          style: TextStyle(color: AppColors.premiumText),
+        ),
+        content: const Text(
+          'Continue your conquest or exit to the home screen.',
+          style: TextStyle(color: AppColors.premiumMutedText),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_GameMenuAction.continueGame),
+            child: const Text('Continue Game'),
+          ),
+          TextButton(
+            onPressed: () =>
+                Navigator.of(context).pop(_GameMenuAction.exitToHome),
+            child: const Text('Exit to Home'),
+          ),
+        ],
+      ),
+    );
+
+    if (action != _GameMenuAction.exitToHome || !mounted) {
+      return;
+    }
+
+    final shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF101923),
+        title: const Text(
+          'Exit current game?',
+          style: TextStyle(color: AppColors.premiumText),
+        ),
+        content: const Text(
+          'Current progress is not saved yet.',
+          style: TextStyle(color: AppColors.premiumMutedText),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldExit != true || !mounted) {
+      return;
+    }
+
+    _botTimer?.cancel();
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
+      (route) => false,
+    );
   }
 
   void _enterTransferMode() {
@@ -524,11 +605,7 @@ class _GameScreenState extends State<GameScreen> {
         return;
       }
       final nextState = _engine.runBotTurn(_state, random: _random);
-      setState(() {
-        _state = nextState;
-        _isBotThinking = false;
-      });
-      _afterStateChanged();
+      _setGameState(nextState, isBotThinking: false);
     });
   }
 
@@ -593,9 +670,10 @@ class _AmountButton extends StatelessWidget {
 }
 
 class _WorldHeader extends StatelessWidget {
-  const _WorldHeader({required this.state});
+  const _WorldHeader({required this.state, required this.onMenuPressed});
 
   final GameState state;
+  final VoidCallback onMenuPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -604,7 +682,7 @@ class _WorldHeader extends StatelessWidget {
       child: Row(
         children: <Widget>[
           IconButton(
-            onPressed: () {},
+            onPressed: onMenuPressed,
             icon: const Icon(Icons.menu),
             color: AppColors.premiumText,
             tooltip: 'Menu',
@@ -849,6 +927,7 @@ class _BattleCommandPanel extends StatelessWidget {
     required this.canAttack,
     required this.canTransfer,
     required this.winChance,
+    required this.reinforcementBreakdown,
     required this.isBotThinking,
     required this.onAttack,
     required this.onSelectAttackMode,
@@ -862,6 +941,7 @@ class _BattleCommandPanel extends StatelessWidget {
   final bool canAttack;
   final bool canTransfer;
   final double winChance;
+  final ReinforcementBreakdown reinforcementBreakdown;
   final bool isBotThinking;
   final VoidCallback onAttack;
   final VoidCallback onSelectAttackMode;
@@ -879,6 +959,12 @@ class _BattleCommandPanel extends StatelessWidget {
     final canUseCommands =
         state.phase == GamePhase.attack && !state.currentPlayer.isBot;
     final canUseTransfer = canUseCommands && !state.transferUsedThisTurn;
+    final isReinforcePhase = state.phase == GamePhase.reinforce;
+    final controlledBonusText = reinforcementBreakdown.controlledContinents
+        .map((bonus) => '${bonus.continent} (+${bonus.value})')
+        .join(', ');
+    final reinforcementText =
+        'Base ${reinforcementBreakdown.base} | Bonus ${reinforcementBreakdown.continentBonus} | Total ${reinforcementBreakdown.total}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -917,9 +1003,11 @@ class _BattleCommandPanel extends StatelessWidget {
                   _WinChance(
                     percent: percent,
                     enabled: canAttack,
+                    isReinforcePhase: isReinforcePhase,
                     isTransferMode: isTransferMode,
                     canTransfer: canTransfer,
                     transferUsed: state.transferUsedThisTurn,
+                    reinforcementTotal: reinforcementBreakdown.total,
                   ),
                 ],
               ),
@@ -933,6 +1021,20 @@ class _BattleCommandPanel extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
+              if (isReinforcePhase) ...<Widget>[
+                const SizedBox(height: 5),
+                Text(
+                  controlledBonusText.isEmpty
+                      ? reinforcementText
+                      : '$reinforcementText | Controlled: $controlledBonusText',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFFFD66D),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1057,30 +1159,44 @@ class _WinChance extends StatelessWidget {
   const _WinChance({
     required this.percent,
     required this.enabled,
+    required this.isReinforcePhase,
     required this.isTransferMode,
     required this.canTransfer,
     required this.transferUsed,
+    required this.reinforcementTotal,
   });
 
   final int percent;
   final bool enabled;
+  final bool isReinforcePhase;
   final bool isTransferMode;
   final bool canTransfer;
   final bool transferUsed;
+  final int reinforcementTotal;
 
   @override
   Widget build(BuildContext context) {
-    final isReady = isTransferMode ? canTransfer || transferUsed : enabled;
+    final isReady =
+        isReinforcePhase ||
+        (isTransferMode ? canTransfer || transferUsed : enabled);
     final color = isReady
         ? const Color(0xFF91F05B)
         : AppColors.premiumMutedText;
-    final label = isTransferMode ? 'TRANSFER' : 'WIN CHANCE';
-    final value = isTransferMode
+    final label = isReinforcePhase
+        ? 'REINFORCE'
+        : isTransferMode
+        ? 'TRANSFER'
+        : 'WIN CHANCE';
+    final value = isReinforcePhase
+        ? '$reinforcementTotal'
+        : isTransferMode
         ? transferUsed
               ? 'DONE'
               : (canTransfer ? 'OK' : '--')
         : '$percent%';
-    final subtitle = isTransferMode
+    final subtitle = isReinforcePhase
+        ? 'Total'
+        : isTransferMode
         ? transferUsed
               ? 'Used'
               : (canTransfer ? 'Available' : 'Select ally')
