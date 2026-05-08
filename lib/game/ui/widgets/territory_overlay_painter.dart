@@ -15,7 +15,7 @@ class TerritoryOverlayPainter extends CustomPainter {
   });
 
   final GameState state;
-  final Map<String, Path> territoryPaths;
+  final Map<String, List<Path>> territoryPaths;
   final bool paintOwnership;
   final bool paintLabelsAndHighlights;
 
@@ -33,39 +33,40 @@ class TerritoryOverlayPainter extends CustomPainter {
   void _paintOwnership(Canvas canvas) {
     final source = state.territoryByIdOrNull(state.selectedSourceId);
     for (final territory in state.territories) {
-      final path = territoryPaths[territory.id];
-      if (path == null) {
+      final paths = territoryPaths[territory.id] ?? const <Path>[];
+      if (paths.isEmpty) {
         continue;
       }
 
       final owner = state.playerById(territory.ownerId);
-      final isValidTarget = source != null &&
+      final isValidTarget =
+          source != null &&
           source.neighbors.contains(territory.id) &&
           territory.ownerId != state.currentPlayer.id;
 
       if (owner != null) {
-        canvas.drawPath(
-          path,
-          Paint()
-            ..style = PaintingStyle.fill
-            ..color = Color(owner.colorValue).withValues(alpha: 0.34),
-        );
+        final paint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = Color(owner.colorValue).withValues(alpha: 0.32);
+        for (final path in paths) {
+          canvas.drawPath(path, paint);
+        }
       } else {
-        canvas.drawPath(
-          path,
-          Paint()
-            ..style = PaintingStyle.fill
-            ..color = AppColors.neutral.withValues(alpha: 0.10),
-        );
+        final paint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = AppColors.neutral.withValues(alpha: 0.08);
+        for (final path in paths) {
+          canvas.drawPath(path, paint);
+        }
       }
 
       if (isValidTarget) {
-        canvas.drawPath(
-          path,
-          Paint()
-            ..style = PaintingStyle.fill
-            ..color = const Color(0xFFFFD66D).withValues(alpha: 0.20),
-        );
+        final paint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = const Color(0xFFFFD66D).withValues(alpha: 0.18);
+        for (final path in paths) {
+          canvas.drawPath(path, paint);
+        }
       }
     }
   }
@@ -97,40 +98,40 @@ class TerritoryOverlayPainter extends CustomPainter {
     if (territoryId == null) {
       return;
     }
-    final path = territoryPaths[territoryId];
-    if (path == null) {
+    final paths = territoryPaths[territoryId] ?? const <Path>[];
+    if (paths.isEmpty) {
       return;
     }
 
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(5.0, size.width * 0.009)
-        ..color = glowColor.withValues(alpha: 0.72)
-        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.outer, 5),
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = math.max(2.2, size.width * 0.0042)
-        ..color = color,
-    );
-    canvas.drawPath(
-      path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = Colors.white.withValues(alpha: 0.88),
-    );
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(4.0, size.width * 0.006)
+      ..color = glowColor.withValues(alpha: 0.70)
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.outer, 4);
+    final strokePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.8, size.width * 0.0028)
+      ..color = color;
+    final innerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.8
+      ..color = Colors.white.withValues(alpha: 0.82);
+
+    for (final path in paths) {
+      canvas.drawPath(path, glowPaint);
+      canvas.drawPath(path, strokePaint);
+      canvas.drawPath(path, innerPaint);
+    }
   }
 
   void _paintArmyLabels(Canvas canvas, Size size) {
-    final fontSize = (size.width * 0.012).clamp(10.0, 14.0).toDouble();
+    final fontSize = (size.width * 0.008).clamp(8.0, 10.0).toDouble();
 
     for (final territory in state.territories) {
-      final center = Offset(territory.x * size.width, territory.y * size.height);
+      final center = Offset(
+        territory.x * size.width,
+        territory.y * size.height,
+      );
       final textPainter = TextPainter(
         text: TextSpan(
           text: territory.armyCount.toString(),
@@ -138,16 +139,14 @@ class TerritoryOverlayPainter extends CustomPainter {
             color: Colors.white,
             fontSize: fontSize,
             fontWeight: FontWeight.w900,
-            shadows: const <Shadow>[
-              Shadow(color: Colors.black, blurRadius: 5),
-            ],
+            shadows: const <Shadow>[Shadow(color: Colors.black, blurRadius: 5)],
           ),
         ),
         textDirection: TextDirection.ltr,
       )..layout();
 
-      final chipWidth = math.max(24.0, textPainter.width + 12);
-      final chipHeight = math.max(18.0, textPainter.height + 6);
+      final chipWidth = math.max(18.0, textPainter.width + 8);
+      final chipHeight = math.max(13.0, textPainter.height + 3);
       final rect = Rect.fromCenter(
         center: center,
         width: chipWidth,

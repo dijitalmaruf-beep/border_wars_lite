@@ -7,17 +7,11 @@ class MapPoint {
   final double y;
 
   Map<String, dynamic> toMap() {
-    return <String, dynamic>{
-      'x': x,
-      'y': y,
-    };
+    return <String, dynamic>{'x': x, 'y': y};
   }
 
   factory MapPoint.fromMap(Map<String, dynamic> map) {
-    return MapPoint(
-      (map['x'] as num).toDouble(),
-      (map['y'] as num).toDouble(),
-    );
+    return MapPoint((map['x'] as num).toDouble(), (map['y'] as num).toDouble());
   }
 }
 
@@ -32,8 +26,22 @@ class Territory {
     required List<String> neighbors,
     required this.continent,
     List<MapPoint> boundary = const <MapPoint>[],
-  })  : neighbors = List<String>.unmodifiable(neighbors),
-        boundary = List<MapPoint>.unmodifiable(boundary);
+    List<List<MapPoint>> boundaryGroups = const <List<MapPoint>>[],
+  }) : neighbors = List<String>.unmodifiable(neighbors),
+       boundary = List<MapPoint>.unmodifiable(
+         boundary.isNotEmpty
+             ? boundary
+             : boundaryGroups.isNotEmpty
+             ? boundaryGroups.first
+             : const <MapPoint>[],
+       ),
+       boundaryGroups = List<List<MapPoint>>.unmodifiable(
+         boundaryGroups.isNotEmpty
+             ? boundaryGroups.map(List<MapPoint>.unmodifiable)
+             : boundary.isNotEmpty
+             ? <List<MapPoint>>[List<MapPoint>.unmodifiable(boundary)]
+             : const <List<MapPoint>>[],
+       );
 
   final String id;
   final String name;
@@ -44,6 +52,17 @@ class Territory {
   final List<String> neighbors;
   final String continent;
   final List<MapPoint> boundary;
+  final List<List<MapPoint>> boundaryGroups;
+
+  List<List<MapPoint>> get visualBoundaries {
+    if (boundaryGroups.isNotEmpty) {
+      return boundaryGroups;
+    }
+    if (boundary.isNotEmpty) {
+      return <List<MapPoint>>[boundary];
+    }
+    return const <List<MapPoint>>[];
+  }
 
   Territory copyWith({
     String? id,
@@ -55,6 +74,7 @@ class Territory {
     List<String>? neighbors,
     String? continent,
     List<MapPoint>? boundary,
+    List<List<MapPoint>>? boundaryGroups,
   }) {
     return Territory(
       id: id ?? this.id,
@@ -68,6 +88,8 @@ class Territory {
       neighbors: neighbors ?? this.neighbors,
       continent: continent ?? this.continent,
       boundary: boundary ?? this.boundary,
+      boundaryGroups:
+          boundaryGroups ?? (boundary == null ? this.boundaryGroups : const []),
     );
   }
 
@@ -84,10 +106,26 @@ class Territory {
       'neighbors': neighbors,
       'continent': continent,
       'boundary': boundary.map((point) => point.toMap()).toList(),
+      'boundaryGroups': boundaryGroups
+          .map((group) => group.map((point) => point.toMap()).toList())
+          .toList(),
     };
   }
 
   factory Territory.fromMap(Map<String, dynamic> map) {
+    final boundaryGroups =
+        (map['boundaryGroups'] as List<dynamic>? ?? const <dynamic>[])
+            .map(
+              (group) => (group as List<dynamic>)
+                  .map(
+                    (point) => MapPoint.fromMap(
+                      Map<String, dynamic>.from(point as Map<dynamic, dynamic>),
+                    ),
+                  )
+                  .toList(),
+            )
+            .toList();
+
     return Territory(
       id: map['id'] as String,
       name: map['name'] as String,
@@ -104,6 +142,7 @@ class Territory {
             ),
           )
           .toList(),
+      boundaryGroups: boundaryGroups,
     );
   }
 }

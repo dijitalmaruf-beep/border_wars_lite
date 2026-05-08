@@ -25,6 +25,9 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   static const _mapAspectRatio = 2.0;
   static const _baseMapAsset = 'assets/maps/world_base.png';
   static const _borderMapAsset = 'assets/maps/world_borders.svg';
+  static const _portraitOpeningCenterX = 0.56;
+  static const _portraitOpeningCenterY = 0.46;
+  static const _portraitMapZoom = 1.0;
 
   final TransformationController _transformationController =
       TransformationController();
@@ -32,7 +35,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   Size? _cachedSize;
   Size? _lastMapSize;
   Size? _lastViewportSize;
-  Map<String, Path> _cachedPaths = const <String, Path>{};
+  Map<String, List<Path>> _cachedPaths = const <String, List<Path>>{};
 
   @override
   void dispose() {
@@ -99,28 +102,39 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     );
   }
 
-  Map<String, Path> _pathsFor(Size size) {
+  Map<String, List<Path>> _pathsFor(Size size) {
     if (_cachedSize == size && _cachedPaths.isNotEmpty) {
       return _cachedPaths;
     }
 
     _cachedSize = size;
-    _cachedPaths = <String, Path>{
+    _cachedPaths = <String, List<Path>>{
       for (final territory in widget.state.territories)
-        territory.id: _pathForTerritory(territory, size),
+        territory.id: _pathsForTerritory(territory, size),
     };
     return _cachedPaths;
   }
 
-  Path _pathForTerritory(Territory territory, Size size) {
-    final path = Path();
-    final boundary = territory.boundary;
-    if (boundary.isEmpty) {
-      final center = Offset(territory.x * size.width, territory.y * size.height);
-      path.addRect(Rect.fromCenter(center: center, width: 8, height: 8));
-      return path;
+  List<Path> _pathsForTerritory(Territory territory, Size size) {
+    final boundaries = territory.visualBoundaries;
+    if (boundaries.isEmpty) {
+      final center = Offset(
+        territory.x * size.width,
+        territory.y * size.height,
+      );
+      return <Path>[
+        Path()..addRect(Rect.fromCenter(center: center, width: 8, height: 8)),
+      ];
     }
 
+    return <Path>[
+      for (final boundary in boundaries)
+        if (boundary.length >= 3) _pathForBoundary(boundary, size),
+    ];
+  }
+
+  Path _pathForBoundary(List<MapPoint> boundary, Size size) {
+    final path = Path();
     path.moveTo(boundary.first.x * size.width, boundary.first.y * size.height);
     for (final point in boundary.skip(1)) {
       path.lineTo(point.x * size.width, point.y * size.height);
@@ -129,10 +143,10 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     return path;
   }
 
-  String? _territoryAt(Offset position, Map<String, Path> paths) {
+  String? _territoryAt(Offset position, Map<String, List<Path>> paths) {
     for (final territory in widget.state.territories.reversed) {
-      final path = paths[territory.id];
-      if (path != null && path.contains(position)) {
+      final territoryPaths = paths[territory.id] ?? const <Path>[];
+      if (territoryPaths.any((path) => path.contains(position))) {
         return territory.id;
       }
     }
@@ -141,7 +155,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
 
   Size _coveringMapSize(Size viewportSize) {
     final mapHeight = math.max(
-      viewportSize.height,
+      viewportSize.height * _portraitMapZoom,
       viewportSize.width / _mapAspectRatio,
     );
     return Size(mapHeight * _mapAspectRatio, mapHeight);
@@ -154,8 +168,12 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
 
     _lastViewportSize = viewportSize;
     _lastMapSize = mapSize;
-    final dx = (viewportSize.width - mapSize.width) / 2;
-    final dy = (viewportSize.height - mapSize.height) / 2;
+    final dx = mapSize.width <= viewportSize.width + 0.5
+        ? (viewportSize.width - mapSize.width) / 2
+        : viewportSize.width / 2 - mapSize.width * _portraitOpeningCenterX;
+    final dy = mapSize.height <= viewportSize.height + 0.5
+        ? (viewportSize.height - mapSize.height) / 2
+        : viewportSize.height / 2 - mapSize.height * _portraitOpeningCenterY;
     _transformationController.value = Matrix4.translationValues(dx, dy, 0);
   }
 }
