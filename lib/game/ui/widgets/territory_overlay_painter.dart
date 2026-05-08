@@ -10,6 +10,9 @@ class TerritoryOverlayPainter extends CustomPainter {
   const TerritoryOverlayPainter({
     required this.state,
     required this.territoryPaths,
+    required this.territoryHighlightPaths,
+    required this.territoryLabelAnchors,
+    required this.validTargetIds,
     this.mapZoom = 1.0,
     this.paintOwnership = false,
     this.paintLabelsAndHighlights = false,
@@ -17,6 +20,9 @@ class TerritoryOverlayPainter extends CustomPainter {
 
   final GameState state;
   final Map<String, List<Path>> territoryPaths;
+  final Map<String, Path> territoryHighlightPaths;
+  final Map<String, Offset> territoryLabelAnchors;
+  final Set<String> validTargetIds;
   final double mapZoom;
   final bool paintOwnership;
   final bool paintLabelsAndHighlights;
@@ -33,7 +39,6 @@ class TerritoryOverlayPainter extends CustomPainter {
   }
 
   void _paintOwnership(Canvas canvas, Size size) {
-    final source = state.territoryByIdOrNull(state.selectedSourceId);
     for (final territory in state.territories) {
       final paths = territoryPaths[territory.id] ?? const <Path>[];
       if (paths.isEmpty) {
@@ -41,10 +46,7 @@ class TerritoryOverlayPainter extends CustomPainter {
       }
 
       final owner = state.playerById(territory.ownerId);
-      final isValidTarget =
-          source != null &&
-          source.neighbors.contains(territory.id) &&
-          territory.ownerId != state.currentPlayer.id;
+      final isValidTarget = validTargetIds.contains(territory.id);
 
       if (owner != null) {
         final ownerColor = Color(owner.colorValue);
@@ -115,6 +117,7 @@ class TerritoryOverlayPainter extends CustomPainter {
     if (paths.isEmpty) {
       return;
     }
+    final path = territoryHighlightPaths[territoryId] ?? _combinedPath(paths);
 
     final glowPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -130,11 +133,9 @@ class TerritoryOverlayPainter extends CustomPainter {
       ..strokeWidth = 0.8 / _effectiveZoom
       ..color = Colors.white.withValues(alpha: 0.82);
 
-    for (final path in paths) {
-      canvas.drawPath(path, glowPaint);
-      canvas.drawPath(path, strokePaint);
-      canvas.drawPath(path, innerPaint);
-    }
+    canvas.drawPath(path, glowPaint);
+    canvas.drawPath(path, strokePaint);
+    canvas.drawPath(path, innerPaint);
   }
 
   void _paintArmyLabels(Canvas canvas, Size size) {
@@ -153,10 +154,9 @@ class TerritoryOverlayPainter extends CustomPainter {
         continue;
       }
 
-      final center = Offset(
-        territory.x * size.width,
-        territory.y * size.height,
-      );
+      final center =
+          territoryLabelAnchors[territory.id] ??
+          Offset(territory.x * size.width, territory.y * size.height);
       final ownerColor = owner == null
           ? Colors.white.withValues(alpha: 0.52)
           : Color(owner.colorValue);
@@ -224,6 +224,9 @@ class TerritoryOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant TerritoryOverlayPainter oldDelegate) {
     return oldDelegate.state != state ||
         oldDelegate.territoryPaths != territoryPaths ||
+        oldDelegate.territoryHighlightPaths != territoryHighlightPaths ||
+        oldDelegate.territoryLabelAnchors != territoryLabelAnchors ||
+        oldDelegate.validTargetIds != validTargetIds ||
         oldDelegate.mapZoom != mapZoom ||
         oldDelegate.paintOwnership != paintOwnership ||
         oldDelegate.paintLabelsAndHighlights != paintLabelsAndHighlights;
@@ -234,5 +237,21 @@ class TerritoryOverlayPainter extends CustomPainter {
   double _scaledStroke(Size size, double visualWidth) {
     final mapAwareMinimum = size.width * 0.00045;
     return math.max(mapAwareMinimum, visualWidth / _effectiveZoom);
+  }
+
+  Path _combinedPath(List<Path> paths) {
+    if (paths.length == 1) {
+      return paths.first;
+    }
+
+    var combined = Path()..addPath(paths.first, Offset.zero);
+    for (final path in paths.skip(1)) {
+      try {
+        combined = Path.combine(ui.PathOperation.union, combined, path);
+      } catch (_) {
+        combined.addPath(path, Offset.zero);
+      }
+    }
+    return combined;
   }
 }

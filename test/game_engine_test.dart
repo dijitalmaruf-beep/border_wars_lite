@@ -47,54 +47,76 @@ void main() {
     );
   });
 
-  test('validates attacks by ownership, armies, neighbor, and target owner', () {
+  test(
+    'validates attacks by ownership, armies, neighbor, and target owner',
+    () {
+      final state = newState().copyWith(
+        phase: GamePhase.attack,
+        remainingReinforcements: 0,
+      );
+
+      expect(
+        engine.canAttack(state, sourceId: 'western_us', targetId: 'central_us'),
+        isTrue,
+      );
+      expect(
+        engine.canAttack(state, sourceId: 'western_us', targetId: 'greenland'),
+        isFalse,
+      );
+      expect(
+        engine.canAttack(state, sourceId: 'central_us', targetId: 'western_us'),
+        isFalse,
+      );
+
+      final weakSourceState = state.copyWith(
+        territories: state.territories.map((territory) {
+          if (territory.id == 'western_us') {
+            return territory.copyWith(armyCount: 1);
+          }
+          return territory;
+        }).toList(),
+      );
+
+      expect(
+        engine.canAttack(
+          weakSourceState,
+          sourceId: 'western_us',
+          targetId: 'central_us',
+        ),
+        isFalse,
+      );
+    },
+  );
+
+  test('does not select non-neighbor attack targets', () {
     final state = newState().copyWith(
       phase: GamePhase.attack,
       remainingReinforcements: 0,
+      selectedSourceId: 'western_us',
     );
 
+    final nextState = engine.selectTerritory(state, 'middle_east');
+
+    expect(nextState.selectedSourceId, 'western_us');
+    expect(nextState.selectedTargetId, isNull);
     expect(
-      engine.canAttack(
-        state,
-        sourceId: 'western_us',
-        targetId: 'central_us',
-      ),
-      isTrue,
+      nextState.statusMessage,
+      'Only neighboring enemy territories can be attacked.',
     );
-    expect(
-      engine.canAttack(
-        state,
-        sourceId: 'western_us',
-        targetId: 'greenland',
-      ),
-      isFalse,
-    );
-    expect(
-      engine.canAttack(
-        state,
-        sourceId: 'central_us',
-        targetId: 'western_us',
-      ),
-      isFalse,
+  });
+
+  test('selects only valid neighboring attack targets', () {
+    final state = newState().copyWith(
+      phase: GamePhase.attack,
+      remainingReinforcements: 0,
+      selectedSourceId: 'western_us',
     );
 
-    final weakSourceState = state.copyWith(
-      territories: state.territories.map((territory) {
-        if (territory.id == 'western_us') {
-          return territory.copyWith(armyCount: 1);
-        }
-        return territory;
-      }).toList(),
-    );
+    final nextState = engine.selectTerritory(state, 'central_us');
 
-    expect(
-      engine.canAttack(
-        weakSourceState,
-        sourceId: 'western_us',
-        targetId: 'central_us',
-      ),
-      isFalse,
-    );
+    expect(nextState.selectedSourceId, 'western_us');
+    expect(nextState.selectedTargetId, 'central_us');
+    expect(nextState.statusMessage, 'Attack route ready.');
   });
 
   test('detects victory at seventy percent territory control', () {

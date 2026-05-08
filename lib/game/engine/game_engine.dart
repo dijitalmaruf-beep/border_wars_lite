@@ -46,24 +46,41 @@ class GameEngine {
       return state.copyWith(statusMessage: 'Select a source territory first.');
     }
 
+    final source = state.territoryById(state.selectedSourceId!);
+    if (!source.isNeighbor(territoryId)) {
+      return state.copyWith(
+        selectedTargetId: null,
+        statusMessage: 'Only neighboring enemy territories can be attacked.',
+      );
+    }
+
+    if (source.armyCount <= 1) {
+      return state.copyWith(
+        selectedTargetId: null,
+        statusMessage: 'Source needs more than 1 army to attack.',
+      );
+    }
+
     final canAttackTarget = canAttack(
       state,
       sourceId: state.selectedSourceId!,
       targetId: territoryId,
     );
 
+    if (!canAttackTarget) {
+      return state.copyWith(
+        selectedTargetId: null,
+        statusMessage: 'Only neighboring enemy territories can be attacked.',
+      );
+    }
+
     return state.copyWith(
       selectedTargetId: territoryId,
-      statusMessage: canAttackTarget
-          ? 'Attack route ready.'
-          : 'That attack is not available.',
+      statusMessage: 'Attack route ready.',
     );
   }
 
-  GameState addReinforcementsToTerritory(
-    GameState state,
-    String territoryId,
-  ) {
+  GameState addReinforcementsToTerritory(GameState state, String territoryId) {
     if (state.remainingReinforcements <= 0) {
       return state.copyWith(phase: GamePhase.attack);
     }
@@ -78,10 +95,9 @@ class GameEngine {
     );
 
     return state.copyWith(
-      territories: _replaceTerritories(
-        state.territories,
-        <String, Territory>{updatedTerritory.id: updatedTerritory},
-      ),
+      territories: _replaceTerritories(state.territories, <String, Territory>{
+        updatedTerritory.id: updatedTerritory,
+      }),
       phase: GamePhase.attack,
       remainingReinforcements: 0,
       selectedSourceId: territoryId,
@@ -179,13 +195,10 @@ class GameEngine {
     }
 
     final nextState = state.copyWith(
-      territories: _replaceTerritories(
-        state.territories,
-        <String, Territory>{
-          updatedSource.id: updatedSource,
-          updatedTarget.id: updatedTarget,
-        },
-      ),
+      territories: _replaceTerritories(state.territories, <String, Territory>{
+        updatedSource.id: updatedSource,
+        updatedTarget.id: updatedTarget,
+      }),
       selectedSourceId: updatedSource.id,
       selectedTargetId: null,
       statusMessage: result.message,
@@ -238,11 +251,12 @@ class GameEngine {
 
     var nextState = state;
     final bot = nextState.currentPlayer;
-    final reinforcementTarget =
-        botAI.chooseReinforcementTerritory(nextState, bot.id);
+    final reinforcementTarget = botAI.chooseReinforcementTerritory(
+      nextState,
+      bot.id,
+    );
 
-    if (reinforcementTarget != null &&
-        nextState.remainingReinforcements > 0) {
+    if (reinforcementTarget != null && nextState.remainingReinforcements > 0) {
       nextState = addReinforcementsToTerritory(
         nextState,
         reinforcementTarget.id,
@@ -254,9 +268,11 @@ class GameEngine {
       );
     }
 
-    for (var attackNumber = 0;
-        attackNumber < GameConstants.maxBotAttacksPerTurn;
-        attackNumber += 1) {
+    for (
+      var attackNumber = 0;
+      attackNumber < GameConstants.maxBotAttacksPerTurn;
+      attackNumber += 1
+    ) {
       final plan = botAI.chooseBestAttack(nextState, bot);
       if (plan == null) {
         break;
