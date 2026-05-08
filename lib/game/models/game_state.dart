@@ -3,11 +3,7 @@ import 'territory.dart';
 
 const Object _gameStateSentinel = Object();
 
-enum GamePhase {
-  reinforce,
-  attack,
-  end,
-}
+enum GamePhase { reinforce, attack, end }
 
 class GameState {
   GameState({
@@ -18,12 +14,13 @@ class GameState {
     required this.phase,
     required this.remainingReinforcements,
     required this.turnNumber,
+    this.transferUsedThisTurn = false,
     this.selectedSourceId,
     this.selectedTargetId,
     this.statusMessage = '',
     this.winnerId,
-  })  : players = List<Player>.unmodifiable(players),
-        territories = List<Territory>.unmodifiable(territories);
+  }) : players = List<Player>.unmodifiable(players),
+       territories = List<Territory>.unmodifiable(territories);
 
   final String id;
   final List<Player> players;
@@ -32,6 +29,7 @@ class GameState {
   final GamePhase phase;
   final int remainingReinforcements;
   final int turnNumber;
+  final bool transferUsedThisTurn;
   final String? selectedSourceId;
   final String? selectedTargetId;
   final String statusMessage;
@@ -87,6 +85,7 @@ class GameState {
     GamePhase? phase,
     int? remainingReinforcements,
     int? turnNumber,
+    bool? transferUsedThisTurn,
     Object? selectedSourceId = _gameStateSentinel,
     Object? selectedTargetId = _gameStateSentinel,
     String? statusMessage,
@@ -101,6 +100,7 @@ class GameState {
       remainingReinforcements:
           remainingReinforcements ?? this.remainingReinforcements,
       turnNumber: turnNumber ?? this.turnNumber,
+      transferUsedThisTurn: transferUsedThisTurn ?? this.transferUsedThisTurn,
       selectedSourceId: identical(selectedSourceId, _gameStateSentinel)
           ? this.selectedSourceId
           : selectedSourceId as String?,
@@ -123,6 +123,7 @@ class GameState {
       'phase': phase.name,
       'remainingReinforcements': remainingReinforcements,
       'turnNumber': turnNumber,
+      'transferUsedThisTurn': transferUsedThisTurn,
       'selectedSourceId': selectedSourceId,
       'selectedTargetId': selectedTargetId,
       'statusMessage': statusMessage,
@@ -153,6 +154,7 @@ class GameState {
       ),
       remainingReinforcements: map['remainingReinforcements'] as int,
       turnNumber: map['turnNumber'] as int,
+      transferUsedThisTurn: map['transferUsedThisTurn'] as bool? ?? false,
       selectedSourceId: map['selectedSourceId'] as String?,
       selectedTargetId: map['selectedTargetId'] as String?,
       statusMessage: map['statusMessage'] as String? ?? '',

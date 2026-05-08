@@ -6,12 +6,14 @@ import 'world_conquest_map.dart';
 class TerritoryMap extends StatelessWidget {
   const TerritoryMap({
     required this.state,
+    required this.validSourceIds,
     required this.validTargetIds,
     required this.onTerritoryTap,
     super.key,
   });
 
   final GameState state;
+  final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final ValueChanged<String> onTerritoryTap;
 
@@ -19,6 +21,7 @@ class TerritoryMap extends StatelessWidget {
   Widget build(BuildContext context) {
     return WorldConquestMap(
       state: state,
+      validSourceIds: validSourceIds,
       validTargetIds: validTargetIds,
       onTerritoryTap: onTerritoryTap,
     );

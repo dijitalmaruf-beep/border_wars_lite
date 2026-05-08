@@ -61,6 +61,7 @@ class _GameScreenState extends State<GameScreen> {
         );
     final canTransfer = _canTransferSelection(_state);
     final winChance = canAttack ? _engine.winChanceForSelection(_state) : 0.0;
+    final validSourceIds = _validSourceIdsFor(_state);
     final validTargetIds = _validTargetIdsFor(_state);
 
     return Scaffold(
@@ -86,6 +87,7 @@ class _GameScreenState extends State<GameScreen> {
                         Expanded(
                           child: _MapStage(
                             state: _state,
+                            validSourceIds: validSourceIds,
                             validTargetIds: validTargetIds,
                             onTerritoryTap: _handleTerritoryTap,
                           ),
@@ -185,6 +187,15 @@ class _GameScreenState extends State<GameScreen> {
     if (_state.currentPlayer.isBot || _state.phase != GamePhase.attack) {
       return;
     }
+    if (_state.transferUsedThisTurn) {
+      setState(() {
+        _state = _state.copyWith(
+          statusMessage: 'Transfer already used this turn.',
+        );
+      });
+      return;
+    }
+
     setState(() {
       _commandMode = _MapCommandMode.transfer;
       _state = _state.copyWith(
@@ -194,7 +205,7 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
-  void _handleTransferAction() {
+  Future<void> _handleTransferAction() async {
     if (_state.currentPlayer.isBot || _state.phase != GamePhase.attack) {
       return;
     }
@@ -208,14 +219,164 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    _setGameState(
-      _state.copyWith(
-        statusMessage: 'Transfer route ready. Troop transfer is coming soon.',
-      ),
+    final source = _state.territoryByIdOrNull(_state.selectedSourceId);
+    final target = _state.territoryByIdOrNull(_state.selectedTargetId);
+    if (source == null || target == null) {
+      return;
+    }
+
+    final amount = await _showTransferAmountSheet(source, target);
+    if (amount == null || !mounted) {
+      return;
+    }
+
+    _setGameState(_engine.transferArmies(_state, source.id, target.id, amount));
+  }
+
+  Future<int?> _showTransferAmountSheet(Territory source, Territory target) {
+    final maxTransfer = source.armyCount - 1;
+    var selectedAmount = max(1, ((source.armyCount - 1) / 2).floor());
+
+    return showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              12,
+              12,
+              12,
+              12 + MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: StatefulBuilder(
+              builder: (context, setSheetState) {
+                void updateAmount(int value) {
+                  setSheetState(() {
+                    selectedAmount = value.clamp(1, maxTransfer).toInt();
+                  });
+                }
+
+                return PremiumPanel(
+                  borderColor: AppColors.premiumCyan.withValues(alpha: 0.70),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      const Text(
+                        'TRANSFER ARMIES',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.premiumText,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        '${source.name} -> ${target.name}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.premiumMutedText,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _AmountButton(
+                            icon: Icons.remove,
+                            onPressed: selectedAmount > 1
+                                ? () => updateAmount(selectedAmount - 1)
+                                : null,
+                          ),
+                          SizedBox(
+                            width: 96,
+                            child: Text(
+                              '$selectedAmount',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                color: AppColors.premiumText,
+                                fontSize: 38,
+                                fontWeight: FontWeight.w900,
+                                height: 1,
+                              ),
+                            ),
+                          ),
+                          _AmountButton(
+                            icon: Icons.add,
+                            onPressed: selectedAmount < maxTransfer
+                                ? () => updateAmount(selectedAmount + 1)
+                                : null,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      if (maxTransfer > 1)
+                        Slider(
+                          value: selectedAmount.toDouble(),
+                          min: 1,
+                          max: maxTransfer.toDouble(),
+                          divisions: maxTransfer - 1,
+                          activeColor: AppColors.premiumCyan,
+                          inactiveColor: AppColors.premiumBorder,
+                          onChanged: (value) => updateAmount(value.round()),
+                        )
+                      else
+                        const SizedBox(height: 28),
+                      Text(
+                        'Source keeps ${source.armyCount - selectedAmount} armies.',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppColors.premiumMutedText,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: PremiumButton(
+                              label: 'CANCEL',
+                              icon: Icons.close,
+                              onPressed: () => Navigator.of(context).pop(),
+                              tone: PremiumButtonTone.dark,
+                              height: 48,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: PremiumButton(
+                              label: 'MOVE $selectedAmount',
+                              icon: Icons.swap_horiz,
+                              onPressed: () =>
+                                  Navigator.of(context).pop(selectedAmount),
+                              tone: PremiumButtonTone.teal,
+                              height: 48,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
   GameState _selectTransferTerritory(GameState state, String territoryId) {
+    if (state.transferUsedThisTurn) {
+      return state.copyWith(statusMessage: 'Transfer already used this turn.');
+    }
+
     final territory = state.territoryById(territoryId);
     final currentPlayerId = state.currentPlayer.id;
 
@@ -228,6 +389,12 @@ class _GameScreenState extends State<GameScreen> {
 
     final sourceId = state.selectedSourceId;
     if (sourceId == null || sourceId == territoryId) {
+      if (territory.armyCount <= 1) {
+        return state.copyWith(
+          selectedTargetId: null,
+          statusMessage: 'Source needs more than 1 army to transfer.',
+        );
+      }
       return state.copyWith(
         selectedSourceId: territoryId,
         selectedTargetId: null,
@@ -252,9 +419,16 @@ class _GameScreenState extends State<GameScreen> {
       );
     }
 
+    if (!_engine.canTransfer(state, source.id, territory.id)) {
+      return state.copyWith(
+        selectedTargetId: null,
+        statusMessage: 'Source needs more than 1 army to transfer.',
+      );
+    }
+
     return state.copyWith(
       selectedTargetId: territoryId,
-      statusMessage: 'Transfer route ready. Troop transfer is coming soon.',
+      statusMessage: 'Transfer available.',
     );
   }
 
@@ -272,15 +446,28 @@ class _GameScreenState extends State<GameScreen> {
       return false;
     }
 
-    final currentPlayerId = state.currentPlayer.id;
-    return source.id != target.id &&
-        source.ownerId == currentPlayerId &&
-        target.ownerId == currentPlayerId &&
-        source.isNeighbor(target.id);
+    return _engine.canTransfer(state, source.id, target.id);
+  }
+
+  Set<String> _validSourceIdsFor(GameState state) {
+    if (_commandMode != _MapCommandMode.transfer ||
+        state.phase != GamePhase.attack ||
+        state.transferUsedThisTurn) {
+      return const <String>{};
+    }
+
+    return state
+        .territoriesOwnedBy(state.currentPlayer.id)
+        .where((territory) => territory.armyCount > 1)
+        .map((territory) => territory.id)
+        .toSet();
   }
 
   Set<String> _validTargetIdsFor(GameState state) {
-    if (state.phase != GamePhase.attack || state.selectedSourceId == null) {
+    if (state.phase != GamePhase.attack ||
+        (state.transferUsedThisTurn &&
+            _commandMode == _MapCommandMode.transfer) ||
+        state.selectedSourceId == null) {
       return const <String>{};
     }
 
@@ -296,7 +483,8 @@ class _GameScreenState extends State<GameScreen> {
         continue;
       }
       if (_commandMode == _MapCommandMode.transfer) {
-        if (territory.ownerId == state.currentPlayer.id) {
+        if (source.armyCount > 1 &&
+            territory.ownerId == state.currentPlayer.id) {
           targets.add(territory.id);
         }
       } else if (source.armyCount > 1 &&
@@ -367,6 +555,40 @@ class _GameScreenState extends State<GameScreen> {
         ),
       );
     });
+  }
+}
+
+class _AmountButton extends StatelessWidget {
+  const _AmountButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xCC07131F),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: onPressed == null
+                ? AppColors.premiumBorder.withValues(alpha: 0.35)
+                : AppColors.premiumCyan.withValues(alpha: 0.70),
+          ),
+        ),
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          color: onPressed == null
+              ? AppColors.premiumMutedText.withValues(alpha: 0.55)
+              : AppColors.premiumText,
+          tooltip: icon == Icons.add ? 'Increase' : 'Decrease',
+        ),
+      ),
+    );
   }
 }
 
@@ -543,11 +765,13 @@ class _PlayerCard extends StatelessWidget {
 class _MapStage extends StatelessWidget {
   const _MapStage({
     required this.state,
+    required this.validSourceIds,
     required this.validTargetIds,
     required this.onTerritoryTap,
   });
 
   final GameState state;
+  final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final ValueChanged<String> onTerritoryTap;
 
@@ -571,6 +795,7 @@ class _MapStage extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               child: TerritoryMap(
                 state: state,
+                validSourceIds: validSourceIds,
                 validTargetIds: validTargetIds,
                 onTerritoryTap: onTerritoryTap,
               ),
@@ -653,6 +878,7 @@ class _BattleCommandPanel extends StatelessWidget {
     final isTransferMode = commandMode == _MapCommandMode.transfer;
     final canUseCommands =
         state.phase == GamePhase.attack && !state.currentPlayer.isBot;
+    final canUseTransfer = canUseCommands && !state.transferUsedThisTurn;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -693,6 +919,7 @@ class _BattleCommandPanel extends StatelessWidget {
                     enabled: canAttack,
                     isTransferMode: isTransferMode,
                     canTransfer: canTransfer,
+                    transferUsed: state.transferUsedThisTurn,
                   ),
                 ],
               ),
@@ -738,12 +965,14 @@ class _BattleCommandPanel extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: PremiumButton(
-                label: 'TRANSFER',
+                label: state.transferUsedThisTurn
+                    ? 'TRANSFER USED'
+                    : 'TRANSFER',
                 icon: Icons.swap_horiz,
-                onPressed: !canUseCommands
+                onPressed: !canUseTransfer
                     ? null
                     : isTransferMode
-                    ? onTransfer
+                    ? (canTransfer ? onTransfer : null)
                     : onSelectTransferMode,
                 tone: PremiumButtonTone.teal,
                 height: 46,
@@ -830,23 +1059,31 @@ class _WinChance extends StatelessWidget {
     required this.enabled,
     required this.isTransferMode,
     required this.canTransfer,
+    required this.transferUsed,
   });
 
   final int percent;
   final bool enabled;
   final bool isTransferMode;
   final bool canTransfer;
+  final bool transferUsed;
 
   @override
   Widget build(BuildContext context) {
-    final isReady = isTransferMode ? canTransfer : enabled;
+    final isReady = isTransferMode ? canTransfer || transferUsed : enabled;
     final color = isReady
         ? const Color(0xFF91F05B)
         : AppColors.premiumMutedText;
     final label = isTransferMode ? 'TRANSFER' : 'WIN CHANCE';
-    final value = isTransferMode ? (canTransfer ? 'OK' : '--') : '$percent%';
+    final value = isTransferMode
+        ? transferUsed
+              ? 'DONE'
+              : (canTransfer ? 'OK' : '--')
+        : '$percent%';
     final subtitle = isTransferMode
-        ? (canTransfer ? 'Adjacent' : 'Select ally')
+        ? transferUsed
+              ? 'Used'
+              : (canTransfer ? 'Available' : 'Select ally')
         : (enabled ? 'Good Advantage' : 'Select target');
     return SizedBox(
       width: 96,

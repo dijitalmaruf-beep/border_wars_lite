@@ -10,12 +10,14 @@ import 'territory_overlay_painter.dart';
 class WorldConquestMap extends StatefulWidget {
   const WorldConquestMap({
     required this.state,
+    required this.validSourceIds,
     required this.validTargetIds,
     required this.onTerritoryTap,
     super.key,
   });
 
   final GameState state;
+  final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final ValueChanged<String> onTerritoryTap;
 
@@ -93,6 +95,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                           territoryPaths: paths,
                           territoryHighlightPaths: highlightPaths,
                           territoryLabelAnchors: labelAnchors,
+                          validSourceIds: widget.validSourceIds,
                           validTargetIds: widget.validTargetIds,
                           mapZoom: mapZoom,
                           paintOwnership: true,
@@ -109,6 +112,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                           territoryPaths: paths,
                           territoryHighlightPaths: highlightPaths,
                           territoryLabelAnchors: labelAnchors,
+                          validSourceIds: widget.validSourceIds,
                           validTargetIds: widget.validTargetIds,
                           mapZoom: mapZoom,
                           paintLabelsAndHighlights: true,

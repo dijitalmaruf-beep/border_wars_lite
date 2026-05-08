@@ -126,6 +126,61 @@ class GameEngine {
         target.ownerId != currentPlayerId;
   }
 
+  bool canTransfer(GameState state, String sourceId, String targetId) {
+    if (state.winnerId != null ||
+        state.phase != GamePhase.attack ||
+        state.transferUsedThisTurn) {
+      return false;
+    }
+
+    final source = state.territoryById(sourceId);
+    final target = state.territoryById(targetId);
+    final currentPlayerId = state.currentPlayer.id;
+
+    return source.id != target.id &&
+        source.ownerId == currentPlayerId &&
+        target.ownerId == currentPlayerId &&
+        source.armyCount > 1 &&
+        source.isNeighbor(target.id);
+  }
+
+  GameState transferArmies(
+    GameState state,
+    String sourceId,
+    String targetId,
+    int amount,
+  ) {
+    if (state.transferUsedThisTurn) {
+      return state.copyWith(statusMessage: 'Transfer already used this turn.');
+    }
+    if (!canTransfer(state, sourceId, targetId)) {
+      return state.copyWith(statusMessage: 'Invalid transfer.');
+    }
+
+    final source = state.territoryById(sourceId);
+    final target = state.territoryById(targetId);
+    final maxTransfer = source.armyCount - 1;
+    if (amount < 1 || amount > maxTransfer) {
+      return state.copyWith(
+        statusMessage: 'Transfer amount must leave 1 army behind.',
+      );
+    }
+
+    final updatedSource = source.copyWith(armyCount: source.armyCount - amount);
+    final updatedTarget = target.copyWith(armyCount: target.armyCount + amount);
+
+    return state.copyWith(
+      territories: _replaceTerritories(state.territories, <String, Territory>{
+        updatedSource.id: updatedSource,
+        updatedTarget.id: updatedTarget,
+      }),
+      transferUsedThisTurn: true,
+      selectedSourceId: updatedSource.id,
+      selectedTargetId: updatedTarget.id,
+      statusMessage: 'Transferred $amount armies to ${updatedTarget.name}.',
+    );
+  }
+
   double winChanceForSelection(GameState state) {
     final source = state.territoryByIdOrNull(state.selectedSourceId);
     final target = state.territoryByIdOrNull(state.selectedTargetId);
@@ -237,6 +292,7 @@ class GameEngine {
       currentPlayerIndex: nextPlayerIndex,
       phase: GamePhase.reinforce,
       remainingReinforcements: reinforcements,
+      transferUsedThisTurn: false,
       selectedSourceId: null,
       selectedTargetId: null,
       turnNumber: state.turnNumber + 1,
@@ -290,6 +346,8 @@ class GameEngine {
       }
     }
 
+    nextState = _runBotTransfer(nextState);
+
     return endTurn(nextState.copyWith(phase: GamePhase.end));
   }
 
@@ -324,6 +382,55 @@ class GameEngine {
       }
     }
     return state.currentPlayerIndex;
+  }
+
+  GameState _runBotTransfer(GameState state) {
+    if (state.transferUsedThisTurn || state.phase != GamePhase.attack) {
+      return state;
+    }
+
+    final botPlayerId = state.currentPlayer.id;
+    final owned = state.territoriesOwnedBy(botPlayerId);
+    final borderIds = <String>{
+      for (final territory in owned)
+        if (territory.neighbors.any(
+          (neighborId) =>
+              state.territoryById(neighborId).ownerId != botPlayerId,
+        ))
+          territory.id,
+    };
+
+    final innerSources =
+        owned
+            .where(
+              (territory) =>
+                  territory.armyCount > 3 && !borderIds.contains(territory.id),
+            )
+            .toList()
+          ..sort((left, right) => right.armyCount.compareTo(left.armyCount));
+
+    for (final source in innerSources) {
+      final targets =
+          source.neighbors
+              .map(state.territoryById)
+              .where(
+                (territory) =>
+                    territory.ownerId == botPlayerId &&
+                    borderIds.contains(territory.id) &&
+                    territory.armyCount < source.armyCount,
+              )
+              .toList()
+            ..sort((left, right) => left.armyCount.compareTo(right.armyCount));
+
+      if (targets.isEmpty) {
+        continue;
+      }
+
+      final amount = min(2, source.armyCount - 1);
+      return transferArmies(state, source.id, targets.first.id, amount);
+    }
+
+    return state;
   }
 
   List<Territory> _replaceTerritories(

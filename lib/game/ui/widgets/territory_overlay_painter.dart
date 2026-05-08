@@ -12,6 +12,7 @@ class TerritoryOverlayPainter extends CustomPainter {
     required this.territoryPaths,
     required this.territoryHighlightPaths,
     required this.territoryLabelAnchors,
+    required this.validSourceIds,
     required this.validTargetIds,
     this.mapZoom = 1.0,
     this.paintOwnership = false,
@@ -22,6 +23,7 @@ class TerritoryOverlayPainter extends CustomPainter {
   final Map<String, List<Path>> territoryPaths;
   final Map<String, Path> territoryHighlightPaths;
   final Map<String, Offset> territoryLabelAnchors;
+  final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final double mapZoom;
   final bool paintOwnership;
@@ -46,6 +48,7 @@ class TerritoryOverlayPainter extends CustomPainter {
       }
 
       final owner = state.playerById(territory.ownerId);
+      final isValidSource = validSourceIds.contains(territory.id);
       final isValidTarget = validTargetIds.contains(territory.id);
 
       if (owner != null) {
@@ -72,6 +75,20 @@ class TerritoryOverlayPainter extends CustomPainter {
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, edgePaint);
+        }
+      }
+
+      if (isValidSource) {
+        final paint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _scaledStroke(size, 1.4)
+          ..color = AppColors.premiumCyan.withValues(alpha: 0.62);
+        final fillPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = AppColors.premiumCyan.withValues(alpha: 0.12);
+        for (final path in paths) {
+          canvas.drawPath(path, fillPaint);
+          canvas.drawPath(path, paint);
         }
       }
 
@@ -226,6 +243,7 @@ class TerritoryOverlayPainter extends CustomPainter {
         oldDelegate.territoryPaths != territoryPaths ||
         oldDelegate.territoryHighlightPaths != territoryHighlightPaths ||
         oldDelegate.territoryLabelAnchors != territoryLabelAnchors ||
+        oldDelegate.validSourceIds != validSourceIds ||
         oldDelegate.validTargetIds != validTargetIds ||
         oldDelegate.mapZoom != mapZoom ||
         oldDelegate.paintOwnership != paintOwnership ||

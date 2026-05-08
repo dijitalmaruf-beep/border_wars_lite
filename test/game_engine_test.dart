@@ -16,6 +16,41 @@ void main() {
     );
   }
 
+  GameState transferState({
+    String sourceId = 'western_us',
+    String targetId = 'central_us',
+    String? targetOwnerId = GameConstants.humanPlayerId,
+    int sourceArmies = 6,
+    int targetArmies = 2,
+    bool transferUsedThisTurn = false,
+  }) {
+    final state = newState().copyWith(
+      phase: GamePhase.attack,
+      remainingReinforcements: 0,
+      transferUsedThisTurn: transferUsedThisTurn,
+      selectedSourceId: sourceId,
+      selectedTargetId: targetId,
+    );
+
+    return state.copyWith(
+      territories: state.territories.map((territory) {
+        if (territory.id == sourceId) {
+          return territory.copyWith(
+            ownerId: GameConstants.humanPlayerId,
+            armyCount: sourceArmies,
+          );
+        }
+        if (territory.id == targetId) {
+          return territory.copyWith(
+            ownerId: targetOwnerId,
+            armyCount: targetArmies,
+          );
+        }
+        return territory;
+      }).toList(),
+    );
+  }
+
   test('assigns starting and neutral territories for a new game', () {
     final state = newState();
 
@@ -117,6 +152,121 @@ void main() {
     expect(nextState.selectedSourceId, 'western_us');
     expect(nextState.selectedTargetId, 'central_us');
     expect(nextState.statusMessage, 'Attack route ready.');
+  });
+
+  test('valid adjacent owned transfer succeeds', () {
+    final state = transferState();
+
+    expect(engine.canTransfer(state, 'western_us', 'central_us'), isTrue);
+
+    final nextState = engine.transferArmies(
+      state,
+      'western_us',
+      'central_us',
+      3,
+    );
+
+    expect(nextState.territoryById('western_us').armyCount, 3);
+    expect(nextState.territoryById('central_us').armyCount, 5);
+    expect(nextState.transferUsedThisTurn, isTrue);
+    expect(nextState.statusMessage, 'Transferred 3 armies to Central US.');
+  });
+
+  test('non-neighbor transfer fails', () {
+    final state = transferState(targetId: 'western_europe');
+
+    expect(engine.canTransfer(state, 'western_us', 'western_europe'), isFalse);
+
+    final nextState = engine.transferArmies(
+      state,
+      'western_us',
+      'western_europe',
+      2,
+    );
+
+    expect(nextState.territoryById('western_us').armyCount, 6);
+    expect(nextState.territoryById('western_europe').armyCount, 2);
+    expect(nextState.transferUsedThisTurn, isFalse);
+  });
+
+  test('enemy target transfer fails', () {
+    final state = transferState(targetOwnerId: 'atlas_bot');
+
+    expect(engine.canTransfer(state, 'western_us', 'central_us'), isFalse);
+
+    final nextState = engine.transferArmies(
+      state,
+      'western_us',
+      'central_us',
+      2,
+    );
+
+    expect(nextState.territoryById('western_us').armyCount, 6);
+    expect(nextState.territoryById('central_us').armyCount, 2);
+    expect(nextState.transferUsedThisTurn, isFalse);
+  });
+
+  test('neutral target transfer fails', () {
+    final state = transferState(targetOwnerId: null);
+
+    expect(engine.canTransfer(state, 'western_us', 'central_us'), isFalse);
+
+    final nextState = engine.transferArmies(
+      state,
+      'western_us',
+      'central_us',
+      2,
+    );
+
+    expect(nextState.territoryById('western_us').armyCount, 6);
+    expect(nextState.territoryById('central_us').armyCount, 2);
+    expect(nextState.transferUsedThisTurn, isFalse);
+  });
+
+  test('source cannot go below one army after transfer', () {
+    final state = transferState(sourceArmies: 3);
+
+    final nextState = engine.transferArmies(
+      state,
+      'western_us',
+      'central_us',
+      3,
+    );
+
+    expect(nextState.territoryById('western_us').armyCount, 3);
+    expect(nextState.territoryById('central_us').armyCount, 2);
+    expect(nextState.transferUsedThisTurn, isFalse);
+  });
+
+  test('transferUsedThisTurn prevents second transfer', () {
+    final state = transferState();
+    final firstTransfer = engine.transferArmies(
+      state,
+      'western_us',
+      'central_us',
+      1,
+    );
+
+    final secondTransfer = engine.transferArmies(
+      firstTransfer,
+      'western_us',
+      'central_us',
+      1,
+    );
+
+    expect(secondTransfer.territoryById('western_us').armyCount, 5);
+    expect(secondTransfer.territoryById('central_us').armyCount, 3);
+    expect(secondTransfer.transferUsedThisTurn, isTrue);
+    expect(secondTransfer.statusMessage, 'Transfer already used this turn.');
+  });
+
+  test('transferUsedThisTurn resets on next turn', () {
+    final state = transferState(transferUsedThisTurn: true);
+
+    final nextState = engine.endTurn(state);
+
+    expect(nextState.transferUsedThisTurn, isFalse);
+    expect(nextState.currentPlayer.id, 'atlas_bot');
   });
 
   test('detects victory at seventy percent territory control', () {
