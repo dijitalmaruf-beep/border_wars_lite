@@ -52,51 +52,62 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         final paths = _pathsFor(mapSize);
         _syncInitialView(viewportSize, mapSize);
 
-        return InteractiveViewer(
-          transformationController: _transformationController,
-          minScale: 0.75,
-          maxScale: 4,
-          constrained: false,
-          clipBehavior: Clip.hardEdge,
-          boundaryMargin: const EdgeInsets.all(24),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapUp: (details) {
-              final territoryId = _territoryAt(details.localPosition, paths);
-              if (territoryId != null) {
-                widget.onTerritoryTap(territoryId);
-              }
-            },
-            child: SizedBox(
-              width: mapSize.width,
-              height: mapSize.height,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  Image.asset(_baseMapAsset, fit: BoxFit.fill),
-                  CustomPaint(
-                    painter: TerritoryOverlayPainter(
-                      state: widget.state,
-                      territoryPaths: paths,
-                      paintOwnership: true,
-                    ),
+        return AnimatedBuilder(
+          animation: _transformationController,
+          builder: (context, _) {
+            final mapZoom = _currentMapZoom();
+            return InteractiveViewer(
+              transformationController: _transformationController,
+              minScale: 0.75,
+              maxScale: 4,
+              constrained: false,
+              clipBehavior: Clip.hardEdge,
+              boundaryMargin: const EdgeInsets.all(24),
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapUp: (details) {
+                  final territoryId = _territoryAt(
+                    details.localPosition,
+                    paths,
+                  );
+                  if (territoryId != null) {
+                    widget.onTerritoryTap(territoryId);
+                  }
+                },
+                child: SizedBox(
+                  width: mapSize.width,
+                  height: mapSize.height,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: <Widget>[
+                      Image.asset(_baseMapAsset, fit: BoxFit.fill),
+                      CustomPaint(
+                        painter: TerritoryOverlayPainter(
+                          state: widget.state,
+                          territoryPaths: paths,
+                          mapZoom: mapZoom,
+                          paintOwnership: true,
+                        ),
+                      ),
+                      SvgPicture.asset(
+                        _borderMapAsset,
+                        fit: BoxFit.fill,
+                        allowDrawingOutsideViewBox: false,
+                      ),
+                      CustomPaint(
+                        painter: TerritoryOverlayPainter(
+                          state: widget.state,
+                          territoryPaths: paths,
+                          mapZoom: mapZoom,
+                          paintLabelsAndHighlights: true,
+                        ),
+                      ),
+                    ],
                   ),
-                  SvgPicture.asset(
-                    _borderMapAsset,
-                    fit: BoxFit.fill,
-                    allowDrawingOutsideViewBox: false,
-                  ),
-                  CustomPaint(
-                    painter: TerritoryOverlayPainter(
-                      state: widget.state,
-                      territoryPaths: paths,
-                      paintLabelsAndHighlights: true,
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -159,6 +170,13 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
       viewportSize.width / _mapAspectRatio,
     );
     return Size(mapHeight * _mapAspectRatio, mapHeight);
+  }
+
+  double _currentMapZoom() {
+    return _transformationController.value
+        .getMaxScaleOnAxis()
+        .clamp(0.75, 4.0)
+        .toDouble();
   }
 
   void _syncInitialView(Size viewportSize, Size mapSize) {
