@@ -42,6 +42,25 @@ enum _MapCommandMode { attack, transfer }
 
 enum _GameMenuAction { continueGame, exitToHome }
 
+class _MapPulse {
+  const _MapPulse({
+    required this.territoryId,
+    required this.label,
+    required this.color,
+  });
+
+  final String territoryId;
+  final String label;
+  final Color color;
+}
+
+class _TurnBanner {
+  const _TurnBanner({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+}
+
 class _GameScreenState extends State<GameScreen> {
   final GameEngine _engine = const GameEngine();
   final Random _random = Random();
@@ -58,6 +77,11 @@ class _GameScreenState extends State<GameScreen> {
   bool _navigatedToVictory = false;
   bool _isSavingOnline = false;
   int _remainingTurnSeconds = GameConstants.turnDurationSeconds;
+  int _turnBannerSerial = 0;
+  int _mapPulseSerial = 0;
+  String _lastEventMessage = 'Oyun başladı.';
+  _MapPulse? _mapPulse;
+  _TurnBanner? _turnBanner;
   Set<String> _announcedControlledContinents = const <String>{};
 
   @override
@@ -69,7 +93,10 @@ class _GameScreenState extends State<GameScreen> {
     unawaited(_loadSettings());
     _subscribeToOnlineGame();
     _startTurnTimer();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _afterStateChanged());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showTurnBannerFor(_state);
+      _afterStateChanged();
+    });
   }
 
   @override
@@ -102,64 +129,84 @@ class _GameScreenState extends State<GameScreen> {
     return Scaffold(
       body: PremiumBackground(
         child: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final maxWidth = constraints.maxWidth >= 720
-                  ? 720.0
-                  : double.infinity;
-              return Center(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: maxWidth),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        _WorldHeader(
-                          state: _state,
-                          isOnline: _isOnline,
-                          isLocalTurn: canAct,
-                          gameId: _state.id,
-                          remainingTurnSeconds: _remainingTurnSeconds,
-                          onMenuPressed: _showGameMenu,
-                          onHelpPressed: _showHowToPlay,
+          child: Stack(
+            children: <Widget>[
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final maxWidth = constraints.maxWidth >= 720
+                      ? 720.0
+                      : double.infinity;
+                  return Center(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: maxWidth),
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: <Widget>[
+                            _WorldHeader(
+                              state: _state,
+                              isOnline: _isOnline,
+                              isLocalTurn: canAct,
+                              gameId: _state.id,
+                              remainingTurnSeconds: _remainingTurnSeconds,
+                              onMenuPressed: _showGameMenu,
+                              onHelpPressed: _showHowToPlay,
+                            ),
+                            const SizedBox(height: 8),
+                            _PlayerStrip(
+                              state: _state,
+                              glowSerial: _turnBannerSerial,
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: _MapStage(
+                                state: _state,
+                                validSourceIds: validSourceIds,
+                                validTargetIds: validTargetIds,
+                                controlledContinents: controlledContinents,
+                                pulse: _mapPulse,
+                                pulseSerial: _mapPulseSerial,
+                                onTerritoryTap: _handleTerritoryTap,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            _BattleCommandPanel(
+                              state: _state,
+                              commandMode: _commandMode,
+                              canAttack: canAttack,
+                              canTransfer: canTransfer,
+                              winChance: winChance,
+                              reinforcementBreakdown: reinforcementBreakdown,
+                              isBotThinking: _isBotThinking,
+                              isOnline: _isOnline,
+                              isSavingOnline: _isSavingOnline,
+                              canAct: canAct,
+                              lastEventMessage: _lastEventMessage,
+                              onAttack: _handleAttack,
+                              onSelectAttackMode: _enterAttackMode,
+                              onSelectTransferMode: _enterTransferMode,
+                              onTransfer: _handleTransferAction,
+                              onEndTurn: _handleEndTurn,
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        _PlayerStrip(state: _state),
-                        const SizedBox(height: 8),
-                        Expanded(
-                          child: _MapStage(
-                            state: _state,
-                            validSourceIds: validSourceIds,
-                            validTargetIds: validTargetIds,
-                            controlledContinents: controlledContinents,
-                            onTerritoryTap: _handleTerritoryTap,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _BattleCommandPanel(
-                          state: _state,
-                          commandMode: _commandMode,
-                          canAttack: canAttack,
-                          canTransfer: canTransfer,
-                          winChance: winChance,
-                          reinforcementBreakdown: reinforcementBreakdown,
-                          isBotThinking: _isBotThinking,
-                          isOnline: _isOnline,
-                          isSavingOnline: _isSavingOnline,
-                          canAct: canAct,
-                          onAttack: _handleAttack,
-                          onSelectAttackMode: _enterAttackMode,
-                          onSelectTransferMode: _enterTransferMode,
-                          onTransfer: _handleTransferAction,
-                          onEndTurn: _handleEndTurn,
-                        ),
-                      ],
+                      ),
                     ),
+                  );
+                },
+              ),
+              if (_turnBanner != null)
+                Positioned(
+                  key: ValueKey<int>(_turnBannerSerial),
+                  top: 86,
+                  left: 18,
+                  right: 18,
+                  child: IgnorePointer(
+                    child: _TurnTransitionBanner(banner: _turnBanner!),
                   ),
                 ),
-              );
-            },
+            ],
           ),
         ),
       ),
@@ -176,7 +223,33 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    _setGameState(_engine.selectTerritory(_state, territoryId));
+    final wasReinforce = _state.phase == GamePhase.reinforce;
+    final reinforcementAmount = _state.remainingReinforcements;
+    final territory = _state.territoryByIdOrNull(territoryId);
+    final nextState = _engine.selectTerritory(_state, territoryId);
+    _setGameState(
+      nextState,
+      eventMessage:
+          wasReinforce &&
+              territory != null &&
+              territory.ownerId == _state.currentPlayer.id &&
+              reinforcementAmount > 0 &&
+              nextState.phase == GamePhase.attack
+          ? '${territory.name} +$reinforcementAmount takviye aldı.'
+          : null,
+      mapPulse:
+          wasReinforce &&
+              territory != null &&
+              territory.ownerId == _state.currentPlayer.id &&
+              reinforcementAmount > 0 &&
+              nextState.phase == GamePhase.attack
+          ? _MapPulse(
+              territoryId: territory.id,
+              label: '+$reinforcementAmount',
+              color: AppColors.premiumBlue,
+            )
+          : null,
+    );
   }
 
   Future<void> _handleAttack() async {
@@ -205,11 +278,18 @@ class _GameScreenState extends State<GameScreen> {
         random: _random,
       );
       if (result == null) {
-        _setGameState(battleState.copyWith(statusMessage: 'Geçersiz saldırı.'));
+        _setGameState(
+          battleState.copyWith(statusMessage: 'Geçersiz saldırı.'),
+          eventMessage: 'Saldırı geçersiz.',
+        );
         return;
       }
       if (!result.didWin) {
-        _setGameState(_engine.applyAttackResult(battleState, result));
+        final failedTarget = battleState.territoryById(result.targetId);
+        _setGameState(
+          _engine.applyAttackResult(battleState, result),
+          eventMessage: '${failedTarget.name} saldırısı başarısız oldu.',
+        );
         return;
       }
 
@@ -219,11 +299,14 @@ class _GameScreenState extends State<GameScreen> {
       }
       final selectedAmount =
           amount ?? _engine.movedArmiesOnWinForSelection(battleState);
+      final capturedTarget = battleState.territoryById(result.targetId);
       _setGameState(
         _engine.applyAttackResult(
           battleState,
           result.copyWith(movedArmies: selectedAmount),
         ),
+        eventMessage:
+            '${capturedTarget.name} fethedildi. $selectedAmount asker ilerledi.',
       );
     }
   }
@@ -280,17 +363,34 @@ class _GameScreenState extends State<GameScreen> {
   void _setGameState(
     GameState nextState, {
     bool? isBotThinking,
+    String? eventMessage,
+    _MapPulse? mapPulse,
     bool syncOnline = true,
   }) {
+    final previousState = _state;
     setState(() {
       _state = nextState;
       if (isBotThinking != null) {
         _isBotThinking = isBotThinking;
       }
+      if (eventMessage != null && eventMessage.trim().isNotEmpty) {
+        _lastEventMessage = eventMessage;
+      } else if (nextState.statusMessage.trim().isNotEmpty &&
+          previousState.statusMessage != nextState.statusMessage) {
+        _lastEventMessage = nextState.statusMessage;
+      }
+      if (mapPulse != null) {
+        _mapPulse = mapPulse;
+        _mapPulseSerial += 1;
+      }
       if (_state.phase != GamePhase.attack || _state.currentPlayer.isBot) {
         _commandMode = _MapCommandMode.attack;
       }
     });
+    if (previousState.currentPlayer.id != nextState.currentPlayer.id ||
+        previousState.turnNumber != nextState.turnNumber) {
+      _showTurnBannerFor(nextState);
+    }
     _startTurnTimer();
     _maybeAnnounceControlledContinents(nextState);
     if (syncOnline) {
@@ -482,7 +582,10 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    _setGameState(_engine.transferArmies(_state, source.id, target.id, amount));
+    _setGameState(
+      _engine.transferArmies(_state, source.id, target.id, amount),
+      eventMessage: '${target.name} bölgesine $amount asker transfer edildi.',
+    );
   }
 
   Future<int?> _showTransferAmountSheet(Territory source, Territory target) {
@@ -1014,6 +1117,22 @@ class _GameScreenState extends State<GameScreen> {
         .toSet();
   }
 
+  void _showTurnBannerFor(GameState state) {
+    if (!mounted) {
+      return;
+    }
+    final player = state.currentPlayer;
+    final isLocal = !_isOnline || player.id == widget.localPlayerId;
+    final label = isLocal && !player.isBot
+        ? 'SIRA SENDE'
+        : '${player.name.toUpperCase()} SIRASI';
+    setState(() {
+      _turnBanner = _TurnBanner(label: label, color: Color(player.colorValue));
+      _turnBannerSerial += 1;
+      _lastEventMessage = 'Tur ${state.turnNumber}: ${player.name} başladı.';
+    });
+  }
+
   void _maybeAnnounceControlledContinents(GameState state) {
     final currentControlled = _controlledContinentsFor(state);
     final newlyControlled = currentControlled
@@ -1040,6 +1159,9 @@ class _GameScreenState extends State<GameScreen> {
         ),
       ),
     );
+    setState(() {
+      _lastEventMessage = '$continent kontrol edildi: ${owner.name}.';
+    });
   }
 
   bool get _isOnline =>
@@ -1073,6 +1195,7 @@ class _GameScreenState extends State<GameScreen> {
           if (!mounted || remoteState == null) {
             return;
           }
+          final previousState = _state;
           setState(() {
             _state = remoteState;
             _isSavingOnline = false;
@@ -1082,6 +1205,10 @@ class _GameScreenState extends State<GameScreen> {
               _commandMode = _MapCommandMode.attack;
             }
           });
+          if (previousState.currentPlayer.id != remoteState.currentPlayer.id ||
+              previousState.turnNumber != remoteState.turnNumber) {
+            _showTurnBannerFor(remoteState);
+          }
           _startTurnTimer();
           _maybeAnnounceControlledContinents(remoteState);
           _afterStateChanged();
@@ -1362,9 +1489,10 @@ class _WorldHeader extends StatelessWidget {
 }
 
 class _PlayerStrip extends StatelessWidget {
-  const _PlayerStrip({required this.state});
+  const _PlayerStrip({required this.state, required this.glowSerial});
 
   final GameState state;
+  final int glowSerial;
 
   @override
   Widget build(BuildContext context) {
@@ -1399,6 +1527,7 @@ class _PlayerStrip extends StatelessWidget {
                           player: state.players[index],
                           isCurrent:
                               state.players[index].id == state.currentPlayer.id,
+                          glowSerial: glowSerial,
                           territoryCount: state.ownedTerritoryCount(
                             state.players[index].id,
                           ),
@@ -1422,12 +1551,14 @@ class _PlayerCard extends StatelessWidget {
   const _PlayerCard({
     required this.player,
     required this.isCurrent,
+    required this.glowSerial,
     required this.territoryCount,
     required this.compact,
   });
 
   final Player player;
   final bool isCurrent;
+  final int glowSerial;
   final int territoryCount;
   final bool compact;
 
@@ -1435,24 +1566,43 @@ class _PlayerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(player.colorValue);
     final isEliminated = territoryCount == 0;
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 140),
-      padding: EdgeInsets.symmetric(horizontal: compact ? 5 : 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: isEliminated
-            ? const Color(0x55111B25)
-            : isCurrent
-            ? color.withValues(alpha: 0.20)
-            : const Color(0x66111B25),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isEliminated
-              ? AppColors.premiumBorder.withValues(alpha: 0.25)
-              : isCurrent
-              ? color.withValues(alpha: 0.95)
-              : AppColors.premiumBorder.withValues(alpha: 0.46),
-        ),
-      ),
+    return TweenAnimationBuilder<double>(
+      key: ValueKey<String>('${player.id}-$isCurrent-$glowSerial'),
+      tween: Tween<double>(begin: isCurrent ? 1 : 0, end: 0),
+      duration: const Duration(milliseconds: 900),
+      curve: Curves.easeOutCubic,
+      builder: (context, pulse, child) {
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 5 : 7,
+            vertical: 4,
+          ),
+          decoration: BoxDecoration(
+            color: isEliminated
+                ? const Color(0x55111B25)
+                : isCurrent
+                ? color.withValues(alpha: 0.20 + pulse * 0.10)
+                : const Color(0x66111B25),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isEliminated
+                  ? AppColors.premiumBorder.withValues(alpha: 0.25)
+                  : isCurrent
+                  ? color.withValues(alpha: 0.95)
+                  : AppColors.premiumBorder.withValues(alpha: 0.46),
+            ),
+            boxShadow: <BoxShadow>[
+              if (isCurrent && !isEliminated)
+                BoxShadow(
+                  color: color.withValues(alpha: 0.36 + pulse * 0.35),
+                  blurRadius: 12 + pulse * 16,
+                ),
+            ],
+          ),
+          child: child,
+        );
+      },
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -1530,6 +1680,8 @@ class _MapStage extends StatelessWidget {
     required this.validSourceIds,
     required this.validTargetIds,
     required this.controlledContinents,
+    required this.pulse,
+    required this.pulseSerial,
     required this.onTerritoryTap,
   });
 
@@ -1537,48 +1689,217 @@ class _MapStage extends StatelessWidget {
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
+  final _MapPulse? pulse;
+  final int pulseSerial;
   final ValueChanged<String> onTerritoryTap;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: <Widget>[
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.premiumBorder),
-              boxShadow: <BoxShadow>[
-                BoxShadow(
-                  color: AppColors.premiumCyan.withValues(alpha: 0.16),
-                  blurRadius: 18,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final pulseTerritory = pulse == null
+            ? null
+            : state.territoryByIdOrNull(pulse!.territoryId);
+        return Stack(
+          children: <Widget>[
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.premiumBorder),
+                  boxShadow: <BoxShadow>[
+                    BoxShadow(
+                      color: AppColors.premiumCyan.withValues(alpha: 0.18),
+                      blurRadius: 22,
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.40),
+                      blurRadius: 20,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: TerritoryMap(
-                state: state,
-                validSourceIds: validSourceIds,
-                validTargetIds: validTargetIds,
-                controlledContinents: controlledContinents,
-                onTerritoryTap: onTerritoryTap,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: TerritoryMap(
+                    state: state,
+                    validSourceIds: validSourceIds,
+                    validTargetIds: validTargetIds,
+                    controlledContinents: controlledContinents,
+                    onTerritoryTap: onTerritoryTap,
+                  ),
+                ),
               ),
             ),
+            const Positioned.fill(
+              child: IgnorePointer(child: _MapCardVignette()),
+            ),
+            if (pulse != null && pulseTerritory != null)
+              Positioned(
+                key: ValueKey<int>(pulseSerial),
+                left: (pulseTerritory.x * constraints.maxWidth - 24).clamp(
+                  8.0,
+                  constraints.maxWidth - 56,
+                ),
+                top: (pulseTerritory.y * constraints.maxHeight - 28).clamp(
+                  8.0,
+                  constraints.maxHeight - 56,
+                ),
+                child: _MapPulseBadge(pulse: pulse!),
+              ),
+            Positioned(
+              right: 10,
+              bottom: 14,
+              child: Column(
+                children: const <Widget>[
+                  _MapToolButton(icon: Icons.my_location, tooltip: 'Odakla'),
+                  SizedBox(height: 8),
+                  _MapToolButton(icon: Icons.search, tooltip: 'Ara'),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _MapCardVignette extends StatelessWidget {
+  const _MapCardVignette();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        gradient: RadialGradient(
+          radius: 0.86,
+          colors: <Color>[
+            Colors.transparent,
+            Colors.black.withValues(alpha: 0.34),
+          ],
+          stops: const <double>[0.66, 1],
+        ),
+      ),
+    );
+  }
+}
+
+class _MapPulseBadge extends StatelessWidget {
+  const _MapPulseBadge({required this.pulse});
+
+  final _MapPulse pulse;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 950),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final opacity = value < 0.72 ? 1.0 : (1 - value) / 0.28;
+        return Opacity(
+          opacity: opacity.clamp(0, 1).toDouble(),
+          child: Transform.translate(
+            offset: Offset(0, -24 * value),
+            child: Transform.scale(scale: 0.82 + 0.26 * value, child: child),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xEE06111B),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: pulse.color.withValues(alpha: 0.88)),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: pulse.color.withValues(alpha: 0.45),
+              blurRadius: 14,
+            ),
+          ],
+        ),
+        child: Text(
+          pulse.label,
+          style: const TextStyle(
+            color: AppColors.premiumText,
+            fontSize: 13,
+            fontWeight: FontWeight.w900,
           ),
         ),
-        Positioned(
-          right: 10,
-          bottom: 14,
-          child: Column(
-            children: const <Widget>[
-              _MapToolButton(icon: Icons.my_location, tooltip: 'Odakla'),
-              SizedBox(height: 8),
-              _MapToolButton(icon: Icons.search, tooltip: 'Ara'),
+      ),
+    );
+  }
+}
+
+class _TurnTransitionBanner extends StatelessWidget {
+  const _TurnTransitionBanner({required this.banner});
+
+  final _TurnBanner banner;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 1100),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        final opacity = value < 0.18
+            ? value / 0.18
+            : value > 0.82
+            ? (1 - value) / 0.18
+            : 1.0;
+        return Opacity(
+          opacity: opacity.clamp(0, 1).toDouble(),
+          child: Transform.translate(
+            offset: Offset(0, -10 + 10 * value),
+            child: child,
+          ),
+        );
+      },
+      child: Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 320),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xEE06111B),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: banner.color.withValues(alpha: 0.90)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: banner.color.withValues(alpha: 0.52),
+                blurRadius: 24,
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(Icons.flag, color: banner.color, size: 18),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  banner.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.premiumText,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -1779,6 +2100,7 @@ class _BattleCommandPanel extends StatelessWidget {
     required this.isOnline,
     required this.isSavingOnline,
     required this.canAct,
+    required this.lastEventMessage,
     required this.onAttack,
     required this.onSelectAttackMode,
     required this.onSelectTransferMode,
@@ -1796,6 +2118,7 @@ class _BattleCommandPanel extends StatelessWidget {
   final bool isOnline;
   final bool isSavingOnline;
   final bool canAct;
+  final String lastEventMessage;
   final VoidCallback onAttack;
   final VoidCallback onSelectAttackMode;
   final VoidCallback onSelectTransferMode;
@@ -1887,6 +2210,8 @@ class _BattleCommandPanel extends StatelessWidget {
                 ),
         ),
         const SizedBox(height: 8),
+        _LastEventStrip(message: lastEventMessage),
+        const SizedBox(height: 8),
         Row(
           children: <Widget>[
             Expanded(
@@ -1948,6 +2273,53 @@ class _BattleCommandPanel extends StatelessWidget {
           height: 58,
         ),
       ],
+    );
+  }
+}
+
+class _LastEventStrip extends StatelessWidget {
+  const _LastEventStrip({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      child: Container(
+        key: ValueKey<String>(message),
+        height: 28,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xAA06121D),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.premiumCyan.withValues(alpha: 0.24),
+          ),
+        ),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              Icons.bolt,
+              color: AppColors.premiumGold.withValues(alpha: 0.92),
+              size: 14,
+            ),
+            const SizedBox(width: 7),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.premiumMutedText,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

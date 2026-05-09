@@ -133,6 +133,9 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                       RepaintBoundary(
                         child: Image.asset(_baseMapAsset, fit: BoxFit.fill),
                       ),
+                      const RepaintBoundary(
+                        child: CustomPaint(painter: _MapDepthPainter()),
+                      ),
                       RepaintBoundary(
                         child: CustomPaint(
                           painter: TerritoryOverlayPainter(
@@ -431,4 +434,46 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     }
     return bounds.width * bounds.height;
   }
+}
+
+class _MapDepthPainter extends CustomPainter {
+  const _MapDepthPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final oceanWash = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: <Color>[
+          const Color(0x0018D3F0),
+          const Color(0x22001C32),
+          const Color(0x33000410),
+        ],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, oceanWash);
+
+    final gridPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.55
+      ..color = Colors.white.withValues(alpha: 0.045);
+    const gridStep = 72.0;
+    for (var x = 0.0; x <= size.width; x += gridStep) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+    for (var y = 0.0; y <= size.height; y += gridStep) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    final vignette = Paint()
+      ..shader = RadialGradient(
+        radius: 0.78,
+        colors: <Color>[Colors.transparent, const Color(0xAA010611)],
+        stops: const <double>[0.64, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, vignette);
+  }
+
+  @override
+  bool shouldRepaint(covariant _MapDepthPainter oldDelegate) => false;
 }
