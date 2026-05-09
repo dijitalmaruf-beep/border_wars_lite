@@ -99,66 +99,58 @@ class FirestoreGameRepository {
     int botCount = 2,
   }) async {
     final uid = await FirebaseService.ensureSignedInAnonymously();
-    for (var attempt = 0; attempt < 10; attempt += 1) {
-      final gameId = _newGameCode();
-      final doc = _games.doc(gameId);
-      final existing = await doc.get();
-      if (existing.exists) {
-        continue;
-      }
+    final gameId = _newGameCode();
+    final doc = _games.doc(gameId);
 
-      final hostName = _cleanName(hostPlayerName);
-      final waitingState = _mapGenerator.createInitialStateForPlayers(
-        players: <Player>[
-          Player(
-            id: hostPlayerId,
-            name: hostName,
-            colorValue: hostColorValue,
-            isBot: false,
-          ),
-          const Player(
-            id: guestPlayerId,
-            name: 'Waiting...',
-            colorValue: AppColors.atlasBotValue,
-            isBot: true,
-            botPersonality: BotPersonality.aggressive,
-          ),
-          ..._mapGenerator.createBotPlayers(
-            count: botCount,
-            startIndex: 1,
-            reservedColorValues: <int>{hostColorValue, AppColors.atlasBotValue},
-          ),
-        ],
-        gameId: gameId,
-        firstPlayerId: hostPlayerId,
-      );
+    final hostName = _cleanName(hostPlayerName);
+    final waitingState = _mapGenerator.createInitialStateForPlayers(
+      players: <Player>[
+        Player(
+          id: hostPlayerId,
+          name: hostName,
+          colorValue: hostColorValue,
+          isBot: false,
+        ),
+        const Player(
+          id: guestPlayerId,
+          name: 'Waiting...',
+          colorValue: AppColors.atlasBotValue,
+          isBot: true,
+          botPersonality: BotPersonality.aggressive,
+        ),
+        ..._mapGenerator.createBotPlayers(
+          count: botCount,
+          startIndex: 1,
+          reservedColorValues: <int>{hostColorValue, AppColors.atlasBotValue},
+        ),
+      ],
+      gameId: gameId,
+      firstPlayerId: hostPlayerId,
+    );
 
-      await doc.set(<String, dynamic>{
-        'gameId': gameId,
-        'status': statusWaiting,
-        'hostPlayerId': hostPlayerId,
-        'guestPlayerId': guestPlayerId,
-        'hostUid': uid,
-        'guestUid': null,
-        'participantUids': <String>[uid],
-        'hostName': hostName,
-        'hostColorValue': hostColorValue,
-        'botCount': botCount,
-        'state': _stateToFirestoreMap(waitingState),
-        'updatedByUid': uid,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+    await doc.set(<String, dynamic>{
+      'gameId': gameId,
+      'status': statusWaiting,
+      'hostPlayerId': hostPlayerId,
+      'guestPlayerId': guestPlayerId,
+      'hostUid': uid,
+      'guestUid': null,
+      'participantUids': <String>[uid],
+      'hostName': hostName,
+      'hostColorValue': hostColorValue,
+      'botCount': botCount,
+      'state': _stateToFirestoreMap(waitingState),
+      'updatedByUid': uid,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
 
-      return OnlineGameSession(
-        gameId: gameId,
-        localPlayerId: hostPlayerId,
-        state: waitingState,
-        status: statusWaiting,
-      );
-    }
-
-    throw StateError('Could not create a unique online game code.');
+    return OnlineGameSession(
+      gameId: gameId,
+      localPlayerId: hostPlayerId,
+      state: waitingState,
+      status: statusWaiting,
+    );
   }
 
   Future<OnlineGameSession> joinOnlineGame({
