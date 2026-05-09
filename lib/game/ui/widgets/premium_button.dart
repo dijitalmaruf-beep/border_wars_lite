@@ -2,13 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 
-enum PremiumButtonTone {
-  blue,
-  dark,
-  red,
-  teal,
-  gold,
-}
+enum PremiumButtonTone { blue, dark, red, teal, gold }
 
 class PremiumButton extends StatelessWidget {
   const PremiumButton({
@@ -17,6 +11,7 @@ class PremiumButton extends StatelessWidget {
     required this.onPressed,
     this.tone = PremiumButtonTone.blue,
     this.height = 64,
+    this.isSelected = false,
     super.key,
   });
 
@@ -25,10 +20,15 @@ class PremiumButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final PremiumButtonTone tone;
   final double height;
+  final bool isSelected;
 
   @override
   Widget build(BuildContext context) {
-    final colors = _colorsForTone(tone, isDisabled: onPressed == null);
+    final colors = _colorsForTone(
+      tone,
+      isDisabled: onPressed == null && !isSelected,
+    );
+    final accent = colors.first;
     return SizedBox(
       height: height,
       child: DecoratedBox(
@@ -40,13 +40,16 @@ class PremiumButton extends StatelessWidget {
           ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: colors.first.withValues(alpha: 0.92),
+            color: isSelected
+                ? accent.withValues(alpha: 1)
+                : accent.withValues(alpha: 0.78),
+            width: isSelected ? 1.5 : 1,
           ),
           boxShadow: <BoxShadow>[
-            if (onPressed != null)
+            if (onPressed != null || isSelected)
               BoxShadow(
-                color: colors.last.withValues(alpha: 0.34),
-                blurRadius: 16,
+                color: accent.withValues(alpha: isSelected ? 0.42 : 0.26),
+                blurRadius: isSelected ? 18 : 12,
                 offset: const Offset(0, 5),
               ),
           ],
@@ -65,13 +68,21 @@ class PremiumButton extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
-                      Icon(icon, color: AppColors.premiumText, size: 22),
+                      Icon(
+                        icon,
+                        color: onPressed == null && !isSelected
+                            ? AppColors.premiumMutedText
+                            : AppColors.premiumText,
+                        size: 22,
+                      ),
                       const SizedBox(width: 9),
                       Text(
                         label,
                         maxLines: 1,
-                        style: const TextStyle(
-                          color: AppColors.premiumText,
+                        style: TextStyle(
+                          color: onPressed == null && !isSelected
+                              ? AppColors.premiumMutedText
+                              : AppColors.premiumText,
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
                           letterSpacing: 0.8,
@@ -88,12 +99,12 @@ class PremiumButton extends StatelessWidget {
     );
   }
 
-  List<Color> _colorsForTone(PremiumButtonTone tone, {required bool isDisabled}) {
+  List<Color> _colorsForTone(
+    PremiumButtonTone tone, {
+    required bool isDisabled,
+  }) {
     if (isDisabled) {
-      return <Color>[
-        const Color(0xFF162634),
-        const Color(0xFF07111A),
-      ];
+      return <Color>[const Color(0xFF162634), const Color(0xFF07111A)];
     }
 
     switch (tone) {

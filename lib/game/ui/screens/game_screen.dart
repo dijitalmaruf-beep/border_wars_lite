@@ -628,6 +628,7 @@ class _GameScreenState extends State<GameScreen> {
           builder: (_) => VictoryScreen(
             winner: winner,
             territoryCount: _state.ownedTerritoryCount(winner.id),
+            totalTerritoryCount: _state.territories.length,
           ),
         ),
       );
@@ -730,20 +731,42 @@ class _PlayerStrip extends StatelessWidget {
     return PremiumPanel(
       padding: EdgeInsets.zero,
       child: SizedBox(
-        height: 54,
-        child: ListView.separated(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-          itemBuilder: (context, index) {
-            final player = state.players[index];
-            return _PlayerCard(
-              player: player,
-              isCurrent: player.id == state.currentPlayer.id,
-              territoryCount: state.ownedTerritoryCount(player.id),
+        height: 50,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            const horizontalPadding = 6.0;
+            const gap = 5.0;
+            final count = state.players.length;
+            final cardWidth =
+                (constraints.maxWidth -
+                    horizontalPadding * 2 -
+                    gap * (count - 1)) /
+                count;
+            return Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: horizontalPadding,
+                vertical: 5,
+              ),
+              child: Row(
+                children: <Widget>[
+                  for (var index = 0; index < count; index++) ...<Widget>[
+                    Expanded(
+                      child: _PlayerCard(
+                        player: state.players[index],
+                        isCurrent:
+                            state.players[index].id == state.currentPlayer.id,
+                        territoryCount: state.ownedTerritoryCount(
+                          state.players[index].id,
+                        ),
+                        compact: cardWidth < 88,
+                      ),
+                    ),
+                    if (index != count - 1) const SizedBox(width: gap),
+                  ],
+                ],
+              ),
             );
           },
-          separatorBuilder: (_, _) => const SizedBox(width: 8),
-          itemCount: state.players.length,
         ),
       ),
     );
@@ -755,26 +778,32 @@ class _PlayerCard extends StatelessWidget {
     required this.player,
     required this.isCurrent,
     required this.territoryCount,
+    required this.compact,
   });
 
   final Player player;
   final bool isCurrent;
   final int territoryCount;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final color = Color(player.colorValue);
+    final isEliminated = territoryCount == 0;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 140),
-      width: 102,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 5 : 7, vertical: 4),
       decoration: BoxDecoration(
-        color: isCurrent
+        color: isEliminated
+            ? const Color(0x55111B25)
+            : isCurrent
             ? color.withValues(alpha: 0.20)
             : const Color(0x66111B25),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: isCurrent
+          color: isEliminated
+              ? AppColors.premiumBorder.withValues(alpha: 0.25)
+              : isCurrent
               ? color.withValues(alpha: 0.95)
               : AppColors.premiumBorder.withValues(alpha: 0.46),
         ),
@@ -786,27 +815,28 @@ class _PlayerCard extends StatelessWidget {
           Row(
             children: <Widget>[
               Container(
-                width: 13,
-                height: 13,
+                width: compact ? 10 : 12,
+                height: compact ? 10 : 12,
                 decoration: BoxDecoration(
-                  color: color,
+                  color: isEliminated ? color.withValues(alpha: 0.35) : color,
                   shape: BoxShape.circle,
                   boxShadow: <BoxShadow>[
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.55),
-                      blurRadius: 8,
-                    ),
+                    if (!isEliminated)
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.55),
+                        blurRadius: 8,
+                      ),
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
+              SizedBox(width: compact ? 4 : 5),
               Expanded(
                 child: Text(
-                  player.name,
+                  compact ? _compactName(player.name) : player.name,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.premiumText,
-                    fontSize: 11,
+                    fontSize: 10,
                     height: 1,
                     fontWeight: FontWeight.w800,
                   ),
@@ -819,24 +849,33 @@ class _PlayerCard extends StatelessWidget {
             children: <Widget>[
               Flexible(
                 child: Text(
-                  '$territoryCount',
+                  isEliminated ? 'OUT' : '$territoryCount',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Color(0xFFFFD27A),
-                    fontSize: 11,
+                    fontSize: 10,
                     height: 1,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
-              const SizedBox(width: 3),
-              const Icon(Icons.star, color: Color(0xFFFFD27A), size: 11),
+              if (!isEliminated) ...const <Widget>[
+                SizedBox(width: 3),
+                Icon(Icons.star, color: Color(0xFFFFD27A), size: 10),
+              ],
             ],
           ),
         ],
       ),
     );
+  }
+
+  String _compactName(String name) {
+    if (name == 'Commander') {
+      return 'You';
+    }
+    return name.replaceAll(' Bot', '');
   }
 }
 
@@ -907,14 +946,162 @@ class _MapToolButton extends StatelessWidget {
     return Tooltip(
       message: tooltip,
       child: Container(
-        width: 46,
-        height: 46,
+        width: 40,
+        height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xCC07131F),
+          color: const Color(0xB807131F),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.premiumBorder),
+          border: Border.all(
+            color: AppColors.premiumBorder.withValues(alpha: 0.70),
+          ),
         ),
-        child: Icon(icon, color: AppColors.premiumText),
+        child: Icon(icon, color: AppColors.premiumText, size: 23),
+      ),
+    );
+  }
+}
+
+class _ReinforcePhasePanel extends StatelessWidget {
+  const _ReinforcePhasePanel({
+    required this.state,
+    required this.reinforcementBreakdown,
+    required this.isBotThinking,
+  });
+
+  final GameState state;
+  final ReinforcementBreakdown reinforcementBreakdown;
+  final bool isBotThinking;
+
+  @override
+  Widget build(BuildContext context) {
+    final controlled = reinforcementBreakdown.controlledContinents;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.premiumBlue.withValues(alpha: 0.20),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.premiumBlue.withValues(alpha: 0.80),
+                ),
+              ),
+              child: const Icon(
+                Icons.shield,
+                color: AppColors.premiumText,
+                size: 20,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'REINFORCE PHASE',
+                    style: TextStyle(
+                      color: Color(0xFF55B9FF),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Choose a friendly territory to deploy armies.',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppColors.premiumMutedText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: <Widget>[
+                const Text(
+                  'TOTAL',
+                  style: TextStyle(
+                    color: Color(0xFFFFD66D),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  '${reinforcementBreakdown.total}',
+                  style: const TextStyle(
+                    color: Color(0xFF91F05B),
+                    fontSize: 30,
+                    height: 1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: <Widget>[
+            _InfoPill(label: 'Base ${reinforcementBreakdown.base}'),
+            _InfoPill(label: 'Bonus ${reinforcementBreakdown.continentBonus}'),
+            if (controlled.isEmpty)
+              const _InfoPill(label: 'No controlled region')
+            else
+              for (final bonus in controlled)
+                _InfoPill(label: '${bonus.continent} +${bonus.value}'),
+          ],
+        ),
+        const SizedBox(height: 7),
+        Text(
+          isBotThinking ? 'Bot turn in progress...' : state.statusMessage,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.premiumMutedText,
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xAA081521),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: AppColors.premiumBorder.withValues(alpha: 0.55),
+        ),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Color(0xFFFFD66D),
+          fontSize: 10.5,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
@@ -960,11 +1147,6 @@ class _BattleCommandPanel extends StatelessWidget {
         state.phase == GamePhase.attack && !state.currentPlayer.isBot;
     final canUseTransfer = canUseCommands && !state.transferUsedThisTurn;
     final isReinforcePhase = state.phase == GamePhase.reinforce;
-    final controlledBonusText = reinforcementBreakdown.controlledContinents
-        .map((bonus) => '${bonus.continent} (+${bonus.value})')
-        .join(', ');
-    final reinforcementText =
-        'Base ${reinforcementBreakdown.base} | Bonus ${reinforcementBreakdown.continentBonus} | Total ${reinforcementBreakdown.total}';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -972,71 +1154,65 @@ class _BattleCommandPanel extends StatelessWidget {
       children: <Widget>[
         PremiumPanel(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-          child: Column(
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Expanded(
-                    child: _TerritoryReadout(
-                      label: 'SOURCE',
-                      labelColor: const Color(0xFF55B9FF),
-                      territory: source,
-                      state: state,
+          child: isReinforcePhase
+              ? _ReinforcePhasePanel(
+                  state: state,
+                  reinforcementBreakdown: reinforcementBreakdown,
+                  isBotThinking: isBotThinking,
+                )
+              : Column(
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: _TerritoryReadout(
+                            label: 'SOURCE',
+                            labelColor: const Color(0xFF55B9FF),
+                            territory: source,
+                            state: state,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward,
+                          color: AppColors.premiumText,
+                          size: 32,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _TerritoryReadout(
+                            label: 'TARGET',
+                            labelColor: AppColors.premiumRed,
+                            territory: target,
+                            state: state,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        _WinChance(
+                          percent: percent,
+                          enabled: canAttack,
+                          isReinforcePhase: false,
+                          isTransferMode: isTransferMode,
+                          canTransfer: canTransfer,
+                          transferUsed: state.transferUsedThisTurn,
+                          reinforcementTotal: reinforcementBreakdown.total,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(
-                    Icons.arrow_forward,
-                    color: AppColors.premiumText,
-                    size: 32,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _TerritoryReadout(
-                      label: 'TARGET',
-                      labelColor: AppColors.premiumRed,
-                      territory: target,
-                      state: state,
+                    const SizedBox(height: 8),
+                    Text(
+                      isBotThinking
+                          ? 'Bot turn in progress...'
+                          : state.statusMessage,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.premiumMutedText,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  _WinChance(
-                    percent: percent,
-                    enabled: canAttack,
-                    isReinforcePhase: isReinforcePhase,
-                    isTransferMode: isTransferMode,
-                    canTransfer: canTransfer,
-                    transferUsed: state.transferUsedThisTurn,
-                    reinforcementTotal: reinforcementBreakdown.total,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                isBotThinking ? 'Bot turn in progress...' : state.statusMessage,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.premiumMutedText,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  ],
                 ),
-              ),
-              if (isReinforcePhase) ...<Widget>[
-                const SizedBox(height: 5),
-                Text(
-                  controlledBonusText.isEmpty
-                      ? reinforcementText
-                      : '$reinforcementText | Controlled: $controlledBonusText',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD66D),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ],
-          ),
         ),
         const SizedBox(height: 8),
         Row(
@@ -1046,8 +1222,11 @@ class _BattleCommandPanel extends StatelessWidget {
                 label: 'REINFORCE',
                 icon: Icons.shield,
                 onPressed: null,
-                tone: PremiumButtonTone.blue,
+                tone: isReinforcePhase
+                    ? PremiumButtonTone.blue
+                    : PremiumButtonTone.dark,
                 height: 46,
+                isSelected: isReinforcePhase,
               ),
             ),
             const SizedBox(width: 6),
@@ -1060,8 +1239,11 @@ class _BattleCommandPanel extends StatelessWidget {
                     : isTransferMode
                     ? onSelectAttackMode
                     : (canAttack ? onAttack : null),
-                tone: PremiumButtonTone.red,
+                tone: !isReinforcePhase && !isTransferMode
+                    ? PremiumButtonTone.red
+                    : PremiumButtonTone.dark,
                 height: 46,
+                isSelected: !isReinforcePhase && !isTransferMode,
               ),
             ),
             const SizedBox(width: 6),
@@ -1076,8 +1258,11 @@ class _BattleCommandPanel extends StatelessWidget {
                     : isTransferMode
                     ? (canTransfer ? onTransfer : null)
                     : onSelectTransferMode,
-                tone: PremiumButtonTone.teal,
+                tone: isTransferMode
+                    ? PremiumButtonTone.teal
+                    : PremiumButtonTone.dark,
                 height: 46,
+                isSelected: isTransferMode,
               ),
             ),
           ],
@@ -1193,7 +1378,9 @@ class _WinChance extends StatelessWidget {
         ? transferUsed
               ? 'DONE'
               : (canTransfer ? 'OK' : '--')
-        : '$percent%';
+        : enabled
+        ? '$percent%'
+        : '--';
     final subtitle = isReinforcePhase
         ? 'Total'
         : isTransferMode

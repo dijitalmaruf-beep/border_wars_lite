@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -29,9 +30,48 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   static const _mapAspectRatio = 2.0;
   static const _baseMapAsset = 'assets/maps/world_base.png';
   static const _borderMapAsset = 'assets/maps/world_borders.svg';
-  static const _portraitOpeningCenterX = 0.56;
-  static const _portraitOpeningCenterY = 0.46;
-  static const _portraitMapZoom = 1.22;
+  static const _portraitOpeningCenterX = 0.54;
+  static const _portraitOpeningCenterY = 0.40;
+  static const _portraitMapZoom = 1.16;
+  static const _labelAnchorOverrides = <String, Offset>{
+    'western_canada': Offset(0.173, 0.176),
+    'eastern_canada': Offset(0.305, 0.190),
+    'western_us': Offset(0.176, 0.282),
+    'central_us': Offset(0.238, 0.286),
+    'eastern_us': Offset(0.292, 0.286),
+    'mexico': Offset(0.214, 0.360),
+    'central_america': Offset(0.248, 0.420),
+    'caribbean': Offset(0.316, 0.402),
+    'andes': Offset(0.295, 0.555),
+    'brazil': Offset(0.385, 0.575),
+    'southern_cone': Offset(0.330, 0.666),
+    'patagonia': Offset(0.322, 0.755),
+    'western_europe': Offset(0.496, 0.250),
+    'central_europe': Offset(0.535, 0.225),
+    'balkans': Offset(0.565, 0.275),
+    'scandinavia': Offset(0.545, 0.155),
+    'eastern_europe': Offset(0.596, 0.220),
+    'north_africa': Offset(0.525, 0.363),
+    'west_africa': Offset(0.475, 0.445),
+    'central_africa': Offset(0.535, 0.520),
+    'east_africa': Offset(0.600, 0.495),
+    'southern_africa': Offset(0.548, 0.655),
+    'madagascar': Offset(0.632, 0.610),
+    'middle_east': Offset(0.604, 0.328),
+    'arabia': Offset(0.635, 0.385),
+    'central_asia': Offset(0.688, 0.250),
+    'india': Offset(0.717, 0.378),
+    'southeast_asia': Offset(0.781, 0.425),
+    'china_north': Offset(0.775, 0.305),
+    'china_south': Offset(0.790, 0.375),
+    'siberia': Offset(0.750, 0.150),
+    'far_east_russia': Offset(0.875, 0.180),
+    'korea_japan': Offset(0.875, 0.292),
+    'indonesia': Offset(0.825, 0.515),
+    'new_guinea': Offset(0.902, 0.535),
+    'australia_west': Offset(0.840, 0.642),
+    'australia_east': Offset(0.908, 0.650),
+  };
 
   final TransformationController _transformationController =
       TransformationController();
@@ -204,32 +244,25 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   }
 
   Path _highlightPathForTerritory(Territory territory, Size size) {
-    final boundaries = territory.visualBoundaries;
-    if (boundaries.isEmpty) {
-      return _pathsForTerritory(territory, size).first;
+    final paths = _pathsForTerritory(territory, size);
+    if (paths.isEmpty) {
+      return Path();
     }
-    if (boundaries.length == 1) {
-      return _pathForBoundary(boundaries.first, size);
-    }
-
-    final points = <Offset>[];
-    for (final boundary in boundaries) {
-      for (final point in boundary) {
-        points.add(Offset(point.x * size.width, point.y * size.height));
-      }
+    if (paths.length == 1) {
+      return paths.first;
     }
 
-    final hull = _convexHull(points);
-    if (hull.length < 3) {
-      return _pathForBoundary(boundaries.first, size);
-    }
-
-    final path = Path()..moveTo(hull.first.dx, hull.first.dy);
-    for (final point in hull.skip(1)) {
-      path.lineTo(point.dx, point.dy);
-    }
-    path.close();
-    return path;
+    final anchor = Offset(territory.x * size.width, territory.y * size.height);
+    final areas = <Path, double>{
+      for (final path in paths) path: _pathBoundsArea(path),
+    };
+    final maxArea = areas.values.fold<double>(0, math.max);
+    final filtered = <Path>[
+      for (final path in paths)
+        if ((areas[path] ?? 0) >= maxArea * 0.10 || path.contains(anchor)) path,
+    ];
+    final highlightParts = filtered.isEmpty ? <Path>[paths.first] : filtered;
+    return _combinedPath(highlightParts);
   }
 
   String? _territoryAt(Offset position, Map<String, List<Path>> paths) {
@@ -247,7 +280,10 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     List<Path> paths,
     Size size,
   ) {
-    final desired = Offset(territory.x * size.width, territory.y * size.height);
+    final override = _labelAnchorOverrides[territory.id];
+    final desired = override == null
+        ? Offset(territory.x * size.width, territory.y * size.height)
+        : Offset(override.dx * size.width, override.dy * size.height);
     for (final path in paths) {
       if (path.contains(desired)) {
         return desired;
@@ -326,48 +362,6 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     return bestPath ?? paths.first;
   }
 
-  List<Offset> _convexHull(List<Offset> points) {
-    if (points.length <= 3) {
-      return points;
-    }
-
-    final sorted = points.toList()
-      ..sort((a, b) {
-        final xComparison = a.dx.compareTo(b.dx);
-        if (xComparison != 0) {
-          return xComparison;
-        }
-        return a.dy.compareTo(b.dy);
-      });
-
-    final lower = <Offset>[];
-    for (final point in sorted) {
-      while (lower.length >= 2 &&
-          _cross(lower[lower.length - 2], lower.last, point) <= 0) {
-        lower.removeLast();
-      }
-      lower.add(point);
-    }
-
-    final upper = <Offset>[];
-    for (final point in sorted.reversed) {
-      while (upper.length >= 2 &&
-          _cross(upper[upper.length - 2], upper.last, point) <= 0) {
-        upper.removeLast();
-      }
-      upper.add(point);
-    }
-
-    lower.removeLast();
-    upper.removeLast();
-    return <Offset>[...lower, ...upper];
-  }
-
-  double _cross(Offset origin, Offset a, Offset b) {
-    return (a.dx - origin.dx) * (b.dy - origin.dy) -
-        (a.dy - origin.dy) * (b.dx - origin.dx);
-  }
-
   Size _coveringMapSize(Size viewportSize) {
     final mapHeight = math.max(
       viewportSize.height * _portraitMapZoom,
@@ -400,5 +394,29 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         ? rawDy
         : math.min(0.0, rawDy);
     _transformationController.value = Matrix4.translationValues(dx, dy, 0);
+  }
+
+  Path _combinedPath(List<Path> paths) {
+    if (paths.length == 1) {
+      return paths.first;
+    }
+
+    var combined = Path()..addPath(paths.first, Offset.zero);
+    for (final path in paths.skip(1)) {
+      try {
+        combined = Path.combine(ui.PathOperation.union, combined, path);
+      } catch (_) {
+        combined.addPath(path, Offset.zero);
+      }
+    }
+    return combined;
+  }
+
+  double _pathBoundsArea(Path path) {
+    final bounds = path.getBounds();
+    if (bounds.isEmpty) {
+      return 0;
+    }
+    return bounds.width * bounds.height;
   }
 }

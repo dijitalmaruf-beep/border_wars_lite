@@ -55,11 +55,11 @@ class TerritoryOverlayPainter extends CustomPainter {
         final ownerColor = Color(owner.colorValue);
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = ownerColor.withValues(alpha: 0.48);
+          ..color = ownerColor.withValues(alpha: 0.55);
         final edgePaint = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = _scaledStroke(size, 1.15)
-          ..color = ownerColor.withValues(alpha: 0.78);
+          ..strokeWidth = _scaledStroke(size, 0.62)
+          ..color = ownerColor.withValues(alpha: 0.34);
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, edgePaint);
@@ -67,11 +67,11 @@ class TerritoryOverlayPainter extends CustomPainter {
       } else {
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = const Color(0xFF6E7B83).withValues(alpha: 0.16);
+          ..color = const Color(0xFF7C8790).withValues(alpha: 0.22);
         final edgePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 0.7)
-          ..color = Colors.white.withValues(alpha: 0.18);
+          ..color = Colors.white.withValues(alpha: 0.23);
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, edgePaint);
@@ -81,11 +81,11 @@ class TerritoryOverlayPainter extends CustomPainter {
       if (isValidSource) {
         final paint = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = _scaledStroke(size, 1.4)
-          ..color = AppColors.premiumCyan.withValues(alpha: 0.62);
+          ..strokeWidth = _scaledStroke(size, 1.0)
+          ..color = AppColors.premiumCyan.withValues(alpha: 0.50);
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = AppColors.premiumCyan.withValues(alpha: 0.12);
+          ..color = AppColors.premiumCyan.withValues(alpha: 0.08);
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, paint);
@@ -95,7 +95,7 @@ class TerritoryOverlayPainter extends CustomPainter {
       if (isValidTarget) {
         final paint = Paint()
           ..style = PaintingStyle.fill
-          ..color = const Color(0xFFFFD66D).withValues(alpha: 0.22);
+          ..color = const Color(0xFFFFD66D).withValues(alpha: 0.16);
         for (final path in paths) {
           canvas.drawPath(path, paint);
         }
@@ -157,21 +157,29 @@ class TerritoryOverlayPainter extends CustomPainter {
 
   void _paintArmyLabels(Canvas canvas, Size size) {
     final zoom = _effectiveZoom;
-    final visualFontSize = (10.5 - (zoom - 1) * 0.75).clamp(8.3, 11.0);
+    final visualFontSize = (9.8 - (zoom - 1) * 0.95).clamp(7.5, 10.2);
     final fontSize = visualFontSize / zoom;
-    final paddingX = (7.0 / zoom).clamp(1.8, 8.0);
-    final paddingY = (3.8 / zoom).clamp(1.0, 4.5);
-    final minChipWidth = 20.0 / zoom;
-    final minChipHeight = 15.0 / zoom;
-    final radius = Radius.circular(6 / zoom);
+    final paddingX = (5.8 / zoom).clamp(1.6, 6.4);
+    final paddingY = (3.0 / zoom).clamp(0.9, 3.6);
+    final minChipWidth = 18.0 / zoom;
+    final minChipHeight = 14.0 / zoom;
+    final radius = Radius.circular(5 / zoom);
+    final placedRects = <Rect>[];
 
     for (final territory in state.territories) {
       final owner = state.playerById(territory.ownerId);
-      if (owner == null && zoom < 0.88) {
+      final isSelected =
+          state.selectedSourceId == territory.id ||
+          state.selectedTargetId == territory.id;
+      final isActionable =
+          isSelected ||
+          validSourceIds.contains(territory.id) ||
+          validTargetIds.contains(territory.id);
+      if (owner == null && zoom < 1.16 && !isActionable) {
         continue;
       }
 
-      final center =
+      final anchor =
           territoryLabelAnchors[territory.id] ??
           Offset(territory.x * size.width, territory.y * size.height);
       final ownerColor = owner == null
@@ -198,11 +206,18 @@ class TerritoryOverlayPainter extends CustomPainter {
         minChipHeight,
         textPainter.height + paddingY * 2,
       );
+      final center = _labelCenterAvoidingCollisions(
+        territory.id,
+        anchor,
+        Size(chipWidth, chipHeight),
+        placedRects,
+      );
       final rect = Rect.fromCenter(
         center: center,
         width: chipWidth,
         height: chipHeight,
       );
+      placedRects.add(rect.inflate(1.5 / zoom));
 
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
@@ -210,7 +225,7 @@ class TerritoryOverlayPainter extends CustomPainter {
           ..color = const Color(0xDD051019)
           ..maskFilter = ui.MaskFilter.blur(
             ui.BlurStyle.outer,
-            owner == null ? 1.3 / zoom : 2.6 / zoom,
+            owner == null ? 1.0 / zoom : 1.9 / zoom,
           ),
       );
       canvas.drawRRect(
@@ -223,8 +238,8 @@ class TerritoryOverlayPainter extends CustomPainter {
         RRect.fromRectAndRadius(rect, radius),
         Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 0.9 / zoom
-          ..color = ownerColor.withValues(alpha: owner == null ? 0.34 : 0.82),
+          ..strokeWidth = 0.75 / zoom
+          ..color = ownerColor.withValues(alpha: owner == null ? 0.28 : 0.78),
       );
 
       textPainter.paint(
@@ -255,6 +270,51 @@ class TerritoryOverlayPainter extends CustomPainter {
   double _scaledStroke(Size size, double visualWidth) {
     final mapAwareMinimum = size.width * 0.00045;
     return math.max(mapAwareMinimum, visualWidth / _effectiveZoom);
+  }
+
+  Offset _labelCenterAvoidingCollisions(
+    String territoryId,
+    Offset anchor,
+    Size chipSize,
+    List<Rect> placedRects,
+  ) {
+    final zoom = _effectiveZoom;
+    final paths = territoryPaths[territoryId] ?? const <Path>[];
+    final offsets = <Offset>[
+      Offset.zero,
+      Offset(0, -12 / zoom),
+      Offset(0, 12 / zoom),
+      Offset(-14 / zoom, 0),
+      Offset(14 / zoom, 0),
+      Offset(-12 / zoom, -10 / zoom),
+      Offset(12 / zoom, 10 / zoom),
+      Offset(12 / zoom, -10 / zoom),
+      Offset(-12 / zoom, 10 / zoom),
+    ];
+
+    for (final offset in offsets) {
+      final candidate = anchor + offset;
+      if (!_pointInsideAnyPath(candidate, paths)) {
+        continue;
+      }
+      final rect = Rect.fromCenter(
+        center: candidate,
+        width: chipSize.width,
+        height: chipSize.height,
+      );
+      if (!placedRects.any((placed) => placed.overlaps(rect))) {
+        return candidate;
+      }
+    }
+
+    return anchor;
+  }
+
+  bool _pointInsideAnyPath(Offset point, List<Path> paths) {
+    if (paths.isEmpty) {
+      return true;
+    }
+    return paths.any((path) => path.contains(point));
   }
 
   Path _combinedPath(List<Path> paths) {
