@@ -7,13 +7,6 @@ service cloud.firestore {
         return request.auth != null;
       }
 
-      function participantUidsMatch(uidA, uidB) {
-        return request.resource.data.participantUids is list
-          && request.resource.data.participantUids.size() == 2
-          && request.resource.data.participantUids[0] == uidA
-          && request.resource.data.participantUids[1] == uidB;
-      }
-
       function isParticipant() {
         return signedIn()
           && resource.data.participantUids is list
@@ -25,30 +18,52 @@ service cloud.firestore {
           && request.resource.data.gameId == gameId
           && request.resource.data.status == 'waiting'
           && request.resource.data.hostUid == request.auth.uid
-          && request.resource.data.guestUid == null
           && request.resource.data.participantUids is list
           && request.resource.data.participantUids.size() == 1
           && request.resource.data.participantUids[0] == request.auth.uid
+          && request.resource.data.participants is list
+          && request.resource.data.participants.size() == 1
+          && request.resource.data.maxHumanPlayers == 5
           && request.resource.data.updatedByUid == request.auth.uid;
       }
 
       function isJoinRoom() {
         return signedIn()
           && resource.data.status == 'waiting'
-          && resource.data.guestUid == null
           && resource.data.hostUid != request.auth.uid
+          && !(request.auth.uid in resource.data.participantUids)
           && request.resource.data.gameId == resource.data.gameId
           && request.resource.data.hostUid == resource.data.hostUid
-          && request.resource.data.guestUid == request.auth.uid
-          && participantUidsMatch(resource.data.hostUid, request.auth.uid)
+          && request.resource.data.hostPlayerId == resource.data.hostPlayerId
+          && request.resource.data.participantUids is list
+          && request.resource.data.participantUids.size() == resource.data.participantUids.size() + 1
+          && request.resource.data.participantUids.hasAll(resource.data.participantUids)
+          && request.auth.uid in request.resource.data.participantUids
+          && request.resource.data.participants is list
+          && request.resource.data.participants.size() == request.resource.data.participantUids.size()
+          && request.resource.data.status == 'waiting'
+          && request.resource.data.updatedByUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'participantUids',
+            'participants',
+            'botCount',
+            'state',
+            'updatedByUid',
+            'updatedAt'
+          ]);
+      }
+
+      function isHostStartGame() {
+        return signedIn()
+          && resource.data.status == 'waiting'
+          && resource.data.hostUid == request.auth.uid
+          && resource.data.participantUids is list
+          && resource.data.participantUids.size() >= 2
           && request.resource.data.status == 'active'
+          && keepsRoomOwnership()
           && request.resource.data.updatedByUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
             'status',
-            'guestUid',
-            'participantUids',
-            'guestName',
-            'guestColorValue',
             'state',
             'updatedByUid',
             'updatedAt'
@@ -58,10 +73,9 @@ service cloud.firestore {
       function keepsRoomOwnership() {
         return request.resource.data.gameId == resource.data.gameId
           && request.resource.data.hostUid == resource.data.hostUid
-          && request.resource.data.guestUid == resource.data.guestUid
           && request.resource.data.participantUids == resource.data.participantUids
           && request.resource.data.hostPlayerId == resource.data.hostPlayerId
-          && request.resource.data.guestPlayerId == resource.data.guestPlayerId;
+          && request.resource.data.participants == resource.data.participants;
       }
 
       function isParticipantGameUpdate() {
@@ -82,7 +96,7 @@ service cloud.firestore {
         && (resource.data.status == 'waiting' || isParticipant());
       allow list: if false;
       allow create: if isCreateRoom();
-      allow update: if isJoinRoom() || isParticipantGameUpdate();
+      allow update: if isJoinRoom() || isHostStartGame() || isParticipantGameUpdate();
       allow delete: if false;
     }
   }

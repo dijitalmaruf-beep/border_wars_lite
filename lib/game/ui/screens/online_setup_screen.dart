@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/game_constants.dart';
 import '../../../services/firebase/firebase_service.dart';
 import '../../../services/firebase/firestore_game_repository.dart';
+import '../../models/player.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
@@ -111,7 +112,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _nameController,
-                              enabled: !_isBusy,
+                              enabled: !_isBusy && _createdSession == null,
                               textInputAction: TextInputAction.done,
                               style: const TextStyle(
                                 color: AppColors.premiumText,
@@ -133,7 +134,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                 return _ColorOrb(
                                   colorValue: colorValue,
                                   isSelected: colorValue == _selectedColorValue,
-                                  onTap: _isBusy
+                                  onTap: _isBusy || _createdSession != null
                                       ? null
                                       : () {
                                           setState(() {
@@ -157,7 +158,10 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               children: <Widget>[
                                 _StepperButton(
                                   icon: Icons.remove,
-                                  onPressed: !_isBusy && _selectedBotCount > 0
+                                  onPressed:
+                                      !_isBusy &&
+                                          _createdSession == null &&
+                                          _selectedBotCount > 0
                                       ? () => _changeBotCount(-1)
                                       : null,
                                 ),
@@ -189,6 +193,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                   icon: Icons.add,
                                   onPressed:
                                       !_isBusy &&
+                                          _createdSession == null &&
                                           _selectedBotCount <
                                               GameConstants.maxBotPlayers
                                       ? () => _changeBotCount(1)
@@ -203,7 +208,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               divisions: GameConstants.maxBotPlayers,
                               activeColor: AppColors.premiumCyan,
                               inactiveColor: AppColors.premiumBorder,
-                              onChanged: _isBusy
+                              onChanged: _isBusy || _createdSession != null
                                   ? null
                                   : (value) {
                                       setState(() {
@@ -223,7 +228,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             const SizedBox(height: 12),
                             TextField(
                               controller: _codeController,
-                              enabled: !_isBusy,
+                              enabled: !_isBusy && _createdSession == null,
                               textCapitalization: TextCapitalization.characters,
                               maxLength: 6,
                               style: const TextStyle(
@@ -240,7 +245,10 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             PremiumButton(
                               label: 'JOIN ONLINE GAME',
                               icon: Icons.login,
-                              onPressed: _canUseOnline && !_isBusy
+                              onPressed:
+                                  _canUseOnline &&
+                                      !_isBusy &&
+                                      _createdSession == null
                                   ? _joinGame
                                   : null,
                               tone: PremiumButtonTone.teal,
@@ -253,7 +261,8 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       PremiumButton(
                         label: _isBusy ? 'CONNECTING...' : 'CREATE ROOM',
                         icon: Icons.add_link,
-                        onPressed: _canUseOnline && !_isBusy
+                        onPressed:
+                            _canUseOnline && !_isBusy && _createdSession == null
                             ? _createGame
                             : null,
                         tone: PremiumButtonTone.blue,
@@ -266,7 +275,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                           child: Column(
                             children: <Widget>[
                               const Text(
-                                'ROOM CODE',
+                                'WAR ROOM CODE',
                                 style: TextStyle(
                                   color: Color(0xFFFFD66D),
                                   fontSize: 12,
@@ -285,6 +294,30 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
+                              _LobbyPlayerList(
+                                players: _createdSession!.humanPlayers,
+                                maxPlayers: GameConstants.maxOnlineHumanPlayers,
+                              ),
+                              const SizedBox(height: 10),
+                              if (_createdSession!.isHost) ...<Widget>[
+                                PremiumButton(
+                                  label: _isBusy
+                                      ? 'STARTING...'
+                                      : 'START ONLINE WAR',
+                                  icon: Icons.play_arrow,
+                                  onPressed:
+                                      !_isBusy &&
+                                          _createdSession!
+                                                  .humanPlayers
+                                                  .length >=
+                                              2
+                                      ? _startGame
+                                      : null,
+                                  tone: PremiumButtonTone.gold,
+                                  height: 52,
+                                ),
+                                const SizedBox(height: 8),
+                              ],
                               TextButton.icon(
                                 onPressed: () {
                                   Clipboard.setData(
@@ -297,7 +330,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                 label: const Text('Copy Code'),
                               ),
                               const Text(
-                                'Waiting for another player to join...',
+                                'Share this code. The host starts when commanders are ready.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: AppColors.premiumMutedText,
@@ -393,7 +426,31 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
       if (!mounted) {
         return;
       }
-      _openOnlineGame(session);
+      setState(() {
+        _createdSession = session;
+        _isBusy = false;
+      });
+      _watchWaitingRoom(session);
+    } catch (error) {
+      _showError(error);
+    }
+  }
+
+  Future<void> _startGame() async {
+    final session = _createdSession;
+    if (session == null || !session.isHost) {
+      return;
+    }
+    setState(() {
+      _isBusy = true;
+      _errorMessage = null;
+    });
+    try {
+      final activeSession = await _repository.startOnlineGame(session.gameId);
+      if (!mounted) {
+        return;
+      }
+      _openOnlineGame(activeSession);
     } catch (error) {
       _showError(error);
     }
@@ -407,7 +464,14 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
           localPlayerId: session.localPlayerId,
         )
         .listen((updatedSession) {
-          if (!mounted || updatedSession == null || !updatedSession.isActive) {
+          if (!mounted || updatedSession == null) {
+            return;
+          }
+          if (!updatedSession.isActive) {
+            setState(() {
+              _createdSession = updatedSession;
+              _isBusy = false;
+            });
             return;
           }
           _openOnlineGame(updatedSession);
@@ -443,6 +507,71 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
           .clamp(0, GameConstants.maxBotPlayers)
           .toInt();
     });
+  }
+}
+
+class _LobbyPlayerList extends StatelessWidget {
+  const _LobbyPlayerList({required this.players, required this.maxPlayers});
+
+  final List<Player> players;
+  final int maxPlayers;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text(
+          'Commanders ${players.length}/$maxPlayers',
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            color: AppColors.premiumMutedText,
+            fontSize: 12,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          alignment: WrapAlignment.center,
+          children: players.map((player) {
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: const Color(0xB006121D),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: Color(player.colorValue).withValues(alpha: 0.80),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    width: 10,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Color(player.colorValue),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    player.name,
+                    style: const TextStyle(
+                      color: AppColors.premiumText,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
   }
 }
 

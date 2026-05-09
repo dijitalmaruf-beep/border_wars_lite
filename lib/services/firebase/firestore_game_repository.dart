@@ -6,7 +6,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/game_constants.dart';
 import '../../game/engine/map_generator.dart';
-import '../../game/models/bot_personality.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player.dart';
 import 'firebase_service.dart';
@@ -17,14 +16,19 @@ class OnlineGameSession {
     required this.localPlayerId,
     required this.state,
     required this.status,
+    required this.isHost,
   });
 
   final String gameId;
   final String localPlayerId;
   final GameState state;
   final String status;
+  final bool isHost;
 
   bool get isActive => status == FirestoreGameRepository.statusActive;
+  bool get isWaiting => status == FirestoreGameRepository.statusWaiting;
+  List<Player> get humanPlayers =>
+      state.players.where((player) => !player.isBot).toList(growable: false);
 }
 
 class FirestoreGameRepository {
@@ -35,7 +39,6 @@ class FirestoreGameRepository {
   static const statusActive = 'active';
   static const statusFinished = 'finished';
   static const hostPlayerId = GameConstants.humanPlayerId;
-  static const guestPlayerId = 'guest_player';
 
   final FirebaseFirestore? _firestore;
   final MapGenerator _mapGenerator = const MapGenerator();
@@ -89,6 +92,7 @@ class FirestoreGameRepository {
         localPlayerId: localPlayerId,
         state: state,
         status: data['status'] as String? ?? statusWaiting,
+        isHost: data['hostUid'] == FirebaseService.auth.currentUser?.uid,
       );
     });
   }
@@ -102,43 +106,33 @@ class FirestoreGameRepository {
     final gameId = _newGameCode();
     final doc = _games.doc(gameId);
 
-    final hostName = _cleanName(hostPlayerName);
-    final waitingState = _mapGenerator.createInitialStateForPlayers(
-      players: <Player>[
-        Player(
-          id: hostPlayerId,
-          name: hostName,
-          colorValue: hostColorValue,
-          isBot: false,
-        ),
-        const Player(
-          id: guestPlayerId,
-          name: 'Waiting...',
-          colorValue: AppColors.atlasBotValue,
-          isBot: true,
-          botPersonality: BotPersonality.aggressive,
-        ),
-        ..._mapGenerator.createBotPlayers(
-          count: botCount,
-          startIndex: 0,
-          reservedColorValues: <int>{hostColorValue, AppColors.atlasBotValue},
-        ),
-      ],
+    final host = _OnlineRoomParticipant(
+      uid: uid,
+      playerId: hostPlayerId,
+      name: _cleanName(hostPlayerName),
+      colorValue: hostColorValue,
+    );
+    final participants = <_OnlineRoomParticipant>[host];
+    final boundedBotCount = _boundedOnlineBotCount(botCount, participants);
+    final waitingState = _stateForRoom(
       gameId: gameId,
-      firstPlayerId: hostPlayerId,
+      participants: participants,
+      botCount: boundedBotCount,
     );
 
     await doc.set(<String, dynamic>{
       'gameId': gameId,
       'status': statusWaiting,
       'hostPlayerId': hostPlayerId,
-      'guestPlayerId': guestPlayerId,
       'hostUid': uid,
-      'guestUid': null,
       'participantUids': <String>[uid],
-      'hostName': hostName,
-      'hostColorValue': hostColorValue,
-      'botCount': botCount,
+      'participants': participants
+          .map((participant) => participant.toMap())
+          .toList(growable: false),
+      'maxHumanPlayers': GameConstants.maxOnlineHumanPlayers,
+      'hostName': host.name,
+      'hostColorValue': host.colorValue,
+      'botCount': boundedBotCount,
       'state': _stateToFirestoreMap(waitingState),
       'updatedByUid': uid,
       'createdAt': FieldValue.serverTimestamp(),
@@ -150,6 +144,7 @@ class FirestoreGameRepository {
       localPlayerId: hostPlayerId,
       state: waitingState,
       status: statusWaiting,
+      isHost: true,
     );
   }
 
@@ -161,7 +156,7 @@ class FirestoreGameRepository {
     final uid = await FirebaseService.ensureSignedInAnonymously();
     final normalizedGameId = _normalizeGameId(gameId);
     final doc = _games.doc(normalizedGameId);
-    late final GameState activeState;
+    late final OnlineGameSession session;
 
     await _db.runTransaction((transaction) async {
       final snapshot = await transaction.get(doc);
@@ -169,8 +164,7 @@ class FirestoreGameRepository {
       if (!snapshot.exists || data == null) {
         throw StateError('Game not found.');
       }
-      if ((data['status'] as String? ?? statusWaiting) != statusWaiting ||
-          data['guestUid'] != null) {
+      if ((data['status'] as String? ?? statusWaiting) != statusWaiting) {
         throw StateError('This game has already started.');
       }
 
@@ -182,58 +176,115 @@ class FirestoreGameRepository {
         throw StateError('Use another device to join your own room.');
       }
 
-      final hostName = _cleanName(data['hostName'] as String?);
-      final hostColorValue =
-          data['hostColorValue'] as int? ?? AppColors.humanBlueValue;
-      final guestColorValue = playerColorValue == hostColorValue
-          ? AppColors.atlasBotValue
-          : playerColorValue;
-      final guestName = _cleanName(playerName);
-      final botCount = data['botCount'] as int? ?? 2;
+      final participants = _participantsFromData(data);
+      if (participants.any((participant) => participant.uid == uid)) {
+        throw StateError('You are already in this room.');
+      }
+      if (participants.length >= GameConstants.maxOnlineHumanPlayers) {
+        throw StateError('This room is full.');
+      }
 
-      activeState = _mapGenerator.createInitialStateForPlayers(
-        players: <Player>[
-          Player(
-            id: hostPlayerId,
-            name: hostName,
-            colorValue: hostColorValue,
-            isBot: false,
-          ),
-          Player(
-            id: guestPlayerId,
-            name: guestName,
-            colorValue: guestColorValue,
-            isBot: false,
-          ),
-          ..._mapGenerator.createBotPlayers(
-            count: botCount,
-            startIndex: 0,
-            reservedColorValues: <int>{hostColorValue, guestColorValue},
-          ),
-        ],
+      final botCount = data['botCount'] as int? ?? 2;
+      final colorValue = _distinctHumanColor(
+        playerColorValue,
+        participants.map((participant) => participant.colorValue).toSet(),
+      );
+      final participant = _OnlineRoomParticipant(
+        uid: uid,
+        playerId: _playerIdForUid(uid),
+        name: _cleanName(playerName),
+        colorValue: colorValue,
+      );
+      final updatedParticipants = <_OnlineRoomParticipant>[
+        ...participants,
+        participant,
+      ];
+      final boundedBotCount = _boundedOnlineBotCount(
+        botCount,
+        updatedParticipants,
+      );
+      final waitingState = _stateForRoom(
         gameId: normalizedGameId,
-        firstPlayerId: hostPlayerId,
+        participants: updatedParticipants,
+        botCount: boundedBotCount,
+      );
+
+      transaction.set(doc, <String, dynamic>{
+        'gameId': normalizedGameId,
+        'status': statusWaiting,
+        'participantUids': updatedParticipants
+            .map((participant) => participant.uid)
+            .toList(growable: false),
+        'participants': updatedParticipants
+            .map((participant) => participant.toMap())
+            .toList(growable: false),
+        'botCount': boundedBotCount,
+        'state': _stateToFirestoreMap(waitingState),
+        'updatedByUid': uid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      session = OnlineGameSession(
+        gameId: normalizedGameId,
+        localPlayerId: participant.playerId,
+        state: waitingState,
+        status: statusWaiting,
+        isHost: false,
+      );
+    });
+
+    return session;
+  }
+
+  Future<OnlineGameSession> startOnlineGame(String gameId) async {
+    final uid = await FirebaseService.ensureSignedInAnonymously();
+    final normalizedGameId = _normalizeGameId(gameId);
+    final doc = _games.doc(normalizedGameId);
+    late final OnlineGameSession session;
+
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(doc);
+      final data = snapshot.data();
+      if (!snapshot.exists || data == null) {
+        throw StateError('Game not found.');
+      }
+      if (data['hostUid'] != uid) {
+        throw StateError('Only the host can start this room.');
+      }
+      if ((data['status'] as String? ?? statusWaiting) != statusWaiting) {
+        throw StateError('This game has already started.');
+      }
+
+      final participants = _participantsFromData(data);
+      if (participants.length < 2) {
+        throw StateError('At least 2 human players are required.');
+      }
+
+      final botCount = data['botCount'] as int? ?? 2;
+      final activeState = _stateForRoom(
+        gameId: normalizedGameId,
+        participants: participants,
+        botCount: _boundedOnlineBotCount(botCount, participants),
       );
 
       transaction.set(doc, <String, dynamic>{
         'gameId': normalizedGameId,
         'status': statusActive,
-        'guestUid': uid,
-        'participantUids': <String>[hostUid, uid],
-        'guestName': guestName,
-        'guestColorValue': guestColorValue,
         'state': _stateToFirestoreMap(activeState),
         'updatedByUid': uid,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      session = OnlineGameSession(
+        gameId: normalizedGameId,
+        localPlayerId: hostPlayerId,
+        state: activeState,
+        status: statusActive,
+        isHost: true,
+      );
     });
 
-    return OnlineGameSession(
-      gameId: normalizedGameId,
-      localPlayerId: guestPlayerId,
-      state: activeState,
-      status: statusActive,
-    );
+    return session;
   }
 
   GameState? _stateFromDocument(Map<String, dynamic>? data) {
@@ -298,5 +349,126 @@ class FirestoreGameRepository {
       return GameConstants.defaultHumanName;
     }
     return clean.length > 18 ? clean.substring(0, 18) : clean;
+  }
+
+  GameState _stateForRoom({
+    required String gameId,
+    required List<_OnlineRoomParticipant> participants,
+    required int botCount,
+  }) {
+    final reservedColors = participants
+        .map((participant) => participant.colorValue)
+        .toSet();
+    final players = <Player>[
+      ...participants.map(
+        (participant) => Player(
+          id: participant.playerId,
+          name: participant.name,
+          colorValue: participant.colorValue,
+          isBot: false,
+        ),
+      ),
+      ..._mapGenerator.createBotPlayers(
+        count: botCount,
+        startIndex: 0,
+        reservedColorValues: reservedColors,
+      ),
+    ];
+
+    return _mapGenerator.createInitialStateForPlayers(
+      players: players,
+      gameId: gameId,
+      firstPlayerId: hostPlayerId,
+    );
+  }
+
+  int _boundedOnlineBotCount(
+    int botCount,
+    List<_OnlineRoomParticipant> participants,
+  ) {
+    final maxPlayersSupported =
+        GameConstants.totalTerritories ~/
+        GameConstants.startingTerritoriesPerPlayer;
+    final maxBotsForMap = max(0, maxPlayersSupported - participants.length);
+    return botCount.clamp(0, min(GameConstants.maxBotPlayers, maxBotsForMap));
+  }
+
+  List<_OnlineRoomParticipant> _participantsFromData(
+    Map<String, dynamic> data,
+  ) {
+    final rawParticipants = data['participants'];
+    if (rawParticipants is List && rawParticipants.isNotEmpty) {
+      return rawParticipants
+          .whereType<Map>()
+          .map(
+            (participant) => _OnlineRoomParticipant.fromMap(
+              Map<String, dynamic>.from(participant),
+            ),
+          )
+          .toList(growable: false);
+    }
+
+    final hostUid = data['hostUid'] as String?;
+    if (hostUid == null || hostUid.isEmpty) {
+      return const <_OnlineRoomParticipant>[];
+    }
+    return <_OnlineRoomParticipant>[
+      _OnlineRoomParticipant(
+        uid: hostUid,
+        playerId: hostPlayerId,
+        name: _cleanName(data['hostName'] as String?),
+        colorValue: data['hostColorValue'] as int? ?? AppColors.humanBlueValue,
+      ),
+    ];
+  }
+
+  int _distinctHumanColor(int preferredColor, Set<int> usedColors) {
+    if (!usedColors.contains(preferredColor)) {
+      return preferredColor;
+    }
+    for (final colorValue in AppColors.humanColorValues) {
+      if (!usedColors.contains(colorValue)) {
+        return colorValue;
+      }
+    }
+    return preferredColor;
+  }
+
+  String _playerIdForUid(String uid) {
+    final cleanUid = uid.replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
+    final suffix = cleanUid.length > 10 ? cleanUid.substring(0, 10) : cleanUid;
+    return 'player_$suffix';
+  }
+}
+
+class _OnlineRoomParticipant {
+  const _OnlineRoomParticipant({
+    required this.uid,
+    required this.playerId,
+    required this.name,
+    required this.colorValue,
+  });
+
+  final String uid;
+  final String playerId;
+  final String name;
+  final int colorValue;
+
+  Map<String, dynamic> toMap() {
+    return <String, dynamic>{
+      'uid': uid,
+      'playerId': playerId,
+      'name': name,
+      'colorValue': colorValue,
+    };
+  }
+
+  factory _OnlineRoomParticipant.fromMap(Map<String, dynamic> map) {
+    return _OnlineRoomParticipant(
+      uid: map['uid'] as String? ?? '',
+      playerId: map['playerId'] as String? ?? '',
+      name: map['name'] as String? ?? GameConstants.defaultHumanName,
+      colorValue: map['colorValue'] as int? ?? AppColors.humanBlueValue,
+    );
   }
 }

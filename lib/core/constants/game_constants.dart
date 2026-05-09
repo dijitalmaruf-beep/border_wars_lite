@@ -8,6 +8,7 @@ class GameConstants {
   static const defaultBotPlayers = 3;
   static const minBotPlayers = 1;
   static const maxBotPlayers = 9;
+  static const maxOnlineHumanPlayers = 5;
   static const totalBotPlayers = defaultBotPlayers;
   static const totalTerritories = 48;
   static const startingTerritoriesPerPlayer = 3;
