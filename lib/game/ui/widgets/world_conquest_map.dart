@@ -115,7 +115,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
               boundaryMargin: const EdgeInsets.all(24),
               child: GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapUp: (details) {
+                onTapDown: (details) {
                   final territoryId = _territoryAt(
                     details.localPosition,
                     paths,
@@ -130,36 +130,44 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                   child: Stack(
                     fit: StackFit.expand,
                     children: <Widget>[
-                      Image.asset(_baseMapAsset, fit: BoxFit.fill),
-                      CustomPaint(
-                        painter: TerritoryOverlayPainter(
-                          state: widget.state,
-                          territoryPaths: paths,
-                          territoryHighlightPaths: highlightPaths,
-                          territoryLabelAnchors: labelAnchors,
-                          validSourceIds: widget.validSourceIds,
-                          validTargetIds: widget.validTargetIds,
-                          controlledContinents: widget.controlledContinents,
-                          mapZoom: mapZoom,
-                          paintOwnership: true,
+                      RepaintBoundary(
+                        child: Image.asset(_baseMapAsset, fit: BoxFit.fill),
+                      ),
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          painter: TerritoryOverlayPainter(
+                            state: widget.state,
+                            territoryPaths: paths,
+                            territoryHighlightPaths: highlightPaths,
+                            territoryLabelAnchors: labelAnchors,
+                            validSourceIds: widget.validSourceIds,
+                            validTargetIds: widget.validTargetIds,
+                            controlledContinents: widget.controlledContinents,
+                            mapZoom: mapZoom,
+                            paintOwnership: true,
+                          ),
                         ),
                       ),
-                      SvgPicture.asset(
-                        _borderMapAsset,
-                        fit: BoxFit.fill,
-                        allowDrawingOutsideViewBox: false,
+                      RepaintBoundary(
+                        child: SvgPicture.asset(
+                          _borderMapAsset,
+                          fit: BoxFit.fill,
+                          allowDrawingOutsideViewBox: false,
+                        ),
                       ),
-                      CustomPaint(
-                        painter: TerritoryOverlayPainter(
-                          state: widget.state,
-                          territoryPaths: paths,
-                          territoryHighlightPaths: highlightPaths,
-                          territoryLabelAnchors: labelAnchors,
-                          validSourceIds: widget.validSourceIds,
-                          validTargetIds: widget.validTargetIds,
-                          controlledContinents: widget.controlledContinents,
-                          mapZoom: mapZoom,
-                          paintLabelsAndHighlights: true,
+                      RepaintBoundary(
+                        child: CustomPaint(
+                          painter: TerritoryOverlayPainter(
+                            state: widget.state,
+                            territoryPaths: paths,
+                            territoryHighlightPaths: highlightPaths,
+                            territoryLabelAnchors: labelAnchors,
+                            validSourceIds: widget.validSourceIds,
+                            validTargetIds: widget.validTargetIds,
+                            controlledContinents: widget.controlledContinents,
+                            mapZoom: mapZoom,
+                            paintLabelsAndHighlights: true,
+                          ),
                         ),
                       ),
                     ],

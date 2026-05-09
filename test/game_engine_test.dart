@@ -153,7 +153,8 @@ void main() {
 
     expect(nextState.selectedSourceId, 'western_us');
     expect(nextState.selectedTargetId, 'central_us');
-    expect(nextState.statusMessage, 'Attack route ready.');
+    expect(nextState.statusMessage, 'Attack ready. 2 armies move on conquest.');
+    expect(engine.movedArmiesOnWinForSelection(nextState), 2);
   });
 
   test('valid adjacent owned transfer succeeds', () {

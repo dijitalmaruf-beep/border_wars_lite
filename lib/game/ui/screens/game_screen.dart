@@ -91,6 +91,9 @@ class _GameScreenState extends State<GameScreen> {
         );
     final canTransfer = _canTransferSelection(_state);
     final winChance = canAttack ? _engine.winChanceForSelection(_state) : 0.0;
+    final movedArmiesOnWin = canAttack
+        ? _engine.movedArmiesOnWinForSelection(_state)
+        : 0;
     final reinforcementBreakdown = _engine.reinforcementCalculator
         .breakdownForPlayer(_state, _state.currentPlayer.id);
     final controlledContinents = _controlledContinentsFor(_state);
@@ -121,6 +124,7 @@ class _GameScreenState extends State<GameScreen> {
                           gameId: _state.id,
                           remainingTurnSeconds: _remainingTurnSeconds,
                           onMenuPressed: _showGameMenu,
+                          onHelpPressed: _showHowToPlay,
                         ),
                         const SizedBox(height: 8),
                         _PlayerStrip(state: _state),
@@ -141,6 +145,7 @@ class _GameScreenState extends State<GameScreen> {
                           canAttack: canAttack,
                           canTransfer: canTransfer,
                           winChance: winChance,
+                          movedArmiesOnWin: movedArmiesOnWin,
                           reinforcementBreakdown: reinforcementBreakdown,
                           isBotThinking: _isBotThinking,
                           isOnline: _isOnline,
@@ -193,6 +198,7 @@ class _GameScreenState extends State<GameScreen> {
         source: source,
         target: target,
         winChance: _engine.winChanceForSelection(_state),
+        movedArmiesOnWin: _engine.movedArmiesOnWinForSelection(_state),
       ),
     );
 
@@ -350,6 +356,62 @@ class _GameScreenState extends State<GameScreen> {
     _botTimer?.cancel();
     unawaited(_saveLocalState(_state));
     Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _showHowToPlay() async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF101923),
+        title: const Text(
+          'How to Play',
+          style: TextStyle(color: AppColors.premiumText),
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              _HelpStep(
+                icon: Icons.shield,
+                title: '1. Reinforce',
+                body:
+                    'Your turn starts here. Tap one of your territories to deploy all available armies.',
+              ),
+              _HelpStep(
+                icon: Icons.sports_martial_arts,
+                title: '2. Attack',
+                body:
+                    'Select your territory, then tap a neighboring enemy territory. The panel shows win chance and armies moved if you conquer it.',
+              ),
+              _HelpStep(
+                icon: Icons.swap_horiz,
+                title: '3. Transfer',
+                body:
+                    'Once per turn, move armies between adjacent friendly territories. The source must keep at least 1 army.',
+              ),
+              _HelpStep(
+                icon: Icons.public,
+                title: '4. Control Continents',
+                body:
+                    'Owning every territory in a continent gives bonus reinforcements and highlights that continent on the map.',
+              ),
+              _HelpStep(
+                icon: Icons.timer,
+                title: '5. Watch the Timer',
+                body:
+                    'Each player has 90 seconds. If time expires, the game auto-resolves the turn.',
+              ),
+            ],
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Got it'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _enterTransferMode() {
@@ -984,6 +1046,55 @@ class _AmountButton extends StatelessWidget {
   }
 }
 
+class _HelpStep extends StatelessWidget {
+  const _HelpStep({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(icon, color: AppColors.premiumGold, size: 22),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.premiumText,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  body,
+                  style: const TextStyle(
+                    color: AppColors.premiumMutedText,
+                    fontSize: 12,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _WorldHeader extends StatelessWidget {
   const _WorldHeader({
     required this.state,
@@ -992,6 +1103,7 @@ class _WorldHeader extends StatelessWidget {
     required this.gameId,
     required this.remainingTurnSeconds,
     required this.onMenuPressed,
+    required this.onHelpPressed,
   });
 
   final GameState state;
@@ -1000,6 +1112,7 @@ class _WorldHeader extends StatelessWidget {
   final String gameId;
   final int remainingTurnSeconds;
   final VoidCallback onMenuPressed;
+  final VoidCallback onHelpPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,6 +1125,16 @@ class _WorldHeader extends StatelessWidget {
             icon: const Icon(Icons.menu),
             color: AppColors.premiumText,
             tooltip: 'Menu',
+            constraints: const BoxConstraints.tightFor(width: 38, height: 38),
+            padding: EdgeInsets.zero,
+          ),
+          IconButton(
+            onPressed: onHelpPressed,
+            icon: const Icon(Icons.help_outline),
+            color: AppColors.premiumText,
+            tooltip: 'How to play',
+            constraints: const BoxConstraints.tightFor(width: 34, height: 38),
+            padding: EdgeInsets.zero,
           ),
           const Expanded(
             child: Text(
@@ -1488,6 +1611,7 @@ class _BattleCommandPanel extends StatelessWidget {
     required this.canAttack,
     required this.canTransfer,
     required this.winChance,
+    required this.movedArmiesOnWin,
     required this.reinforcementBreakdown,
     required this.isBotThinking,
     required this.isOnline,
@@ -1505,6 +1629,7 @@ class _BattleCommandPanel extends StatelessWidget {
   final bool canAttack;
   final bool canTransfer;
   final double winChance;
+  final int movedArmiesOnWin;
   final ReinforcementBreakdown reinforcementBreakdown;
   final bool isBotThinking;
   final bool isOnline;
@@ -1573,6 +1698,7 @@ class _BattleCommandPanel extends StatelessWidget {
                         _WinChance(
                           percent: percent,
                           enabled: canAttack,
+                          movedArmiesOnWin: movedArmiesOnWin,
                           isReinforcePhase: false,
                           isTransferMode: isTransferMode,
                           canTransfer: canTransfer,
@@ -1730,6 +1856,7 @@ class _WinChance extends StatelessWidget {
   const _WinChance({
     required this.percent,
     required this.enabled,
+    required this.movedArmiesOnWin,
     required this.isReinforcePhase,
     required this.isTransferMode,
     required this.canTransfer,
@@ -1739,6 +1866,7 @@ class _WinChance extends StatelessWidget {
 
   final int percent;
   final bool enabled;
+  final int movedArmiesOnWin;
   final bool isReinforcePhase;
   final bool isTransferMode;
   final bool canTransfer;
@@ -1773,7 +1901,7 @@ class _WinChance extends StatelessWidget {
         ? transferUsed
               ? 'Used'
               : (canTransfer ? 'Available' : 'Select ally')
-        : (enabled ? 'Good Advantage' : 'Select target');
+        : (enabled ? 'Move $movedArmiesOnWin on win' : 'Select target');
     return SizedBox(
       width: 96,
       child: Column(

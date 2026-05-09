@@ -8,12 +8,14 @@ class AttackDialog extends StatelessWidget {
     required this.source,
     required this.target,
     required this.winChance,
+    required this.movedArmiesOnWin,
     super.key,
   });
 
   final Territory source;
   final Territory target;
   final double winChance;
+  final int movedArmiesOnWin;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +40,18 @@ class AttackDialog extends StatelessWidget {
               color: AppColors.ink,
               fontWeight: FontWeight.w700,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'If conquered: $movedArmiesOnWin armies move in.',
+            style: const TextStyle(
+              color: AppColors.ink,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            'Source keeps ${source.armyCount - movedArmiesOnWin}.',
+            style: const TextStyle(color: AppColors.mutedInk),
           ),
         ],
       ),

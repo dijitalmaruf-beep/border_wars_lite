@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -315,9 +316,9 @@ class TerritoryOverlayPainter extends CustomPainter {
         oldDelegate.territoryPaths != territoryPaths ||
         oldDelegate.territoryHighlightPaths != territoryHighlightPaths ||
         oldDelegate.territoryLabelAnchors != territoryLabelAnchors ||
-        oldDelegate.validSourceIds != validSourceIds ||
-        oldDelegate.validTargetIds != validTargetIds ||
-        oldDelegate.controlledContinents != controlledContinents ||
+        !setEquals(oldDelegate.validSourceIds, validSourceIds) ||
+        !setEquals(oldDelegate.validTargetIds, validTargetIds) ||
+        !setEquals(oldDelegate.controlledContinents, controlledContinents) ||
         oldDelegate.mapZoom != mapZoom ||
         oldDelegate.paintOwnership != paintOwnership ||
         oldDelegate.paintLabelsAndHighlights != paintLabelsAndHighlights;

@@ -31,6 +31,10 @@ void main() {
     expect(chance, closeTo(9 / (9 + 4 * 1.15), 0.0001));
   });
 
+  test('calculates moved armies on conquest before attack resolves', () {
+    expect(resolver.calculateMovedArmiesOnWin(source), 4);
+  });
+
   test('keeps combat results within army bounds on win', () {
     final result = resolver.resolve(
       source: source,
@@ -43,6 +47,7 @@ void main() {
     expect(result.movedArmies, greaterThanOrEqualTo(1));
     expect(result.movedArmies, lessThanOrEqualTo(source.armyCount - 1));
     expect(result.defenderLosses, target.armyCount);
+    expect(result.message, 'Source conquered Target. Moved 4 in.');
   });
 
   test('keeps combat results within army bounds on loss', () {

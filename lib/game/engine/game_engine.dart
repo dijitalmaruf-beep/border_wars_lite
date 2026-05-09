@@ -74,9 +74,10 @@ class GameEngine {
       );
     }
 
+    final movedArmies = combatResolver.calculateMovedArmiesOnWin(source);
     return state.copyWith(
       selectedTargetId: territoryId,
-      statusMessage: 'Attack route ready.',
+      statusMessage: 'Attack ready. $movedArmies armies move on conquest.',
     );
   }
 
@@ -188,6 +189,18 @@ class GameEngine {
       return 0;
     }
     return combatResolver.calculateWinChance(source, target);
+  }
+
+  int movedArmiesOnWinForSelection(GameState state) {
+    final source = state.territoryByIdOrNull(state.selectedSourceId);
+    final target = state.territoryByIdOrNull(state.selectedTargetId);
+    if (source == null || target == null) {
+      return 0;
+    }
+    if (!canAttack(state, sourceId: source.id, targetId: target.id)) {
+      return 0;
+    }
+    return combatResolver.calculateMovedArmiesOnWin(source);
   }
 
   GameState attackSelected(GameState state, {Random? random}) {

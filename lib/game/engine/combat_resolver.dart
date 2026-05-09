@@ -16,6 +16,14 @@ class CombatResolver {
     return attackerPower / totalPower;
   }
 
+  int calculateMovedArmiesOnWin(Territory source) {
+    final attackerPower = max(0, source.armyCount - 1);
+    if (attackerPower <= 0) {
+      return 0;
+    }
+    return min(source.armyCount - 1, max(1, attackerPower ~/ 2));
+  }
+
   AttackResult resolve({
     required Territory source,
     required Territory target,
@@ -29,7 +37,7 @@ class CombatResolver {
     final didWin = roll < winChance;
 
     if (didWin) {
-      final movedArmies = min(source.armyCount - 1, max(1, attackerPower ~/ 2));
+      final movedArmies = calculateMovedArmiesOnWin(source);
       return AttackResult(
         sourceId: source.id,
         targetId: target.id,
@@ -40,7 +48,8 @@ class CombatResolver {
         attackerLosses: 0,
         defenderLosses: target.armyCount,
         movedArmies: movedArmies,
-        message: '${source.name} conquered ${target.name}.',
+        message:
+            '${source.name} conquered ${target.name}. Moved $movedArmies in.',
       );
     }
 
