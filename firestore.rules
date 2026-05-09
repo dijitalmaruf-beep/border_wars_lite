@@ -3,9 +3,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /games/{gameId} {
-      // MVP placeholder: keep remote game writes disabled until auth and
-      // multiplayer rules are designed.
-      allow read, write: if false;
+      // MVP online rooms use short room codes and no auth yet.
+      // Tighten this before public production release.
+      allow read, write: if true;
     }
   }
 }

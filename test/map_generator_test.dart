@@ -2,7 +2,9 @@ import 'package:border_wars_lite/core/constants/app_colors.dart';
 import 'package:border_wars_lite/core/constants/game_constants.dart';
 import 'package:border_wars_lite/game/data/sample_world_map.dart';
 import 'package:border_wars_lite/game/engine/map_generator.dart';
+import 'package:border_wars_lite/game/models/bot_personality.dart';
 import 'package:border_wars_lite/game/models/game_state.dart';
+import 'package:border_wars_lite/game/models/player.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -75,5 +77,50 @@ void main() {
       neutralTerritories.map((territory) => territory.armyCount),
       everyElement(GameConstants.neutralArmies),
     );
+  });
+
+  test('custom online players receive balanced starting territories', () {
+    final state = generator.createInitialStateForPlayers(
+      players: const <Player>[
+        Player(
+          id: 'human',
+          name: 'Host',
+          colorValue: AppColors.humanBlueValue,
+          isBot: false,
+        ),
+        Player(
+          id: 'atlas_bot',
+          name: 'Guest',
+          colorValue: AppColors.atlasBotValue,
+          isBot: false,
+        ),
+        Player(
+          id: 'nova_bot',
+          name: 'Nova Bot',
+          colorValue: AppColors.novaBotValue,
+          isBot: true,
+          botPersonality: BotPersonality.opportunistic,
+        ),
+        Player(
+          id: 'terra_bot',
+          name: 'Terra Bot',
+          colorValue: AppColors.terraBotValue,
+          isBot: true,
+          botPersonality: BotPersonality.defensive,
+        ),
+      ],
+      gameId: 'ABC123',
+      firstPlayerId: 'human',
+      seed: 51,
+    );
+
+    expect(state.id, 'ABC123');
+    expect(state.players.where((player) => !player.isBot), hasLength(2));
+    for (final player in state.players) {
+      expect(
+        state.territoriesOwnedBy(player.id),
+        hasLength(GameConstants.startingTerritoriesPerPlayer),
+      );
+    }
   });
 }

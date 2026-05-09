@@ -9,6 +9,7 @@ import '../../engine/reinforcement_calculator.dart';
 import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../../models/territory.dart';
+import '../../../services/firebase/firestore_game_repository.dart';
 import '../widgets/attack_dialog.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
@@ -18,9 +19,16 @@ import 'home_screen.dart';
 import 'victory_screen.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({required this.initialState, super.key});
+  const GameScreen({
+    required this.initialState,
+    this.onlineRepository,
+    this.localPlayerId,
+    super.key,
+  });
 
   final GameState initialState;
+  final FirestoreGameRepository? onlineRepository;
+  final String? localPlayerId;
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -37,19 +45,23 @@ class _GameScreenState extends State<GameScreen> {
   late GameState _state;
   _MapCommandMode _commandMode = _MapCommandMode.attack;
   Timer? _botTimer;
+  StreamSubscription<GameState?>? _onlineSubscription;
   bool _isBotThinking = false;
   bool _navigatedToVictory = false;
+  bool _isSavingOnline = false;
 
   @override
   void initState() {
     super.initState();
     _state = widget.initialState;
+    _subscribeToOnlineGame();
     WidgetsBinding.instance.addPostFrameCallback((_) => _afterStateChanged());
   }
 
   @override
   void dispose() {
     _botTimer?.cancel();
+    _onlineSubscription?.cancel();
     super.dispose();
   }
 
@@ -69,6 +81,7 @@ class _GameScreenState extends State<GameScreen> {
         .breakdownForPlayer(_state, _state.currentPlayer.id);
     final validSourceIds = _validSourceIdsFor(_state);
     final validTargetIds = _validTargetIdsFor(_state);
+    final canAct = _canLocalPlayerAct;
 
     return Scaffold(
       body: PremiumBackground(
@@ -88,6 +101,9 @@ class _GameScreenState extends State<GameScreen> {
                       children: <Widget>[
                         _WorldHeader(
                           state: _state,
+                          isOnline: _isOnline,
+                          isLocalTurn: canAct,
+                          gameId: _state.id,
                           onMenuPressed: _showGameMenu,
                         ),
                         const SizedBox(height: 8),
@@ -110,6 +126,9 @@ class _GameScreenState extends State<GameScreen> {
                           winChance: winChance,
                           reinforcementBreakdown: reinforcementBreakdown,
                           isBotThinking: _isBotThinking,
+                          isOnline: _isOnline,
+                          isSavingOnline: _isSavingOnline,
+                          canAct: canAct,
                           onAttack: _handleAttack,
                           onSelectAttackMode: _enterAttackMode,
                           onSelectTransferMode: _enterTransferMode,
@@ -129,7 +148,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleTerritoryTap(String territoryId) {
-    if (_state.currentPlayer.isBot || _state.winnerId != null) {
+    if (!_canLocalPlayerAct || _state.winnerId != null) {
       return;
     }
     if (_state.phase == GamePhase.attack &&
@@ -142,6 +161,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _handleAttack() async {
+    if (!_canLocalPlayerAct) {
+      return;
+    }
     final source = _state.territoryByIdOrNull(_state.selectedSourceId);
     final target = _state.territoryByIdOrNull(_state.selectedTargetId);
     if (source == null || target == null) {
@@ -163,14 +185,18 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _handleEndTurn() {
-    if (_state.currentPlayer.isBot || _state.winnerId != null) {
+    if (!_canLocalPlayerAct || _state.winnerId != null) {
       return;
     }
     _commandMode = _MapCommandMode.attack;
     _setGameState(_engine.endTurn(_state));
   }
 
-  void _setGameState(GameState nextState, {bool? isBotThinking}) {
+  void _setGameState(
+    GameState nextState, {
+    bool? isBotThinking,
+    bool syncOnline = true,
+  }) {
     setState(() {
       _state = nextState;
       if (isBotThinking != null) {
@@ -180,11 +206,14 @@ class _GameScreenState extends State<GameScreen> {
         _commandMode = _MapCommandMode.attack;
       }
     });
+    if (syncOnline) {
+      unawaited(_saveOnlineState(nextState));
+    }
     _afterStateChanged();
   }
 
   void _enterAttackMode() {
-    if (_state.currentPlayer.isBot || _state.phase != GamePhase.attack) {
+    if (!_canLocalPlayerAct || _state.phase != GamePhase.attack) {
       return;
     }
     setState(() {
@@ -265,7 +294,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _enterTransferMode() {
-    if (_state.currentPlayer.isBot || _state.phase != GamePhase.attack) {
+    if (!_canLocalPlayerAct || _state.phase != GamePhase.attack) {
       return;
     }
     if (_state.transferUsedThisTurn) {
@@ -287,7 +316,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Future<void> _handleTransferAction() async {
-    if (_state.currentPlayer.isBot || _state.phase != GamePhase.attack) {
+    if (!_canLocalPlayerAct || _state.phase != GamePhase.attack) {
       return;
     }
 
@@ -531,6 +560,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Set<String> _validSourceIdsFor(GameState state) {
+    if (!_canLocalPlayerAct) {
+      return const <String>{};
+    }
     if (_commandMode != _MapCommandMode.transfer ||
         state.phase != GamePhase.attack ||
         state.transferUsedThisTurn) {
@@ -545,6 +577,9 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Set<String> _validTargetIdsFor(GameState state) {
+    if (!_canLocalPlayerAct) {
+      return const <String>{};
+    }
     if (state.phase != GamePhase.attack ||
         (state.transferUsedThisTurn &&
             _commandMode == _MapCommandMode.transfer) ||
@@ -586,7 +621,7 @@ class _GameScreenState extends State<GameScreen> {
       return;
     }
 
-    if (_state.currentPlayer.isBot && !_isBotThinking) {
+    if (_state.currentPlayer.isBot && !_isBotThinking && _canRunBotTurn) {
       _scheduleBotTurn();
     }
   }
@@ -607,6 +642,71 @@ class _GameScreenState extends State<GameScreen> {
       final nextState = _engine.runBotTurn(_state, random: _random);
       _setGameState(nextState, isBotThinking: false);
     });
+  }
+
+  bool get _isOnline =>
+      widget.onlineRepository != null && widget.localPlayerId != null;
+
+  bool get _canLocalPlayerAct {
+    if (_state.currentPlayer.isBot || _state.winnerId != null) {
+      return false;
+    }
+    if (!_isOnline) {
+      return true;
+    }
+    return _state.currentPlayer.id == widget.localPlayerId;
+  }
+
+  bool get _canRunBotTurn {
+    if (!_isOnline) {
+      return true;
+    }
+    return widget.localPlayerId == FirestoreGameRepository.hostPlayerId;
+  }
+
+  void _subscribeToOnlineGame() {
+    if (!_isOnline) {
+      return;
+    }
+
+    _onlineSubscription = widget.onlineRepository!
+        .watchGameState(_state.id)
+        .listen((remoteState) {
+          if (!mounted || remoteState == null) {
+            return;
+          }
+          setState(() {
+            _state = remoteState;
+            _isSavingOnline = false;
+            if (_state.phase != GamePhase.attack ||
+                _state.currentPlayer.isBot) {
+              _commandMode = _MapCommandMode.attack;
+            }
+          });
+          _afterStateChanged();
+        });
+  }
+
+  Future<void> _saveOnlineState(GameState nextState) async {
+    if (!_isOnline) {
+      return;
+    }
+    setState(() {
+      _isSavingOnline = true;
+    });
+    try {
+      await widget.onlineRepository!.saveGameState(nextState);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isSavingOnline = false;
+        _state = _state.copyWith(
+          statusMessage: 'Online sync failed. Check connection.',
+        );
+      });
+    }
   }
 
   void _goToVictory() {
@@ -671,9 +771,18 @@ class _AmountButton extends StatelessWidget {
 }
 
 class _WorldHeader extends StatelessWidget {
-  const _WorldHeader({required this.state, required this.onMenuPressed});
+  const _WorldHeader({
+    required this.state,
+    required this.isOnline,
+    required this.isLocalTurn,
+    required this.gameId,
+    required this.onMenuPressed,
+  });
 
   final GameState state;
+  final bool isOnline;
+  final bool isLocalTurn;
+  final String gameId;
   final VoidCallback onMenuPressed;
 
   @override
@@ -700,17 +809,34 @@ class _WorldHeader extends StatelessWidget {
               ),
             ),
           ),
-          Text(
-            'TURN ${state.turnNumber}',
-            style: const TextStyle(
-              color: AppColors.premiumMutedText,
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                'TURN ${state.turnNumber}',
+                style: const TextStyle(
+                  color: AppColors.premiumMutedText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              if (isOnline)
+                Text(
+                  isLocalTurn ? 'YOUR TURN' : gameId,
+                  style: TextStyle(
+                    color: isLocalTurn
+                        ? const Color(0xFF91F05B)
+                        : AppColors.premiumCyan,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 6),
-          const Icon(
-            Icons.hourglass_empty,
+          Icon(
+            isOnline ? Icons.cloud_done : Icons.hourglass_empty,
             color: AppColors.premiumText,
             size: 18,
           ),
@@ -966,11 +1092,17 @@ class _ReinforcePhasePanel extends StatelessWidget {
     required this.state,
     required this.reinforcementBreakdown,
     required this.isBotThinking,
+    required this.isOnline,
+    required this.isSavingOnline,
+    required this.canAct,
   });
 
   final GameState state;
   final ReinforcementBreakdown reinforcementBreakdown;
   final bool isBotThinking;
+  final bool isOnline;
+  final bool isSavingOnline;
+  final bool canAct;
 
   @override
   Widget build(BuildContext context) {
@@ -1064,7 +1196,13 @@ class _ReinforcePhasePanel extends StatelessWidget {
         ),
         const SizedBox(height: 7),
         Text(
-          isBotThinking ? 'Bot turn in progress...' : state.statusMessage,
+          isBotThinking
+              ? 'Bot turn in progress...'
+              : isSavingOnline
+              ? 'Syncing online game...'
+              : isOnline && !canAct
+              ? 'Waiting for ${state.currentPlayer.name}...'
+              : state.statusMessage,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
@@ -1116,6 +1254,9 @@ class _BattleCommandPanel extends StatelessWidget {
     required this.winChance,
     required this.reinforcementBreakdown,
     required this.isBotThinking,
+    required this.isOnline,
+    required this.isSavingOnline,
+    required this.canAct,
     required this.onAttack,
     required this.onSelectAttackMode,
     required this.onSelectTransferMode,
@@ -1130,6 +1271,9 @@ class _BattleCommandPanel extends StatelessWidget {
   final double winChance;
   final ReinforcementBreakdown reinforcementBreakdown;
   final bool isBotThinking;
+  final bool isOnline;
+  final bool isSavingOnline;
+  final bool canAct;
   final VoidCallback onAttack;
   final VoidCallback onSelectAttackMode;
   final VoidCallback onSelectTransferMode;
@@ -1141,10 +1285,9 @@ class _BattleCommandPanel extends StatelessWidget {
     final source = state.territoryByIdOrNull(state.selectedSourceId);
     final target = state.territoryByIdOrNull(state.selectedTargetId);
     final percent = (winChance * 100).round();
-    final canEndTurn = !state.currentPlayer.isBot && state.winnerId == null;
+    final canEndTurn = canAct && state.winnerId == null;
     final isTransferMode = commandMode == _MapCommandMode.transfer;
-    final canUseCommands =
-        state.phase == GamePhase.attack && !state.currentPlayer.isBot;
+    final canUseCommands = state.phase == GamePhase.attack && canAct;
     final canUseTransfer = canUseCommands && !state.transferUsedThisTurn;
     final isReinforcePhase = state.phase == GamePhase.reinforce;
 
@@ -1159,6 +1302,9 @@ class _BattleCommandPanel extends StatelessWidget {
                   state: state,
                   reinforcementBreakdown: reinforcementBreakdown,
                   isBotThinking: isBotThinking,
+                  isOnline: isOnline,
+                  isSavingOnline: isSavingOnline,
+                  canAct: canAct,
                 )
               : Column(
                   children: <Widget>[
@@ -1203,6 +1349,10 @@ class _BattleCommandPanel extends StatelessWidget {
                     Text(
                       isBotThinking
                           ? 'Bot turn in progress...'
+                          : isSavingOnline
+                          ? 'Syncing online game...'
+                          : isOnline && !canAct
+                          ? 'Waiting for ${state.currentPlayer.name}...'
                           : state.statusMessage,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(

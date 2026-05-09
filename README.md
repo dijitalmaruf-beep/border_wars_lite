@@ -1,15 +1,16 @@
 # Border Wars Lite
 
-Border Wars Lite is a first playable Flutter MVP for a simplified territory conquest game. One human player and three bots fight over a 30-territory abstract world map with local single-player state, deterministic game rules, and placeholder Firebase/Firestore services for later online features.
+Border Wars Lite is a first playable Flutter MVP for a simplified territory conquest game. Players and bots fight over a real-world-style territory map with local single-player state, deterministic game rules, and an MVP Firestore-backed online room flow.
 
 ## MVP Scope
 
 - Android and Web first.
 - Local single-player game state.
-- 1 human player and 3 bots: Atlas Bot, Nova Bot, Terra Bot.
+- MVP online rooms: 2 human players plus Nova Bot and Terra Bot.
+- Local mode: 1 human player and 3 bots: Atlas Bot, Nova Bot, Terra Bot.
 - 48 clickable world-map territories with owners, armies, neighbors, polygon borders, and continent groups.
 - Reinforcement, attack, bot, and victory rules implemented outside the UI.
-- Firebase Core and Cloud Firestore dependencies included, with multiplayer methods stubbed.
+- Firebase Core and Cloud Firestore dependencies included for online rooms.
 - Codemagic workflows for Android debug APK, Web release, and tests.
 
 ## Local Setup
@@ -69,9 +70,21 @@ Connect the GitHub repository in Codemagic and choose one of the workflows in `c
 
 iOS release builds are intentionally not configured yet because they require Apple Developer credentials, signing certificates, and provisioning profiles. The Flutter structure is ready for Codemagic iOS work later.
 
-## Firebase
+## Firebase / Online Play
 
-Firebase is not initialized during app startup for this MVP. Add generated Firebase options and call `FirebaseService.initialize()` when save/load or multiplayer features are ready.
+Online play uses Cloud Firestore documents in the `games` collection. The flow is:
+
+- Host opens `Online Game`, creates a 6-character room code, and waits.
+- Guest opens `Online Game`, enters the room code, and joins.
+- The match starts with 2 human players and 2 bots.
+- The current `GameState` is synced through Firestore.
+
+To enable real online play, add the generated Firebase config for each target:
+
+- Android: `android/app/google-services.json` plus the usual Google Services Gradle setup if your Firebase tooling requires it.
+- Web: generated Firebase options, normally via FlutterFire CLI.
+
+The app handles missing Firebase config gracefully and shows an online setup warning instead of crashing.
 
 ## Next Features
 
@@ -79,5 +92,5 @@ Firebase is not initialized during app startup for this MVP. Add generated Fireb
 - Better map visuals and continent bonuses.
 - Difficulty settings for bots.
 - Firebase-backed save slots.
-- Online lobby and turn synchronization.
+- Stronger authenticated Firestore rules for public release.
 - Codemagic iOS workflow with Apple signing.

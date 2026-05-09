@@ -27,6 +27,20 @@ class MapGenerator {
       humanName: humanName,
       humanColorValue: humanColorValue,
     );
+    return createInitialStateForPlayers(
+      players: players,
+      gameId: 'local-${DateTime.now().millisecondsSinceEpoch}',
+      firstPlayerId: GameConstants.humanPlayerId,
+      seed: seed,
+    );
+  }
+
+  GameState createInitialStateForPlayers({
+    required List<Player> players,
+    required String gameId,
+    required String firstPlayerId,
+    int? seed,
+  }) {
     final random = seed == null ? Random() : Random(seed);
     final startingOwners = _startingTerritoryOwners(players, random);
     final territories = sampleWorldTerritories.map((territory) {
@@ -38,12 +52,16 @@ class MapGenerator {
             : GameConstants.startingArmies,
       );
     }).toList();
+    final firstPlayerIndex = players.indexWhere(
+      (player) => player.id == firstPlayerId,
+    );
+    final currentPlayerIndex = firstPlayerIndex < 0 ? 0 : firstPlayerIndex;
 
     final initialState = GameState(
-      id: 'local-${DateTime.now().millisecondsSinceEpoch}',
+      id: gameId,
       players: players,
       territories: territories,
-      currentPlayerIndex: 0,
+      currentPlayerIndex: currentPlayerIndex,
       phase: GamePhase.reinforce,
       remainingReinforcements: 0,
       selectedSourceId: null,
@@ -55,7 +73,7 @@ class MapGenerator {
     return initialState.copyWith(
       remainingReinforcements: reinforcementCalculator.calculateForPlayer(
         initialState,
-        GameConstants.humanPlayerId,
+        initialState.currentPlayer.id,
       ),
     );
   }

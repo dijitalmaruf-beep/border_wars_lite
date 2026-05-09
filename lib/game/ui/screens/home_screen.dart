@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
+import 'online_setup_screen.dart';
 import 'setup_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -50,6 +51,20 @@ class HomeScreen extends StatelessWidget {
                         },
                       ),
                       const SizedBox(height: 14),
+                      PremiumButton(
+                        label: 'ONLINE GAME',
+                        icon: Icons.cloud,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const OnlineSetupScreen(),
+                            ),
+                          );
+                        },
+                        tone: PremiumButtonTone.teal,
+                        height: 56,
+                      ),
+                      const SizedBox(height: 14),
                       const PremiumButton(
                         label: 'CONTINUE GAME',
                         icon: Icons.history,
@@ -91,10 +106,7 @@ class _HomeEmblem extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: const RadialGradient(
-              colors: <Color>[
-                Color(0xFF3A3222),
-                Color(0xFF111820),
-              ],
+              colors: <Color>[Color(0xFF3A3222), Color(0xFF111820)],
             ),
             border: Border.all(color: const Color(0xFFC99C51), width: 2),
             boxShadow: <BoxShadow>[
@@ -105,18 +117,10 @@ class _HomeEmblem extends StatelessWidget {
             ],
           ),
         ),
-        const Icon(
-          Icons.public,
-          size: 78,
-          color: Color(0xFFD6C3A0),
-        ),
+        const Icon(Icons.public, size: 78, color: Color(0xFFD6C3A0)),
         const Positioned(
           top: 12,
-          child: Icon(
-            Icons.star,
-            size: 36,
-            color: Color(0xFFEBC46B),
-          ),
+          child: Icon(Icons.star, size: 36, color: Color(0xFFEBC46B)),
         ),
       ],
     );
@@ -137,25 +141,26 @@ class _GameLogo extends StatelessWidget {
             textAlign: TextAlign.center,
             style: _logoTextStyle(56),
           ),
-          Text(
-            'WARS',
-            textAlign: TextAlign.center,
-            style: _logoTextStyle(60),
-          ),
+          Text('WARS', textAlign: TextAlign.center, style: _logoTextStyle(60)),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              const SizedBox(width: 70, child: Divider(color: Color(0xFFD19B4A))),
+              const SizedBox(
+                width: 70,
+                child: Divider(color: Color(0xFFD19B4A)),
+              ),
               const SizedBox(width: 16),
               Text(
                 'LITE',
-                style: _logoTextStyle(25).copyWith(
-                  color: const Color(0xFFFFD78B),
-                  letterSpacing: 7,
-                ),
+                style: _logoTextStyle(
+                  25,
+                ).copyWith(color: const Color(0xFFFFD78B), letterSpacing: 7),
               ),
               const SizedBox(width: 16),
-              const SizedBox(width: 70, child: Divider(color: Color(0xFFD19B4A))),
+              const SizedBox(
+                width: 70,
+                child: Divider(color: Color(0xFFD19B4A)),
+              ),
             ],
           ),
         ],
