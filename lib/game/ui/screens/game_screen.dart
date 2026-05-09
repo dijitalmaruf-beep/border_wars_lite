@@ -730,7 +730,20 @@ class _GameScreenState extends State<GameScreen> {
             }
           });
           _afterStateChanged();
-        });
+        }, onError: _handleOnlineStreamError);
+  }
+
+  void _handleOnlineStreamError(Object error, StackTrace stackTrace) {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _isSavingOnline = false;
+      _state = _state.copyWith(
+        statusMessage:
+            'Online room sync lost. Check connection or rejoin the room.',
+      );
+    });
   }
 
   Future<void> _loadSettings() async {

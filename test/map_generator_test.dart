@@ -181,7 +181,7 @@ void main() {
           isBot: false,
         ),
         Player(
-          id: 'atlas_bot',
+          id: 'guest_player',
           name: 'Guest',
           colorValue: AppColors.atlasBotValue,
           isBot: false,

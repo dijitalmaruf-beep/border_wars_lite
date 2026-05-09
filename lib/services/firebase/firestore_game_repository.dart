@@ -35,7 +35,7 @@ class FirestoreGameRepository {
   static const statusActive = 'active';
   static const statusFinished = 'finished';
   static const hostPlayerId = GameConstants.humanPlayerId;
-  static const guestPlayerId = 'atlas_bot';
+  static const guestPlayerId = 'guest_player';
 
   final FirebaseFirestore? _firestore;
   final MapGenerator _mapGenerator = const MapGenerator();
@@ -120,7 +120,7 @@ class FirestoreGameRepository {
         ),
         ..._mapGenerator.createBotPlayers(
           count: botCount,
-          startIndex: 1,
+          startIndex: 0,
           reservedColorValues: <int>{hostColorValue, AppColors.atlasBotValue},
         ),
       ],
@@ -207,7 +207,7 @@ class FirestoreGameRepository {
           ),
           ..._mapGenerator.createBotPlayers(
             count: botCount,
-            startIndex: 1,
+            startIndex: 0,
             reservedColorValues: <int>{hostColorValue, guestColorValue},
           ),
         ],

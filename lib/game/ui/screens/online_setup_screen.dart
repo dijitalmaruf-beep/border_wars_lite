@@ -190,7 +190,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                   onPressed:
                                       !_isBusy &&
                                           _selectedBotCount <
-                                              GameConstants.maxBotPlayers - 1
+                                              GameConstants.maxBotPlayers
                                       ? () => _changeBotCount(1)
                                       : null,
                                 ),
@@ -199,8 +199,8 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             Slider(
                               value: _selectedBotCount.toDouble(),
                               min: 0,
-                              max: (GameConstants.maxBotPlayers - 1).toDouble(),
-                              divisions: GameConstants.maxBotPlayers - 1,
+                              max: GameConstants.maxBotPlayers.toDouble(),
+                              divisions: GameConstants.maxBotPlayers,
                               activeColor: AppColors.premiumCyan,
                               inactiveColor: AppColors.premiumBorder,
                               onChanged: _isBusy
@@ -411,7 +411,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
             return;
           }
           _openOnlineGame(updatedSession);
-        });
+        }, onError: _showError);
   }
 
   void _openOnlineGame(OnlineGameSession session) {
@@ -440,7 +440,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
   void _changeBotCount(int delta) {
     setState(() {
       _selectedBotCount = (_selectedBotCount + delta)
-          .clamp(0, GameConstants.maxBotPlayers - 1)
+          .clamp(0, GameConstants.maxBotPlayers)
           .toInt();
     });
   }
