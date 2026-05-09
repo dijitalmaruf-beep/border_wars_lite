@@ -4,18 +4,20 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../services/firebase/firestore_game_repository.dart';
+import '../../../services/local/game_settings.dart';
+import '../../../services/local/local_save_repository.dart';
+import '../../../services/local/settings_repository.dart';
 import '../../engine/game_engine.dart';
 import '../../engine/reinforcement_calculator.dart';
 import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../../models/territory.dart';
-import '../../../services/firebase/firestore_game_repository.dart';
 import '../widgets/attack_dialog.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
 import '../widgets/territory_map.dart';
-import 'home_screen.dart';
 import 'victory_screen.dart';
 
 class GameScreen extends StatefulWidget {
@@ -41,8 +43,11 @@ enum _GameMenuAction { continueGame, exitToHome }
 class _GameScreenState extends State<GameScreen> {
   final GameEngine _engine = const GameEngine();
   final Random _random = Random();
+  final LocalSaveRepository _localSaveRepository = const LocalSaveRepository();
+  final SettingsRepository _settingsRepository = const SettingsRepository();
 
   late GameState _state;
+  GameSettings _settings = const GameSettings();
   _MapCommandMode _commandMode = _MapCommandMode.attack;
   Timer? _botTimer;
   StreamSubscription<GameState?>? _onlineSubscription;
@@ -54,6 +59,7 @@ class _GameScreenState extends State<GameScreen> {
   void initState() {
     super.initState();
     _state = widget.initialState;
+    unawaited(_loadSettings());
     _subscribeToOnlineGame();
     WidgetsBinding.instance.addPostFrameCallback((_) => _afterStateChanged());
   }
@@ -188,6 +194,47 @@ class _GameScreenState extends State<GameScreen> {
     if (!_canLocalPlayerAct || _state.winnerId != null) {
       return;
     }
+    if (_settings.confirmEndTurn) {
+      unawaited(_confirmEndTurn());
+      return;
+    }
+    _endTurnNow();
+  }
+
+  Future<void> _confirmEndTurn() async {
+    final shouldEnd = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF101923),
+        title: const Text(
+          'End turn?',
+          style: TextStyle(color: AppColors.premiumText),
+        ),
+        content: Text(
+          _state.phase == GamePhase.reinforce
+              ? 'You still need to deploy reinforcements before attacking.'
+              : 'Your current command phase will end.',
+          style: const TextStyle(color: AppColors.premiumMutedText),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('End Turn'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldEnd == true && mounted) {
+      _endTurnNow();
+    }
+  }
+
+  void _endTurnNow() {
     _commandMode = _MapCommandMode.attack;
     _setGameState(_engine.endTurn(_state));
   }
@@ -209,6 +256,7 @@ class _GameScreenState extends State<GameScreen> {
     if (syncOnline) {
       unawaited(_saveOnlineState(nextState));
     }
+    unawaited(_saveLocalState(nextState));
     _afterStateChanged();
   }
 
@@ -266,7 +314,7 @@ class _GameScreenState extends State<GameScreen> {
           style: TextStyle(color: AppColors.premiumText),
         ),
         content: const Text(
-          'Current progress is not saved yet.',
+          'Local progress is saved automatically when auto-save is enabled.',
           style: TextStyle(color: AppColors.premiumMutedText),
         ),
         actions: <Widget>[
@@ -287,10 +335,8 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     _botTimer?.cancel();
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const HomeScreen()),
-      (route) => false,
-    );
+    unawaited(_saveLocalState(_state));
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _enterTransferMode() {
@@ -687,6 +733,17 @@ class _GameScreenState extends State<GameScreen> {
         });
   }
 
+  Future<void> _loadSettings() async {
+    final settings = await _settingsRepository.loadSettings();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _settings = settings;
+    });
+    await _saveLocalState(_state);
+  }
+
   Future<void> _saveOnlineState(GameState nextState) async {
     if (!_isOnline) {
       return;
@@ -709,6 +766,17 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  Future<void> _saveLocalState(GameState nextState) async {
+    if (_isOnline || !_settings.autoSaveLocalGame) {
+      return;
+    }
+    if (nextState.winnerId != null) {
+      await _localSaveRepository.clearSavedGame();
+      return;
+    }
+    await _localSaveRepository.saveGameState(nextState);
+  }
+
   void _goToVictory() {
     if (_navigatedToVictory) {
       return;
@@ -717,6 +785,9 @@ class _GameScreenState extends State<GameScreen> {
     final winner = _state.playerById(_state.winnerId);
     if (winner == null) {
       return;
+    }
+    if (!_isOnline) {
+      unawaited(_localSaveRepository.clearSavedGame());
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {

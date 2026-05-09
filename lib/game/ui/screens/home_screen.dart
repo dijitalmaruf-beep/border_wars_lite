@@ -1,13 +1,34 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../services/local/local_save_repository.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
+import 'game_screen.dart';
 import 'online_setup_screen.dart';
+import 'settings_screen.dart';
 import 'setup_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final LocalSaveRepository _localSaveRepository = const LocalSaveRepository();
+
+  bool _isContinuing = false;
+  bool _hasSavedGame = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_refreshSavedGameIndicator());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,13 +63,7 @@ class HomeScreen extends StatelessWidget {
                       PremiumButton(
                         label: 'NEW GAME',
                         icon: Icons.sports_martial_arts,
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const SetupScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: _startNewGame,
                       ),
                       const SizedBox(height: 14),
                       PremiumButton(
@@ -65,18 +80,20 @@ class HomeScreen extends StatelessWidget {
                         height: 56,
                       ),
                       const SizedBox(height: 14),
-                      const PremiumButton(
-                        label: 'CONTINUE GAME',
-                        icon: Icons.history,
-                        onPressed: null,
+                      PremiumButton(
+                        label: _isContinuing ? 'LOADING SAVE' : 'CONTINUE GAME',
+                        icon: _hasSavedGame
+                            ? Icons.history
+                            : Icons.history_toggle_off,
+                        onPressed: _isContinuing ? null : _continueGame,
                         tone: PremiumButtonTone.dark,
                         height: 56,
                       ),
                       const SizedBox(height: 14),
-                      const PremiumButton(
+                      PremiumButton(
                         label: 'SETTINGS',
                         icon: Icons.settings,
-                        onPressed: null,
+                        onPressed: _openSettings,
                         tone: PremiumButtonTone.dark,
                         height: 56,
                       ),
@@ -89,6 +106,72 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _refreshSavedGameIndicator() async {
+    final hasSavedGame = await _localSaveRepository.hasSavedGame();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _hasSavedGame = hasSavedGame;
+    });
+  }
+
+  Future<void> _startNewGame() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const SetupScreen()));
+    if (mounted) {
+      await _refreshSavedGameIndicator();
+    }
+  }
+
+  Future<void> _continueGame() async {
+    setState(() {
+      _isContinuing = true;
+    });
+
+    final savedState = await _localSaveRepository.loadGameState();
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _isContinuing = false;
+    });
+
+    if (savedState == null) {
+      await _refreshSavedGameIndicator();
+      if (!mounted) {
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No saved local game yet. Start a new game first.'),
+        ),
+      );
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GameScreen(initialState: savedState),
+      ),
+    );
+    if (mounted) {
+      await _refreshSavedGameIndicator();
+    }
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => const SettingsScreen()));
+    if (mounted) {
+      await _refreshSavedGameIndicator();
+    }
   }
 }
 
