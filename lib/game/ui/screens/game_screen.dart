@@ -11,6 +11,7 @@ import '../../../services/local/local_save_repository.dart';
 import '../../../services/local/settings_repository.dart';
 import '../../engine/game_engine.dart';
 import '../../engine/reinforcement_calculator.dart';
+import '../../models/attack_result.dart';
 import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../../models/territory.dart';
@@ -91,9 +92,6 @@ class _GameScreenState extends State<GameScreen> {
         );
     final canTransfer = _canTransferSelection(_state);
     final winChance = canAttack ? _engine.winChanceForSelection(_state) : 0.0;
-    final movedArmiesOnWin = canAttack
-        ? _engine.movedArmiesOnWinForSelection(_state)
-        : 0;
     final reinforcementBreakdown = _engine.reinforcementCalculator
         .breakdownForPlayer(_state, _state.currentPlayer.id);
     final controlledContinents = _controlledContinentsFor(_state);
@@ -145,7 +143,6 @@ class _GameScreenState extends State<GameScreen> {
                           canAttack: canAttack,
                           canTransfer: canTransfer,
                           winChance: winChance,
-                          movedArmiesOnWin: movedArmiesOnWin,
                           reinforcementBreakdown: reinforcementBreakdown,
                           isBotThinking: _isBotThinking,
                           isOnline: _isOnline,
@@ -198,12 +195,36 @@ class _GameScreenState extends State<GameScreen> {
         source: source,
         target: target,
         winChance: _engine.winChanceForSelection(_state),
-        movedArmiesOnWin: _engine.movedArmiesOnWinForSelection(_state),
       ),
     );
 
     if (confirmed == true && mounted) {
-      _setGameState(_engine.attackSelected(_state, random: _random));
+      final battleState = _state;
+      final result = _engine.resolveSelectedAttack(
+        battleState,
+        random: _random,
+      );
+      if (result == null) {
+        _setGameState(battleState.copyWith(statusMessage: 'Geçersiz saldırı.'));
+        return;
+      }
+      if (!result.didWin) {
+        _setGameState(_engine.applyAttackResult(battleState, result));
+        return;
+      }
+
+      final amount = await _showConquestMoveSheet(battleState, result);
+      if (!mounted) {
+        return;
+      }
+      final selectedAmount =
+          amount ?? _engine.movedArmiesOnWinForSelection(battleState);
+      _setGameState(
+        _engine.applyAttackResult(
+          battleState,
+          result.copyWith(movedArmies: selectedAmount),
+        ),
+      );
     }
   }
 
@@ -224,23 +245,23 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF101923),
         title: const Text(
-          'End turn?',
+          'Turu bitir?',
           style: TextStyle(color: AppColors.premiumText),
         ),
         content: Text(
           _state.phase == GamePhase.reinforce
-              ? 'You still need to deploy reinforcements before attacking.'
-              : 'Your current command phase will end.',
+              ? 'Saldırıya geçmeden önce takviye yapman gerekiyor.'
+              : 'Mevcut komut aşaman sona erecek.',
           style: const TextStyle(color: AppColors.premiumMutedText),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Vazgeç'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('End Turn'),
+            child: const Text('Turu Bitir'),
           ),
         ],
       ),
@@ -287,7 +308,7 @@ class _GameScreenState extends State<GameScreen> {
       _commandMode = _MapCommandMode.attack;
       _state = _state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Select a neighboring enemy territory to attack.',
+        statusMessage: 'Saldırmak için komşu bir düşman bölgesi seç.',
       );
     });
   }
@@ -298,23 +319,23 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF101923),
         title: const Text(
-          'Game Menu',
+          'Oyun Menüsü',
           style: TextStyle(color: AppColors.premiumText),
         ),
         content: const Text(
-          'Continue your conquest or exit to the home screen.',
+          'Fethe devam et veya ana ekrana dön.',
           style: TextStyle(color: AppColors.premiumMutedText),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(_GameMenuAction.continueGame),
-            child: const Text('Continue Game'),
+            child: const Text('Devam Et'),
           ),
           TextButton(
             onPressed: () =>
                 Navigator.of(context).pop(_GameMenuAction.exitToHome),
-            child: const Text('Exit to Home'),
+            child: const Text('Ana Ekrana Çık'),
           ),
         ],
       ),
@@ -329,21 +350,21 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF101923),
         title: const Text(
-          'Exit current game?',
+          'Oyundan çıkılsın mı?',
           style: TextStyle(color: AppColors.premiumText),
         ),
         content: const Text(
-          'Local progress is saved automatically when auto-save is enabled.',
+          'Otomatik kayıt açıksa yerel ilerleme kaydedilir.',
           style: TextStyle(color: AppColors.premiumMutedText),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Vazgeç'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Exit'),
+            child: const Text('Çık'),
           ),
         ],
       ),
@@ -364,7 +385,7 @@ class _GameScreenState extends State<GameScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF101923),
         title: const Text(
-          'How to Play',
+          'Nasıl Oynanır?',
           style: TextStyle(color: AppColors.premiumText),
         ),
         content: const SingleChildScrollView(
@@ -373,33 +394,33 @@ class _GameScreenState extends State<GameScreen> {
             children: <Widget>[
               _HelpStep(
                 icon: Icons.shield,
-                title: '1. Reinforce',
+                title: '1. Takviye',
                 body:
-                    'Your turn starts here. Tap one of your territories to deploy all available armies.',
+                    'Sıran burada başlar. Tüm takviyeyi yerleştirmek için kendi bölgelerinden birine dokun.',
               ),
               _HelpStep(
                 icon: Icons.sports_martial_arts,
-                title: '2. Attack',
+                title: '2. Saldırı',
                 body:
-                    'Select your territory, then tap a neighboring enemy territory. The panel shows win chance and armies moved if you conquer it.',
+                    'Önce kendi bölgeni, sonra komşu düşman bölgesini seç. Kazanırsan kaç askerin ilerleyeceğini savaştan sonra sen belirlersin.',
               ),
               _HelpStep(
                 icon: Icons.swap_horiz,
                 title: '3. Transfer',
                 body:
-                    'Once per turn, move armies between adjacent friendly territories. The source must keep at least 1 army.',
+                    'Tur başına bir kez, komşu dost bölgeler arasında asker taşıyabilirsin. Kaynak bölgede en az 1 asker kalmalı.',
               ),
               _HelpStep(
                 icon: Icons.public,
-                title: '4. Control Continents',
+                title: '4. Kıta Kontrolü',
                 body:
-                    'Owning every territory in a continent gives bonus reinforcements and highlights that continent on the map.',
+                    'Bir kıtadaki tüm bölgeleri alırsan bonus takviye kazanırsın ve kıta haritada vurgulanır.',
               ),
               _HelpStep(
                 icon: Icons.timer,
-                title: '5. Watch the Timer',
+                title: '5. Süreyi İzle',
                 body:
-                    'Each player has 90 seconds. If time expires, the game auto-resolves the turn.',
+                    'Her oyuncunun 90 saniyesi var. Süre biterse oyun turu otomatik çözer.',
               ),
             ],
           ),
@@ -407,7 +428,7 @@ class _GameScreenState extends State<GameScreen> {
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it'),
+            child: const Text('Anladım'),
           ),
         ],
       ),
@@ -421,7 +442,7 @@ class _GameScreenState extends State<GameScreen> {
     if (_state.transferUsedThisTurn) {
       setState(() {
         _state = _state.copyWith(
-          statusMessage: 'Transfer already used this turn.',
+          statusMessage: 'Bu tur transfer hakkı kullanıldı.',
         );
       });
       return;
@@ -431,7 +452,7 @@ class _GameScreenState extends State<GameScreen> {
       _commandMode = _MapCommandMode.transfer;
       _state = _state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Select a friendly source, then an adjacent ally.',
+        statusMessage: 'Önce kaynak dost bölgeyi, sonra komşu dost hedefi seç.',
       );
     });
   }
@@ -444,7 +465,7 @@ class _GameScreenState extends State<GameScreen> {
     if (!_canTransferSelection(_state)) {
       _setGameState(
         _state.copyWith(
-          statusMessage: 'Select adjacent friendly territories to transfer.',
+          statusMessage: 'Transfer için komşu dost bölgeleri seç.',
         ),
       );
       return;
@@ -496,7 +517,7 @@ class _GameScreenState extends State<GameScreen> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
                       const Text(
-                        'TRANSFER ARMIES',
+                        'ASKER TRANSFERİ',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumText,
@@ -559,7 +580,7 @@ class _GameScreenState extends State<GameScreen> {
                       else
                         const SizedBox(height: 28),
                       Text(
-                        'Source keeps ${source.armyCount - selectedAmount} armies.',
+                        'Kaynak bölgede ${source.armyCount - selectedAmount} asker kalır.',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.premiumMutedText,
@@ -572,7 +593,7 @@ class _GameScreenState extends State<GameScreen> {
                         children: <Widget>[
                           Expanded(
                             child: PremiumButton(
-                              label: 'CANCEL',
+                              label: 'VAZGEÇ',
                               icon: Icons.close,
                               onPressed: () => Navigator.of(context).pop(),
                               tone: PremiumButtonTone.dark,
@@ -582,7 +603,7 @@ class _GameScreenState extends State<GameScreen> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: PremiumButton(
-                              label: 'MOVE $selectedAmount',
+                              label: '$selectedAmount TAŞI',
                               icon: Icons.swap_horiz,
                               onPressed: () =>
                                   Navigator.of(context).pop(selectedAmount),
@@ -603,9 +624,151 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
+  Future<int?> _showConquestMoveSheet(
+    GameState battleState,
+    AttackResult result,
+  ) {
+    final source = battleState.territoryById(result.sourceId);
+    final target = battleState.territoryById(result.targetId);
+    final maxMove = max(
+      1,
+      _engine.maxMovedArmiesOnWinForSelection(battleState),
+    );
+    var selectedAmount = result.movedArmies.clamp(1, maxMove).toInt();
+
+    return showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (context) {
+        return PopScope(
+          canPop: false,
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                12,
+                12,
+                12,
+                12 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: StatefulBuilder(
+                builder: (context, setSheetState) {
+                  void updateAmount(int value) {
+                    setSheetState(() {
+                      selectedAmount = value.clamp(1, maxMove).toInt();
+                    });
+                  }
+
+                  return PremiumPanel(
+                    borderColor: AppColors.premiumGold.withValues(alpha: 0.78),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: <Widget>[
+                        const Icon(
+                          Icons.flag,
+                          color: AppColors.premiumGold,
+                          size: 34,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${target.name} FETHEDİLDİ',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.premiumText,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${source.name} bölgesinden kaç asker ilerlesin?',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.premiumMutedText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            _AmountButton(
+                              icon: Icons.remove,
+                              onPressed: selectedAmount > 1
+                                  ? () => updateAmount(selectedAmount - 1)
+                                  : null,
+                            ),
+                            SizedBox(
+                              width: 104,
+                              child: Text(
+                                '$selectedAmount',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AppColors.premiumText,
+                                  fontSize: 40,
+                                  height: 1,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            _AmountButton(
+                              icon: Icons.add,
+                              onPressed: selectedAmount < maxMove
+                                  ? () => updateAmount(selectedAmount + 1)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        if (maxMove > 1)
+                          Slider(
+                            value: selectedAmount.toDouble(),
+                            min: 1,
+                            max: maxMove.toDouble(),
+                            divisions: maxMove - 1,
+                            activeColor: AppColors.premiumGold,
+                            inactiveColor: AppColors.premiumBorder,
+                            onChanged: (value) => updateAmount(value.round()),
+                          )
+                        else
+                          const SizedBox(height: 28),
+                        Text(
+                          '${target.name}: $selectedAmount asker | ${source.name}: ${source.armyCount - selectedAmount} asker kalır',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.premiumMutedText,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        PremiumButton(
+                          label: '$selectedAmount ASKERİ İLERLET',
+                          icon: Icons.flag,
+                          onPressed: () =>
+                              Navigator.of(context).pop(selectedAmount),
+                          tone: PremiumButtonTone.gold,
+                          height: 50,
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   GameState _selectTransferTerritory(GameState state, String territoryId) {
     if (state.transferUsedThisTurn) {
-      return state.copyWith(statusMessage: 'Transfer already used this turn.');
+      return state.copyWith(statusMessage: 'Bu tur transfer hakkı kullanıldı.');
     }
 
     final territory = state.territoryById(territoryId);
@@ -614,7 +777,7 @@ class _GameScreenState extends State<GameScreen> {
     if (territory.ownerId != currentPlayerId) {
       return state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Transfers need adjacent friendly territories.',
+        statusMessage: 'Transfer için komşu dost bölgeler gerekir.',
       );
     }
 
@@ -623,13 +786,14 @@ class _GameScreenState extends State<GameScreen> {
       if (territory.armyCount <= 1) {
         return state.copyWith(
           selectedTargetId: null,
-          statusMessage: 'Source needs more than 1 army to transfer.',
+          statusMessage:
+              'Transfer için kaynak bölgede 1 askerden fazla olmalı.',
         );
       }
       return state.copyWith(
         selectedSourceId: territoryId,
         selectedTargetId: null,
-        statusMessage: '${territory.name} selected for transfer.',
+        statusMessage: '${territory.name} transfer kaynağı seçildi.',
       );
     }
 
@@ -638,28 +802,27 @@ class _GameScreenState extends State<GameScreen> {
       return state.copyWith(
         selectedSourceId: territoryId,
         selectedTargetId: null,
-        statusMessage: '${territory.name} selected for transfer.',
+        statusMessage: '${territory.name} transfer kaynağı seçildi.',
       );
     }
 
     if (!source.isNeighbor(territoryId)) {
       return state.copyWith(
         selectedTargetId: null,
-        statusMessage:
-            'Only adjacent friendly territories can receive transfers.',
+        statusMessage: 'Sadece komşu dost bölgelere transfer yapılabilir.',
       );
     }
 
     if (!_engine.canTransfer(state, source.id, territory.id)) {
       return state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Source needs more than 1 army to transfer.',
+        statusMessage: 'Transfer için kaynak bölgede 1 askerden fazla olmalı.',
       );
     }
 
     return state.copyWith(
       selectedTargetId: territoryId,
-      statusMessage: 'Transfer available.',
+      statusMessage: 'Transfer hazır.',
     );
   }
 
@@ -752,7 +915,7 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _isBotThinking = true;
       _state = _state.copyWith(
-        statusMessage: '${_state.currentPlayer.name} is planning...',
+        statusMessage: '${_state.currentPlayer.name} hamlesini planlıyor...',
       );
     });
 
@@ -835,7 +998,7 @@ class _GameScreenState extends State<GameScreen> {
       _engine.endTurn(
         nextState.copyWith(
           phase: GamePhase.end,
-          statusMessage: 'Turn timer expired.',
+          statusMessage: 'Tur süresi doldu.',
         ),
       ),
     );
@@ -872,7 +1035,7 @@ class _GameScreenState extends State<GameScreen> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: Color(owner.colorValue).withValues(alpha: 0.92),
         content: Text(
-          '${owner.name} controls $continent!',
+          '${owner.name} $continent kıtasını kontrol ediyor!',
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
@@ -933,7 +1096,7 @@ class _GameScreenState extends State<GameScreen> {
       _isSavingOnline = false;
       _state = _state.copyWith(
         statusMessage:
-            'Online room sync lost. Check connection or rejoin the room.',
+            'Online oda senkronu koptu. Bağlantıyı kontrol et veya odaya tekrar katıl.',
       );
     });
   }
@@ -965,7 +1128,7 @@ class _GameScreenState extends State<GameScreen> {
       setState(() {
         _isSavingOnline = false;
         _state = _state.copyWith(
-          statusMessage: 'Online sync failed. Check connection.',
+          statusMessage: 'Online senkron başarısız. Bağlantıyı kontrol et.',
         );
       });
     }
@@ -1039,7 +1202,7 @@ class _AmountButton extends StatelessWidget {
           color: onPressed == null
               ? AppColors.premiumMutedText.withValues(alpha: 0.55)
               : AppColors.premiumText,
-          tooltip: icon == Icons.add ? 'Increase' : 'Decrease',
+          tooltip: icon == Icons.add ? 'Artır' : 'Azalt',
         ),
       ),
     );
@@ -1124,7 +1287,7 @@ class _WorldHeader extends StatelessWidget {
             onPressed: onMenuPressed,
             icon: const Icon(Icons.menu),
             color: AppColors.premiumText,
-            tooltip: 'Menu',
+            tooltip: 'Menü',
             constraints: const BoxConstraints.tightFor(width: 38, height: 38),
             padding: EdgeInsets.zero,
           ),
@@ -1132,7 +1295,7 @@ class _WorldHeader extends StatelessWidget {
             onPressed: onHelpPressed,
             icon: const Icon(Icons.help_outline),
             color: AppColors.premiumText,
-            tooltip: 'How to play',
+            tooltip: 'Nasıl oynanır',
             constraints: const BoxConstraints.tightFor(width: 34, height: 38),
             padding: EdgeInsets.zero,
           ),
@@ -1153,7 +1316,7 @@ class _WorldHeader extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text(
-                'TURN ${state.turnNumber}',
+                'TUR ${state.turnNumber}',
                 style: const TextStyle(
                   color: AppColors.premiumMutedText,
                   fontSize: 13,
@@ -1355,7 +1518,7 @@ class _PlayerCard extends StatelessWidget {
 
   String _compactName(String name) {
     if (name == 'Commander') {
-      return 'You';
+      return 'Sen';
     }
     return name.replaceAll(' Bot', '');
   }
@@ -1409,9 +1572,9 @@ class _MapStage extends StatelessWidget {
           bottom: 14,
           child: Column(
             children: const <Widget>[
-              _MapToolButton(icon: Icons.my_location, tooltip: 'Focus'),
+              _MapToolButton(icon: Icons.my_location, tooltip: 'Odakla'),
               SizedBox(height: 8),
-              _MapToolButton(icon: Icons.search, tooltip: 'Search'),
+              _MapToolButton(icon: Icons.search, tooltip: 'Ara'),
             ],
           ),
         ),
@@ -1493,7 +1656,7 @@ class _ReinforcePhasePanel extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text(
-                    'REINFORCE PHASE',
+                    'TAKVİYE AŞAMASI',
                     style: TextStyle(
                       color: Color(0xFF55B9FF),
                       fontSize: 12,
@@ -1502,7 +1665,7 @@ class _ReinforcePhasePanel extends StatelessWidget {
                   ),
                   SizedBox(height: 3),
                   Text(
-                    'Choose a friendly territory to deploy armies.',
+                    'Asker eklemek için kendi bölgelerinden birini seç.',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -1519,7 +1682,7 @@ class _ReinforcePhasePanel extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: <Widget>[
                 const Text(
-                  'TOTAL',
+                  'TOPLAM',
                   style: TextStyle(
                     color: Color(0xFFFFD66D),
                     fontSize: 11,
@@ -1544,10 +1707,10 @@ class _ReinforcePhasePanel extends StatelessWidget {
           spacing: 6,
           runSpacing: 6,
           children: <Widget>[
-            _InfoPill(label: 'Base ${reinforcementBreakdown.base}'),
+            _InfoPill(label: 'Temel ${reinforcementBreakdown.base}'),
             _InfoPill(label: 'Bonus ${reinforcementBreakdown.continentBonus}'),
             if (controlled.isEmpty)
-              const _InfoPill(label: 'No controlled region')
+              const _InfoPill(label: 'Kontrollü kıta yok')
             else
               for (final bonus in controlled)
                 _InfoPill(label: '${bonus.continent} +${bonus.value}'),
@@ -1556,11 +1719,11 @@ class _ReinforcePhasePanel extends StatelessWidget {
         const SizedBox(height: 7),
         Text(
           isBotThinking
-              ? 'Bot turn in progress...'
+              ? 'Bot sırası oynanıyor...'
               : isSavingOnline
-              ? 'Syncing online game...'
+              ? 'Online oyun eşitleniyor...'
               : isOnline && !canAct
-              ? 'Waiting for ${state.currentPlayer.name}...'
+              ? '${state.currentPlayer.name} bekleniyor...'
               : state.statusMessage,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1611,7 +1774,6 @@ class _BattleCommandPanel extends StatelessWidget {
     required this.canAttack,
     required this.canTransfer,
     required this.winChance,
-    required this.movedArmiesOnWin,
     required this.reinforcementBreakdown,
     required this.isBotThinking,
     required this.isOnline,
@@ -1629,7 +1791,6 @@ class _BattleCommandPanel extends StatelessWidget {
   final bool canAttack;
   final bool canTransfer;
   final double winChance;
-  final int movedArmiesOnWin;
   final ReinforcementBreakdown reinforcementBreakdown;
   final bool isBotThinking;
   final bool isOnline;
@@ -1673,7 +1834,7 @@ class _BattleCommandPanel extends StatelessWidget {
                       children: <Widget>[
                         Expanded(
                           child: _TerritoryReadout(
-                            label: 'SOURCE',
+                            label: 'KAYNAK',
                             labelColor: const Color(0xFF55B9FF),
                             territory: source,
                             state: state,
@@ -1688,7 +1849,7 @@ class _BattleCommandPanel extends StatelessWidget {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _TerritoryReadout(
-                            label: 'TARGET',
+                            label: 'HEDEF',
                             labelColor: AppColors.premiumRed,
                             territory: target,
                             state: state,
@@ -1698,7 +1859,6 @@ class _BattleCommandPanel extends StatelessWidget {
                         _WinChance(
                           percent: percent,
                           enabled: canAttack,
-                          movedArmiesOnWin: movedArmiesOnWin,
                           isReinforcePhase: false,
                           isTransferMode: isTransferMode,
                           canTransfer: canTransfer,
@@ -1710,11 +1870,11 @@ class _BattleCommandPanel extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       isBotThinking
-                          ? 'Bot turn in progress...'
+                          ? 'Bot sırası oynanıyor...'
                           : isSavingOnline
-                          ? 'Syncing online game...'
+                          ? 'Online oyun eşitleniyor...'
                           : isOnline && !canAct
-                          ? 'Waiting for ${state.currentPlayer.name}...'
+                          ? '${state.currentPlayer.name} bekleniyor...'
                           : state.statusMessage,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -1731,7 +1891,7 @@ class _BattleCommandPanel extends StatelessWidget {
           children: <Widget>[
             Expanded(
               child: PremiumButton(
-                label: 'REINFORCE',
+                label: 'TAKVİYE',
                 icon: Icons.shield,
                 onPressed: null,
                 tone: isReinforcePhase
@@ -1744,7 +1904,7 @@ class _BattleCommandPanel extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: PremiumButton(
-                label: 'ATTACK',
+                label: 'SALDIR',
                 icon: Icons.sports_martial_arts,
                 onPressed: !canUseCommands
                     ? null
@@ -1762,7 +1922,7 @@ class _BattleCommandPanel extends StatelessWidget {
             Expanded(
               child: PremiumButton(
                 label: state.transferUsedThisTurn
-                    ? 'TRANSFER USED'
+                    ? 'TRANSFER YAPILDI'
                     : 'TRANSFER',
                 icon: Icons.swap_horiz,
                 onPressed: !canUseTransfer
@@ -1781,7 +1941,7 @@ class _BattleCommandPanel extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         PremiumButton(
-          label: 'END TURN',
+          label: 'TURU BİTİR',
           icon: Icons.hourglass_bottom,
           onPressed: canEndTurn ? onEndTurn : null,
           tone: PremiumButtonTone.gold,
@@ -1824,7 +1984,7 @@ class _TerritoryReadout extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         Text(
-          territory?.name ?? 'None',
+          territory?.name ?? 'Yok',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
@@ -1856,7 +2016,6 @@ class _WinChance extends StatelessWidget {
   const _WinChance({
     required this.percent,
     required this.enabled,
-    required this.movedArmiesOnWin,
     required this.isReinforcePhase,
     required this.isTransferMode,
     required this.canTransfer,
@@ -1866,7 +2025,6 @@ class _WinChance extends StatelessWidget {
 
   final int percent;
   final bool enabled;
-  final int movedArmiesOnWin;
   final bool isReinforcePhase;
   final bool isTransferMode;
   final bool canTransfer;
@@ -1882,15 +2040,15 @@ class _WinChance extends StatelessWidget {
         ? const Color(0xFF91F05B)
         : AppColors.premiumMutedText;
     final label = isReinforcePhase
-        ? 'REINFORCE'
+        ? 'TAKVİYE'
         : isTransferMode
         ? 'TRANSFER'
-        : 'WIN CHANCE';
+        : 'ŞANS';
     final value = isReinforcePhase
         ? '$reinforcementTotal'
         : isTransferMode
         ? transferUsed
-              ? 'DONE'
+              ? 'BİTTİ'
               : (canTransfer ? 'OK' : '--')
         : enabled
         ? '$percent%'
@@ -1899,9 +2057,9 @@ class _WinChance extends StatelessWidget {
         ? 'Total'
         : isTransferMode
         ? transferUsed
-              ? 'Used'
-              : (canTransfer ? 'Available' : 'Select ally')
-        : (enabled ? 'Move $movedArmiesOnWin on win' : 'Select target');
+              ? 'Kullanıldı'
+              : (canTransfer ? 'Hazır' : 'Dost seç')
+        : (enabled ? 'Hedef hazır' : 'Hedef seç');
     return SizedBox(
       width: 96,
       child: Column(

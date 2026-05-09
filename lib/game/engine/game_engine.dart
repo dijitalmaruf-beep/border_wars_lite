@@ -28,7 +28,7 @@ class GameEngine {
     if (state.phase == GamePhase.reinforce) {
       if (territory.ownerId != state.currentPlayer.id) {
         return state.copyWith(
-          statusMessage: 'Reinforcements need friendly ground.',
+          statusMessage: 'Takviye için kendi bölgelerinden birini seç.',
         );
       }
       return addReinforcementsToTerritory(state, territoryId);
@@ -38,26 +38,26 @@ class GameEngine {
       return state.copyWith(
         selectedSourceId: territoryId,
         selectedTargetId: null,
-        statusMessage: '${territory.name} selected.',
+        statusMessage: '${territory.name} seçildi.',
       );
     }
 
     if (state.selectedSourceId == null) {
-      return state.copyWith(statusMessage: 'Select a source territory first.');
+      return state.copyWith(statusMessage: 'Önce saldırı kaynağını seç.');
     }
 
     final source = state.territoryById(state.selectedSourceId!);
     if (!source.isNeighbor(territoryId)) {
       return state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Only neighboring enemy territories can be attacked.',
+        statusMessage: 'Sadece komşu düşman bölgelerine saldırabilirsin.',
       );
     }
 
     if (source.armyCount <= 1) {
       return state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Source needs more than 1 army to attack.',
+        statusMessage: 'Saldırmak için kaynak bölgede 1 askerden fazla olmalı.',
       );
     }
 
@@ -70,14 +70,13 @@ class GameEngine {
     if (!canAttackTarget) {
       return state.copyWith(
         selectedTargetId: null,
-        statusMessage: 'Only neighboring enemy territories can be attacked.',
+        statusMessage: 'Sadece komşu düşman bölgelerine saldırabilirsin.',
       );
     }
 
-    final movedArmies = combatResolver.calculateMovedArmiesOnWin(source);
     return state.copyWith(
       selectedTargetId: territoryId,
-      statusMessage: 'Attack ready. $movedArmies armies move on conquest.',
+      statusMessage: '${territory.name} hedef seçildi. Saldırı hazır.',
     );
   }
 
@@ -88,7 +87,7 @@ class GameEngine {
 
     final territory = state.territoryById(territoryId);
     if (territory.ownerId != state.currentPlayer.id) {
-      return state.copyWith(statusMessage: 'Choose a territory you own.');
+      return state.copyWith(statusMessage: 'Kendi bölgeni seçmelisin.');
     }
 
     final updatedTerritory = territory.copyWith(
@@ -103,8 +102,7 @@ class GameEngine {
       remainingReinforcements: 0,
       selectedSourceId: territoryId,
       selectedTargetId: null,
-      statusMessage:
-          '${state.currentPlayer.name} reinforced ${territory.name}.',
+      statusMessage: '${territory.name} takviye aldı.',
     );
   }
 
@@ -152,10 +150,10 @@ class GameEngine {
     int amount,
   ) {
     if (state.transferUsedThisTurn) {
-      return state.copyWith(statusMessage: 'Transfer already used this turn.');
+      return state.copyWith(statusMessage: 'Bu tur transfer hakkı kullanıldı.');
     }
     if (!canTransfer(state, sourceId, targetId)) {
-      return state.copyWith(statusMessage: 'Invalid transfer.');
+      return state.copyWith(statusMessage: 'Geçersiz transfer.');
     }
 
     final source = state.territoryById(sourceId);
@@ -163,7 +161,7 @@ class GameEngine {
     final maxTransfer = source.armyCount - 1;
     if (amount < 1 || amount > maxTransfer) {
       return state.copyWith(
-        statusMessage: 'Transfer amount must leave 1 army behind.',
+        statusMessage: 'Kaynak bölgede en az 1 asker kalmalı.',
       );
     }
 
@@ -178,7 +176,7 @@ class GameEngine {
       transferUsedThisTurn: true,
       selectedSourceId: updatedSource.id,
       selectedTargetId: updatedTarget.id,
-      statusMessage: 'Transferred $amount armies to ${updatedTarget.name}.',
+      statusMessage: '${updatedTarget.name} bölgesine $amount asker taşındı.',
     );
   }
 
@@ -203,11 +201,57 @@ class GameEngine {
     return combatResolver.calculateMovedArmiesOnWin(source);
   }
 
+  int maxMovedArmiesOnWinForSelection(GameState state) {
+    final source = state.territoryByIdOrNull(state.selectedSourceId);
+    final target = state.territoryByIdOrNull(state.selectedTargetId);
+    if (source == null || target == null) {
+      return 0;
+    }
+    if (!canAttack(state, sourceId: source.id, targetId: target.id)) {
+      return 0;
+    }
+    return combatResolver.maxMovedArmiesOnWin(source);
+  }
+
+  AttackResult? resolveSelectedAttack(GameState state, {Random? random}) {
+    final sourceId = state.selectedSourceId;
+    final targetId = state.selectedTargetId;
+    if (sourceId == null || targetId == null) {
+      return null;
+    }
+    return resolveAttackResult(
+      state,
+      sourceId: sourceId,
+      targetId: targetId,
+      random: random,
+    );
+  }
+
+  AttackResult? resolveAttackResult(
+    GameState state, {
+    required String sourceId,
+    required String targetId,
+    Random? random,
+  }) {
+    if (!canAttack(state, sourceId: sourceId, targetId: targetId)) {
+      return null;
+    }
+
+    final source = state.territoryById(sourceId);
+    final target = state.territoryById(targetId);
+    return combatResolver.resolve(
+      source: source,
+      target: target,
+      attackerId: state.currentPlayer.id,
+      random: random,
+    );
+  }
+
   GameState attackSelected(GameState state, {Random? random}) {
     final sourceId = state.selectedSourceId;
     final targetId = state.selectedTargetId;
     if (sourceId == null || targetId == null) {
-      return state.copyWith(statusMessage: 'No attack selected.');
+      return state.copyWith(statusMessage: 'Saldırı hedefi seçilmedi.');
     }
     return attack(
       state,
@@ -223,18 +267,15 @@ class GameEngine {
     required String targetId,
     Random? random,
   }) {
-    if (!canAttack(state, sourceId: sourceId, targetId: targetId)) {
-      return state.copyWith(statusMessage: 'Invalid attack.');
-    }
-
-    final source = state.territoryById(sourceId);
-    final target = state.territoryById(targetId);
-    final result = combatResolver.resolve(
-      source: source,
-      target: target,
-      attackerId: state.currentPlayer.id,
+    final result = resolveAttackResult(
+      state,
+      sourceId: sourceId,
+      targetId: targetId,
       random: random,
     );
+    if (result == null) {
+      return state.copyWith(statusMessage: 'Geçersiz saldırı.');
+    }
     return applyAttackResult(state, result);
   }
 
@@ -246,12 +287,15 @@ class GameEngine {
     late final Territory updatedTarget;
 
     if (result.didWin) {
+      final movedArmies = result.movedArmies
+          .clamp(1, source.armyCount - 1)
+          .toInt();
       updatedSource = source.copyWith(
-        armyCount: max(1, source.armyCount - result.movedArmies),
+        armyCount: max(1, source.armyCount - movedArmies),
       );
       updatedTarget = target.copyWith(
         ownerId: result.attackerId,
-        armyCount: result.movedArmies,
+        armyCount: movedArmies,
       );
     } else {
       updatedSource = source.copyWith(
@@ -269,7 +313,9 @@ class GameEngine {
       }),
       selectedSourceId: updatedSource.id,
       selectedTargetId: null,
-      statusMessage: result.message,
+      statusMessage: result.didWin
+          ? '${target.name} fethedildi. ${updatedTarget.armyCount} asker bölgeye geçti.'
+          : result.message,
     );
 
     final winnerId = findWinner(nextState);
@@ -277,7 +323,7 @@ class GameEngine {
       return nextState.copyWith(
         phase: GamePhase.end,
         winnerId: winnerId,
-        statusMessage: '${nextState.playerById(winnerId)?.name} wins!',
+        statusMessage: '${nextState.playerById(winnerId)?.name} kazandı!',
       );
     }
     return nextState;
@@ -311,8 +357,8 @@ class GameEngine {
       turnNumber: state.turnNumber + 1,
       turnStartedAtMillis: DateTime.now().millisecondsSinceEpoch,
       statusMessage: nextPlayer.isBot
-          ? '${nextPlayer.name} begins turn ${state.turnNumber + 1}.'
-          : 'Choose a territory to reinforce.',
+          ? '${nextPlayer.name} ${state.turnNumber + 1}. tura başladı.'
+          : 'Takviye yapmak için bir bölge seç.',
     );
   }
 

@@ -65,13 +65,10 @@ class TurnPanel extends StatelessWidget {
                   icon: Icons.sync,
                   label: state.phase.name.toUpperCase(),
                 ),
-                _StatPill(
-                  icon: Icons.map,
-                  label: '$ownedCount owned',
-                ),
+                _StatPill(icon: Icons.map, label: '$ownedCount bölge'),
                 _StatPill(
                   icon: Icons.add_circle,
-                  label: '${state.remainingReinforcements} reinf.',
+                  label: '${state.remainingReinforcements} takviye',
                 ),
               ],
             ),
@@ -79,7 +76,7 @@ class TurnPanel extends StatelessWidget {
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 160),
               child: Text(
-                isBotThinking ? 'Bot turn in progress...' : state.statusMessage,
+                isBotThinking ? 'Bot sırası oynanıyor...' : state.statusMessage,
                 key: ValueKey<String>(
                   isBotThinking ? 'thinking' : state.statusMessage,
                 ),
@@ -90,7 +87,7 @@ class TurnPanel extends StatelessWidget {
             FilledButton.icon(
               onPressed: canEndTurn ? onEndTurn : null,
               icon: const Icon(Icons.skip_next),
-              label: const Text('End Turn'),
+              label: const Text('Turu Bitir'),
             ),
           ],
         ),
@@ -100,10 +97,7 @@ class TurnPanel extends StatelessWidget {
 }
 
 class _StatPill extends StatelessWidget {
-  const _StatPill({
-    required this.icon,
-    required this.label,
-  });
+  const _StatPill({required this.icon, required this.label});
 
   final IconData icon;
   final String label;

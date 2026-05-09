@@ -68,7 +68,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       ),
                       const SizedBox(height: 24),
                       const Text(
-                        'ONLINE WAR ROOM',
+                        'ONLINE SAVAŞ ODASI',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumText,
@@ -79,7 +79,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'Create a room code or join a commander.',
+                        'Oda kodu oluştur veya bir komutana katıl.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumMutedText,
@@ -92,8 +92,9 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                           borderColor: AppColors.premiumRed,
                           child: Text(
                             'Firebase is not configured for this build yet. '
-                            'Add the Firebase Android/Web config files, then '
-                            'online play will activate automatically.',
+                            'Bu build için Firebase henüz yapılandırılmamış. '
+                            'Firebase Android/Web config dosyalarını ekleyince '
+                            'online oyun otomatik aktif olur.',
                             style: const TextStyle(
                               color: AppColors.premiumText,
                               height: 1.35,
@@ -108,7 +109,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('COMMANDER NAME'),
+                            const _PanelLabel('KOMUTAN ADI'),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _nameController,
@@ -118,12 +119,12 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                 color: AppColors.premiumText,
                               ),
                               decoration: _inputDecoration(
-                                hint: 'Enter commander name...',
+                                hint: 'Komutan adını gir...',
                                 icon: Icons.person,
                               ),
                             ),
                             const SizedBox(height: 16),
-                            const _PanelLabel('CHOOSE YOUR COLOR'),
+                            const _PanelLabel('RENGİNİ SEÇ'),
                             const SizedBox(height: 14),
                             Wrap(
                               spacing: 10,
@@ -152,7 +153,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('BOT COMMANDERS'),
+                            const _PanelLabel('BOT KOMUTANLAR'),
                             const SizedBox(height: 14),
                             Row(
                               children: <Widget>[
@@ -179,7 +180,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                       ),
                                       const SizedBox(height: 5),
                                       const Text(
-                                        'bots in room',
+                                        'odadaki bot',
                                         style: TextStyle(
                                           color: AppColors.premiumMutedText,
                                           fontSize: 12,
@@ -224,7 +225,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
-                            const _PanelLabel('JOIN ROOM CODE'),
+                            const _PanelLabel('ODA KODU İLE KATIL'),
                             const SizedBox(height: 12),
                             TextField(
                               controller: _codeController,
@@ -243,7 +244,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             ),
                             const SizedBox(height: 10),
                             PremiumButton(
-                              label: 'JOIN ONLINE GAME',
+                              label: 'ONLINE OYUNA KATIL',
                               icon: Icons.login,
                               onPressed:
                                   _canUseOnline &&
@@ -259,7 +260,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       ),
                       const SizedBox(height: 16),
                       PremiumButton(
-                        label: _isBusy ? 'CONNECTING...' : 'CREATE ROOM',
+                        label: _isBusy ? 'BAĞLANIYOR...' : 'ODA KUR',
                         icon: Icons.add_link,
                         onPressed:
                             _canUseOnline && !_isBusy && _createdSession == null
@@ -275,7 +276,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                           child: Column(
                             children: <Widget>[
                               const Text(
-                                'WAR ROOM CODE',
+                                'SAVAŞ ODASI KODU',
                                 style: TextStyle(
                                   color: Color(0xFFFFD66D),
                                   fontSize: 12,
@@ -302,8 +303,8 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               if (_createdSession!.isHost) ...<Widget>[
                                 PremiumButton(
                                   label: _isBusy
-                                      ? 'STARTING...'
-                                      : 'START ONLINE WAR',
+                                      ? 'BAŞLIYOR...'
+                                      : 'ONLINE SAVAŞI BAŞLAT',
                                   icon: Icons.play_arrow,
                                   onPressed:
                                       !_isBusy &&
@@ -330,7 +331,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                 label: const Text('Copy Code'),
                               ),
                               const Text(
-                                'Share this code. The host starts when commanders are ready.',
+                                'Bu kodu paylaş. Komutanlar hazır olunca ev sahibi oyunu başlatır.',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: AppColors.premiumMutedText,
@@ -522,7 +523,7 @@ class _LobbyPlayerList extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         Text(
-          'Commanders ${players.length}/$maxPlayers',
+          'Komutanlar ${players.length}/$maxPlayers',
           textAlign: TextAlign.center,
           style: const TextStyle(
             color: AppColors.premiumMutedText,

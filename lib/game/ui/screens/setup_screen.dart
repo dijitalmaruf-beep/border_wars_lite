@@ -57,7 +57,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('COMMANDER NAME'),
+                            const _PanelLabel('KOMUTAN ADI'),
                             const SizedBox(height: 14),
                             TextField(
                               controller: _nameController,
@@ -66,7 +66,7 @@ class _SetupScreenState extends State<SetupScreen> {
                                 color: AppColors.premiumText,
                               ),
                               decoration: InputDecoration(
-                                hintText: 'Enter commander name...',
+                                hintText: 'Komutan adını gir...',
                                 hintStyle: const TextStyle(
                                   color: AppColors.premiumMutedText,
                                 ),
@@ -97,7 +97,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('CHOOSE YOUR COLOR'),
+                            const _PanelLabel('RENGİNİ SEÇ'),
                             const SizedBox(height: 16),
                             Wrap(
                               spacing: 10,
@@ -126,7 +126,7 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('BOT COMMANDERS'),
+                            const _PanelLabel('BOT KOMUTANLAR'),
                             const SizedBox(height: 14),
                             Row(
                               children: <Widget>[
@@ -153,8 +153,8 @@ class _SetupScreenState extends State<SetupScreen> {
                                       const SizedBox(height: 5),
                                       Text(
                                         _selectedBotCount == 1
-                                            ? 'bot opponent'
-                                            : 'bot opponents',
+                                            ? 'bot rakip'
+                                            : 'bot rakip',
                                         style: const TextStyle(
                                           color: AppColors.premiumMutedText,
                                           fontSize: 12,
@@ -205,7 +205,7 @@ class _SetupScreenState extends State<SetupScreen> {
                             SizedBox(width: 18),
                             Expanded(
                               child: Text(
-                                'Each commander starts with 3 territories and 6 armies.',
+                                'Her komutan 3 bölge ve 6 askerle başlar.',
                                 style: TextStyle(
                                   color: AppColors.premiumText,
                                   height: 1.35,
@@ -218,7 +218,7 @@ class _SetupScreenState extends State<SetupScreen> {
                       ),
                       const SizedBox(height: 28),
                       PremiumButton(
-                        label: 'START GAME',
+                        label: 'OYUNU BAŞLAT',
                         icon: Icons.flag,
                         onPressed: _startGame,
                       ),
@@ -264,7 +264,7 @@ class _SetupHeader extends StatelessWidget {
     return const Column(
       children: <Widget>[
         Text(
-          'COMMANDER SETUP',
+          'KOMUTAN KURULUMU',
           textAlign: TextAlign.center,
           style: TextStyle(
             color: AppColors.premiumText,
@@ -287,7 +287,7 @@ class _SetupHeader extends StatelessWidget {
         ),
         SizedBox(height: 14),
         Text(
-          'Choose your identity and lead your empire.',
+          'Kimliğini seç ve imparatorluğuna liderlik et.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.premiumMutedText, fontSize: 16),
         ),
@@ -329,7 +329,7 @@ class _ColorOrb extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: isSelected ? 'Selected' : 'Select color',
+      message: isSelected ? 'Seçili' : 'Renk seç',
       child: InkWell(
         borderRadius: BorderRadius.circular(30),
         onTap: onTap,

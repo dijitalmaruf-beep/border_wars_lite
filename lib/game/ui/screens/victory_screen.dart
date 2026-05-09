@@ -62,7 +62,7 @@ class VictoryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       const Text(
-                        'COMMANDER WINS',
+                        'KOMUTAN KAZANDI',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Color(0xFFFFD66D),
@@ -73,7 +73,7 @@ class VictoryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        '$territoryCount / $totalTerritoryCount territories controlled',
+                        '$territoryCount / $totalTerritoryCount bölge kontrol altında',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.premiumMutedText,
@@ -83,7 +83,7 @@ class VictoryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 6),
                       const Text(
-                        'Victory secured by world domination.',
+                        'Zafer dünya hakimiyetiyle güvence altına alındı.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumMutedText,
@@ -93,7 +93,7 @@ class VictoryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 28),
                       PremiumButton(
-                        label: 'NEW GAME',
+                        label: 'YENİ OYUN',
                         icon: Icons.refresh,
                         onPressed: () {
                           Navigator.of(context).pushAndRemoveUntil(

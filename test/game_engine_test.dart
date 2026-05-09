@@ -140,7 +140,7 @@ void main() {
     expect(nextState.selectedTargetId, isNull);
     expect(
       nextState.statusMessage,
-      'Only neighboring enemy territories can be attacked.',
+      'Sadece komşu düşman bölgelerine saldırabilirsin.',
     );
   });
 
@@ -153,7 +153,7 @@ void main() {
 
     expect(nextState.selectedSourceId, 'western_us');
     expect(nextState.selectedTargetId, 'central_us');
-    expect(nextState.statusMessage, 'Attack ready. 2 armies move on conquest.');
+    expect(nextState.statusMessage, 'Central US hedef seçildi. Saldırı hazır.');
     expect(engine.movedArmiesOnWinForSelection(nextState), 2);
   });
 
@@ -172,7 +172,7 @@ void main() {
     expect(nextState.territoryById('western_us').armyCount, 3);
     expect(nextState.territoryById('central_us').armyCount, 5);
     expect(nextState.transferUsedThisTurn, isTrue);
-    expect(nextState.statusMessage, 'Transferred 3 armies to Central US.');
+    expect(nextState.statusMessage, 'Central US bölgesine 3 asker taşındı.');
   });
 
   test('non-neighbor transfer fails', () {
@@ -260,7 +260,7 @@ void main() {
     expect(secondTransfer.territoryById('western_us').armyCount, 5);
     expect(secondTransfer.territoryById('central_us').armyCount, 3);
     expect(secondTransfer.transferUsedThisTurn, isTrue);
-    expect(secondTransfer.statusMessage, 'Transfer already used this turn.');
+    expect(secondTransfer.statusMessage, 'Bu tur transfer hakkı kullanıldı.');
   });
 
   test('transferUsedThisTurn resets on next turn', () {
@@ -305,7 +305,7 @@ void main() {
     expect(humanTurn.selectedSourceId, isNull);
     expect(humanTurn.selectedTargetId, isNull);
     expect(humanTurn.transferUsedThisTurn, isFalse);
-    expect(humanTurn.statusMessage, 'Choose a territory to reinforce.');
+    expect(humanTurn.statusMessage, 'Takviye yapmak için bir bölge seç.');
   });
 
   test('detects victory at seventy percent territory control', () {

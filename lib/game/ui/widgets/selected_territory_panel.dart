@@ -36,16 +36,16 @@ class SelectedTerritoryPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
             const Text(
-              'Selection',
+              'Seçim',
               style: TextStyle(
                 color: AppColors.ink,
                 fontWeight: FontWeight.w800,
               ),
             ),
             const SizedBox(height: 12),
-            _TerritorySummary(label: 'Source', territory: source, state: state),
+            _TerritorySummary(label: 'Kaynak', territory: source, state: state),
             const SizedBox(height: 8),
-            _TerritorySummary(label: 'Target', territory: target, state: state),
+            _TerritorySummary(label: 'Hedef', territory: target, state: state),
             const SizedBox(height: 14),
             if (canAttack) ...<Widget>[
               Row(
@@ -53,7 +53,7 @@ class SelectedTerritoryPanel extends StatelessWidget {
                   const Icon(Icons.percent, size: 18),
                   const SizedBox(width: 8),
                   Text(
-                    '$percent% win chance',
+                    'Kazanma şansı: %$percent',
                     style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ],
@@ -62,11 +62,11 @@ class SelectedTerritoryPanel extends StatelessWidget {
               FilledButton.icon(
                 onPressed: onAttack,
                 icon: const Icon(Icons.gps_fixed),
-                label: const Text('Attack'),
+                label: const Text('Saldır'),
               ),
             ] else
               const Text(
-                'Pick a source and neighboring enemy target.',
+                'Kaynak ve komşu düşman hedef seç.',
                 style: TextStyle(color: AppColors.mutedInk),
               ),
           ],
@@ -90,7 +90,9 @@ class _TerritorySummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final owner = state.playerById(territory?.ownerId);
-    final ownerColor = owner == null ? AppColors.neutral : Color(owner.colorValue);
+    final ownerColor = owner == null
+        ? AppColors.neutral
+        : Color(owner.colorValue);
 
     return Container(
       padding: const EdgeInsets.all(10),
@@ -122,7 +124,7 @@ class _TerritorySummary extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  territory?.name ?? 'None',
+                  territory?.name ?? 'Yok',
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.ink,

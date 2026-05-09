@@ -47,7 +47,7 @@ void main() {
     expect(result.movedArmies, greaterThanOrEqualTo(1));
     expect(result.movedArmies, lessThanOrEqualTo(source.armyCount - 1));
     expect(result.defenderLosses, target.armyCount);
-    expect(result.message, 'Source conquered Target. Moved 4 in.');
+    expect(result.message, 'Target fethedildi. 4 asker ilerledi.');
   });
 
   test('keeps combat results within army bounds on loss', () {

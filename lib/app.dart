@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'core/constants/app_colors.dart';
 import 'game/ui/screens/home_screen.dart';
@@ -11,6 +12,13 @@ class BorderWarsLiteApp extends StatelessWidget {
     return MaterialApp(
       title: 'Border Wars Lite',
       debugShowCheckedModeBanner: false,
+      locale: const Locale('tr'),
+      supportedLocales: const <Locale>[Locale('tr'), Locale('en')],
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ],
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.humanBlue,

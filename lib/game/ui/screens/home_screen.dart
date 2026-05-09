@@ -50,7 +50,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const _GameLogo(),
                       const SizedBox(height: 18),
                       const Text(
-                        'Conquer the world.\nOutthink your enemies.',
+                        'Dünyayı fethet.\nRakiplerinden daha akıllı oyna.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumMutedText,
@@ -61,13 +61,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 36),
                       PremiumButton(
-                        label: 'NEW GAME',
+                        label: 'YENİ OYUN',
                         icon: Icons.sports_martial_arts,
                         onPressed: _startNewGame,
                       ),
                       const SizedBox(height: 14),
                       PremiumButton(
-                        label: 'ONLINE GAME',
+                        label: 'ONLINE OYUN',
                         icon: Icons.cloud,
                         onPressed: () {
                           Navigator.of(context).push(
@@ -81,7 +81,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 14),
                       PremiumButton(
-                        label: _isContinuing ? 'LOADING SAVE' : 'CONTINUE GAME',
+                        label: _isContinuing ? 'KAYIT YÜKLENİYOR' : 'DEVAM ET',
                         icon: _hasSavedGame
                             ? Icons.history
                             : Icons.history_toggle_off,
@@ -91,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 14),
                       PremiumButton(
-                        label: 'SETTINGS',
+                        label: 'AYARLAR',
                         icon: Icons.settings,
                         onPressed: _openSettings,
                         tone: PremiumButtonTone.dark,
@@ -149,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No saved local game yet. Start a new game first.'),
+          content: Text('Kayıtlı oyun yok. Önce yeni oyun başlat.'),
         ),
       );
       return;

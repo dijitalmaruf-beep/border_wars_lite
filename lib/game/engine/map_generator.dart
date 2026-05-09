@@ -144,7 +144,7 @@ class MapGenerator {
       selectedTargetId: null,
       turnNumber: 1,
       turnStartedAtMillis: DateTime.now().millisecondsSinceEpoch,
-      statusMessage: 'Choose a territory to reinforce.',
+      statusMessage: 'Takviye yapmak için bir bölge seç.',
     );
 
     return initialState.copyWith(

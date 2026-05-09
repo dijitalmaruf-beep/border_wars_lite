@@ -24,6 +24,10 @@ class CombatResolver {
     return min(source.armyCount - 1, max(1, attackerPower ~/ 2));
   }
 
+  int maxMovedArmiesOnWin(Territory source) {
+    return max(0, source.armyCount - 1);
+  }
+
   AttackResult resolve({
     required Territory source,
     required Territory target,
@@ -48,8 +52,7 @@ class CombatResolver {
         attackerLosses: 0,
         defenderLosses: target.armyCount,
         movedArmies: movedArmies,
-        message:
-            '${source.name} conquered ${target.name}. Moved $movedArmies in.',
+        message: '${target.name} fethedildi. $movedArmies asker ilerledi.',
       );
     }
 
@@ -68,7 +71,7 @@ class CombatResolver {
       attackerLosses: attackerLosses,
       defenderLosses: defenderLosses,
       movedArmies: 0,
-      message: '${source.name} failed to take ${target.name}.',
+      message: '${source.name}, ${target.name} bölgesini alamadı.',
     );
   }
 }

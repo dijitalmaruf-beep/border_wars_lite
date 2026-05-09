@@ -48,12 +48,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: () => Navigator.of(context).pop(),
                         icon: const Icon(Icons.arrow_back),
                         color: AppColors.premiumText,
-                        tooltip: 'Back',
+                        tooltip: 'Geri',
                       ),
                     ),
                     const SizedBox(height: 22),
                     const Text(
-                      'SETTINGS',
+                      'AYARLAR',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.premiumText,
@@ -64,7 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Tune local play options for this device.',
+                      'Bu cihazdaki yerel oyun seçeneklerini ayarla.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: AppColors.premiumMutedText,
@@ -91,9 +91,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 child: Column(
                                   children: <Widget>[
                                     _SettingsSwitch(
-                                      title: 'Auto-save local games',
+                                      title: 'Yerel oyunları otomatik kaydet',
                                       subtitle:
-                                          'Continue Game will resume your latest local match.',
+                                          'Devam Et son yerel maçını yükler.',
                                       value: _settings.autoSaveLocalGame,
                                       onChanged: (value) => _updateSettings(
                                         _settings.copyWith(
@@ -103,9 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     const _SettingsDivider(),
                                     _SettingsSwitch(
-                                      title: 'Confirm end turn',
+                                      title: 'Tur bitirmeyi onaylat',
                                       subtitle:
-                                          'Ask before ending your turn in local matches.',
+                                          'Yerel maçlarda tur bitmeden önce sor.',
                                       value: _settings.confirmEndTurn,
                                       onChanged: (value) => _updateSettings(
                                         _settings.copyWith(
@@ -141,8 +141,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         Expanded(
                                           child: Text(
                                             _hasSavedGame
-                                                ? 'A local save is available.'
-                                                : 'No local save yet.',
+                                                ? 'Yerel kayıt mevcut.'
+                                                : 'Henüz yerel kayıt yok.',
                                             style: const TextStyle(
                                               color: AppColors.premiumText,
                                               fontSize: 14,
@@ -154,7 +154,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     ),
                                     const SizedBox(height: 14),
                                     PremiumButton(
-                                      label: 'CLEAR SAVED GAME',
+                                      label: 'KAYDI SİL',
                                       icon: Icons.delete_outline,
                                       onPressed: _hasSavedGame
                                           ? _confirmClearSavedGame
@@ -205,21 +205,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF101923),
         title: const Text(
-          'Clear saved game?',
+          'Kayıtlı oyun silinsin mi?',
           style: TextStyle(color: AppColors.premiumText),
         ),
         content: const Text(
-          'This removes the local Continue Game save on this device.',
+          'Bu işlem bu cihazdaki Devam Et kaydını siler.',
           style: TextStyle(color: AppColors.premiumMutedText),
         ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
+            child: const Text('Vazgeç'),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Clear'),
+            child: const Text('Sil'),
           ),
         ],
       ),
@@ -238,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Saved game cleared.')));
+    ).showSnackBar(const SnackBar(content: Text('Kayıtlı oyun silindi.')));
   }
 }
 
