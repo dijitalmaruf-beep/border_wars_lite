@@ -17,15 +17,84 @@ class MapGenerator {
   static const _atlasBotColorValue = 0xFF0891B2;
   static const _novaBotColorValue = 0xFFBE185D;
   static const _terraBotColorValue = 0xFF65A30D;
+  static const _botTemplates = <_BotTemplate>[
+    _BotTemplate(
+      id: 'atlas_bot',
+      name: 'Atlas Bot',
+      colorValue: _atlasBotColorValue,
+      personality: BotPersonality.aggressive,
+    ),
+    _BotTemplate(
+      id: 'nova_bot',
+      name: 'Nova Bot',
+      colorValue: _novaBotColorValue,
+      personality: BotPersonality.opportunistic,
+    ),
+    _BotTemplate(
+      id: 'terra_bot',
+      name: 'Terra Bot',
+      colorValue: _terraBotColorValue,
+      personality: BotPersonality.defensive,
+    ),
+    _BotTemplate(
+      id: 'orion_bot',
+      name: 'Orion Bot',
+      colorValue: 0xFFF59E0B,
+      personality: BotPersonality.aggressive,
+    ),
+    _BotTemplate(
+      id: 'vela_bot',
+      name: 'Vela Bot',
+      colorValue: 0xFF7C3AED,
+      personality: BotPersonality.opportunistic,
+    ),
+    _BotTemplate(
+      id: 'sol_bot',
+      name: 'Sol Bot',
+      colorValue: 0xFFDC2626,
+      personality: BotPersonality.defensive,
+    ),
+    _BotTemplate(
+      id: 'lyra_bot',
+      name: 'Lyra Bot',
+      colorValue: 0xFF2563EB,
+      personality: BotPersonality.aggressive,
+    ),
+    _BotTemplate(
+      id: 'aegis_bot',
+      name: 'Aegis Bot',
+      colorValue: 0xFF14B8A6,
+      personality: BotPersonality.opportunistic,
+    ),
+    _BotTemplate(
+      id: 'zenith_bot',
+      name: 'Zenith Bot',
+      colorValue: 0xFFEAB308,
+      personality: BotPersonality.defensive,
+    ),
+  ];
+  static const _fallbackBotColorValues = <int>[
+    0xFF22C55E,
+    0xFFF43F5E,
+    0xFF38BDF8,
+    0xFFA855F7,
+    0xFFF97316,
+    0xFF84CC16,
+    0xFFEAB308,
+    0xFF64748B,
+    0xFF14B8A6,
+  ];
 
   GameState createInitialState({
     required String humanName,
     required int humanColorValue,
+    int botCount = GameConstants.defaultBotPlayers,
     int? seed,
   }) {
     final players = createPlayers(
       humanName: humanName,
       humanColorValue: humanColorValue,
+      botCount: botCount,
     );
     return createInitialStateForPlayers(
       players: players,
@@ -81,10 +150,14 @@ class MapGenerator {
   List<Player> createPlayers({
     required String humanName,
     required int humanColorValue,
+    int botCount = GameConstants.defaultBotPlayers,
   }) {
     final cleanName = humanName.trim().isEmpty
         ? GameConstants.defaultHumanName
         : humanName.trim();
+    final boundedBotCount = botCount
+        .clamp(GameConstants.minBotPlayers, GameConstants.maxBotPlayers)
+        .toInt();
     return <Player>[
       Player(
         id: GameConstants.humanPlayerId,
@@ -92,28 +165,71 @@ class MapGenerator {
         colorValue: humanColorValue,
         isBot: false,
       ),
-      const Player(
-        id: 'atlas_bot',
-        name: 'Atlas Bot',
-        colorValue: _atlasBotColorValue,
-        isBot: true,
-        botPersonality: BotPersonality.aggressive,
-      ),
-      const Player(
-        id: 'nova_bot',
-        name: 'Nova Bot',
-        colorValue: _novaBotColorValue,
-        isBot: true,
-        botPersonality: BotPersonality.opportunistic,
-      ),
-      const Player(
-        id: 'terra_bot',
-        name: 'Terra Bot',
-        colorValue: _terraBotColorValue,
-        isBot: true,
-        botPersonality: BotPersonality.defensive,
+      ...createBotPlayers(
+        count: boundedBotCount,
+        reservedColorValues: <int>{humanColorValue},
       ),
     ];
+  }
+
+  List<Player> createBotPlayers({
+    required int count,
+    int startIndex = 0,
+    Set<int> reservedColorValues = const <int>{},
+  }) {
+    final boundedStartIndex = startIndex.clamp(0, _botTemplates.length).toInt();
+    final availableCount = _botTemplates.length - boundedStartIndex;
+    final boundedCount = count.clamp(0, availableCount).toInt();
+    final usedColors = <int>{...reservedColorValues};
+
+    return _botTemplates
+        .skip(boundedStartIndex)
+        .take(boundedCount)
+        .map((bot) {
+          final colorValue = _distinctColor(bot.colorValue, usedColors);
+          usedColors.add(colorValue);
+          return Player(
+            id: bot.id,
+            name: bot.name,
+            colorValue: colorValue,
+            isBot: true,
+            botPersonality: bot.personality,
+          );
+        })
+        .toList(growable: false);
+  }
+
+  int _distinctColor(int preferredColor, Set<int> usedColors) {
+    if (!_isTooCloseToAny(preferredColor, usedColors)) {
+      return preferredColor;
+    }
+    for (final fallbackColor in _fallbackBotColorValues) {
+      if (!_isTooCloseToAny(fallbackColor, usedColors)) {
+        return fallbackColor;
+      }
+    }
+    return preferredColor;
+  }
+
+  bool _isTooCloseToAny(int candidateColor, Set<int> usedColors) {
+    return usedColors.any(
+      (usedColor) => _colorDistance(candidateColor, usedColor) < 95,
+    );
+  }
+
+  double _colorDistance(int leftColor, int rightColor) {
+    final leftRed = (leftColor >> 16) & 0xFF;
+    final leftGreen = (leftColor >> 8) & 0xFF;
+    final leftBlue = leftColor & 0xFF;
+    final rightRed = (rightColor >> 16) & 0xFF;
+    final rightGreen = (rightColor >> 8) & 0xFF;
+    final rightBlue = rightColor & 0xFF;
+    final redDelta = leftRed - rightRed;
+    final greenDelta = leftGreen - rightGreen;
+    final blueDelta = leftBlue - rightBlue;
+    return sqrt(
+      redDelta * redDelta + greenDelta * greenDelta + blueDelta * blueDelta,
+    );
   }
 
   Map<String, String> _startingTerritoryOwners(
@@ -240,4 +356,18 @@ class MapGenerator {
     }
     return assignment;
   }
+}
+
+class _BotTemplate {
+  const _BotTemplate({
+    required this.id,
+    required this.name,
+    required this.colorValue,
+    required this.personality,
+  });
+
+  final String id;
+  final String name;
+  final int colorValue;
+  final BotPersonality personality;
 }

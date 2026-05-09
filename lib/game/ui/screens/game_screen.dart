@@ -928,7 +928,7 @@ class _PlayerStrip extends StatelessWidget {
     return PremiumPanel(
       padding: EdgeInsets.zero,
       child: SizedBox(
-        height: 50,
+        height: 52,
         child: LayoutBuilder(
           builder: (context, constraints) {
             const horizontalPadding = 6.0;
@@ -939,28 +939,33 @@ class _PlayerStrip extends StatelessWidget {
                     horizontalPadding * 2 -
                     gap * (count - 1)) /
                 count;
+            final playableCardWidth = cardWidth.clamp(76.0, 118.0);
             return Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: horizontalPadding,
                 vertical: 5,
               ),
-              child: Row(
-                children: <Widget>[
-                  for (var index = 0; index < count; index++) ...<Widget>[
-                    Expanded(
-                      child: _PlayerCard(
-                        player: state.players[index],
-                        isCurrent:
-                            state.players[index].id == state.currentPlayer.id,
-                        territoryCount: state.ownedTerritoryCount(
-                          state.players[index].id,
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: <Widget>[
+                    for (var index = 0; index < count; index++) ...<Widget>[
+                      SizedBox(
+                        width: playableCardWidth,
+                        child: _PlayerCard(
+                          player: state.players[index],
+                          isCurrent:
+                              state.players[index].id == state.currentPlayer.id,
+                          territoryCount: state.ownedTerritoryCount(
+                            state.players[index].id,
+                          ),
+                          compact: playableCardWidth < 92,
                         ),
-                        compact: cardWidth < 88,
                       ),
-                    ),
-                    if (index != count - 1) const SizedBox(width: gap),
+                      if (index != count - 1) const SizedBox(width: gap),
+                    ],
                   ],
-                ],
+                ),
               ),
             );
           },

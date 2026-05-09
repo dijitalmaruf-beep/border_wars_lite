@@ -31,6 +31,13 @@ class AppColors {
   static const humanRedValue = 0xFFDC2626;
   static const humanVioletValue = 0xFF7C3AED;
   static const humanAmberValue = 0xFFD97706;
+  static const humanCyanValue = 0xFF06B6D4;
+  static const humanRoseValue = 0xFFE11D48;
+  static const humanLimeValue = 0xFF84CC16;
+  static const humanOrangeValue = 0xFFF97316;
+  static const humanIndigoValue = 0xFF4F46E5;
+  static const humanGoldValue = 0xFFEAB308;
+  static const humanSlateValue = 0xFF64748B;
 
   static const atlasBotValue = 0xFF0891B2;
   static const novaBotValue = 0xFFBE185D;
@@ -44,5 +51,12 @@ class AppColors {
     humanRedValue,
     humanVioletValue,
     humanAmberValue,
+    humanCyanValue,
+    humanRoseValue,
+    humanLimeValue,
+    humanOrangeValue,
+    humanIndigoValue,
+    humanGoldValue,
+    humanSlateValue,
   ];
 }

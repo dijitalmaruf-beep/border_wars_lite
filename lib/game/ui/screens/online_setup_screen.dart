@@ -29,6 +29,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
   StreamSubscription<OnlineGameSession?>? _waitingSubscription;
   OnlineGameSession? _createdSession;
   int _selectedColorValue = AppColors.humanBlueValue;
+  int _selectedBotCount = 2;
   bool _isBusy = false;
   String? _errorMessage;
 
@@ -123,8 +124,9 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             const SizedBox(height: 16),
                             const _PanelLabel('CHOOSE YOUR COLOR'),
                             const SizedBox(height: 14),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
                               children: AppColors.humanColorValues.map((
                                 colorValue,
                               ) {
@@ -140,6 +142,74 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                         },
                                 );
                               }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('BOT COMMANDERS'),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: <Widget>[
+                                _StepperButton(
+                                  icon: Icons.remove,
+                                  onPressed: !_isBusy && _selectedBotCount > 0
+                                      ? () => _changeBotCount(-1)
+                                      : null,
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    children: <Widget>[
+                                      Text(
+                                        '$_selectedBotCount',
+                                        style: const TextStyle(
+                                          color: AppColors.premiumText,
+                                          fontSize: 30,
+                                          height: 1,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      const Text(
+                                        'bots in room',
+                                        style: TextStyle(
+                                          color: AppColors.premiumMutedText,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                _StepperButton(
+                                  icon: Icons.add,
+                                  onPressed:
+                                      !_isBusy &&
+                                          _selectedBotCount <
+                                              GameConstants.maxBotPlayers - 1
+                                      ? () => _changeBotCount(1)
+                                      : null,
+                                ),
+                              ],
+                            ),
+                            Slider(
+                              value: _selectedBotCount.toDouble(),
+                              min: 0,
+                              max: (GameConstants.maxBotPlayers - 1).toDouble(),
+                              divisions: GameConstants.maxBotPlayers - 1,
+                              activeColor: AppColors.premiumCyan,
+                              inactiveColor: AppColors.premiumBorder,
+                              onChanged: _isBusy
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _selectedBotCount = value.round();
+                                      });
+                                    },
                             ),
                           ],
                         ),
@@ -294,6 +364,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
       final session = await _repository.createOnlineGame(
         hostPlayerName: _nameController.text,
         hostColorValue: _selectedColorValue,
+        botCount: _selectedBotCount,
       );
       if (!mounted) {
         return;
@@ -365,6 +436,14 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
       _errorMessage = error.toString().replaceFirst('Bad state: ', '');
     });
   }
+
+  void _changeBotCount(int delta) {
+    setState(() {
+      _selectedBotCount = (_selectedBotCount + delta)
+          .clamp(0, GameConstants.maxBotPlayers - 1)
+          .toInt();
+    });
+  }
 }
 
 class _PanelLabel extends StatelessWidget {
@@ -381,6 +460,39 @@ class _PanelLabel extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w900,
         letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  const _StepperButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xAA06121D),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: onPressed == null
+                ? AppColors.premiumBorder.withValues(alpha: 0.32)
+                : AppColors.premiumCyan.withValues(alpha: 0.70),
+          ),
+        ),
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          color: onPressed == null
+              ? AppColors.premiumMutedText.withValues(alpha: 0.55)
+              : AppColors.premiumText,
+        ),
       ),
     );
   }
@@ -404,8 +516,8 @@ class _ColorOrb extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 140),
-        width: 54,
-        height: 54,
+        width: 46,
+        height: 46,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(

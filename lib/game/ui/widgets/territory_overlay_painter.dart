@@ -175,21 +175,20 @@ class TerritoryOverlayPainter extends CustomPainter {
           isSelected ||
           validSourceIds.contains(territory.id) ||
           validTargetIds.contains(territory.id);
-      if (owner == null && zoom < 1.16 && !isActionable) {
-        continue;
-      }
+      final isNeutral = owner == null;
+      final neutralAlpha = zoom < 1.16 && !isActionable ? 0.78 : 1.0;
 
       final anchor =
           territoryLabelAnchors[territory.id] ??
           Offset(territory.x * size.width, territory.y * size.height);
-      final ownerColor = owner == null
+      final ownerColor = isNeutral
           ? Colors.white.withValues(alpha: 0.52)
           : Color(owner.colorValue);
       final textPainter = TextPainter(
         text: TextSpan(
           text: territory.armyCount.toString(),
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.white.withValues(alpha: neutralAlpha),
             fontSize: fontSize,
             fontWeight: FontWeight.w900,
             shadows: const <Shadow>[Shadow(color: Colors.black, blurRadius: 5)],
@@ -222,24 +221,24 @@ class TerritoryOverlayPainter extends CustomPainter {
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
         Paint()
-          ..color = const Color(0xDD051019)
+          ..color = const Color(0xDD051019).withValues(alpha: neutralAlpha)
           ..maskFilter = ui.MaskFilter.blur(
             ui.BlurStyle.outer,
-            owner == null ? 1.0 / zoom : 1.9 / zoom,
+            isNeutral ? 1.0 / zoom : 1.9 / zoom,
           ),
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
         Paint()
           ..style = PaintingStyle.fill
-          ..color = const Color(0xE6051019),
+          ..color = const Color(0xE6051019).withValues(alpha: neutralAlpha),
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.75 / zoom
-          ..color = ownerColor.withValues(alpha: owner == null ? 0.28 : 0.78),
+          ..color = ownerColor.withValues(alpha: isNeutral ? 0.42 : 0.78),
       );
 
       textPainter.paint(

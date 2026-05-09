@@ -79,6 +79,60 @@ void main() {
     );
   });
 
+  test('custom bot count creates requested bot opponents', () {
+    final state = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      botCount: 7,
+      seed: 44,
+    );
+
+    expect(state.players.where((player) => player.isBot), hasLength(7));
+    expect(state.players, hasLength(8));
+    for (final player in state.players) {
+      expect(
+        state.territoriesOwnedBy(player.id),
+        hasLength(GameConstants.startingTerritoriesPerPlayer),
+      );
+    }
+  });
+
+  test('bot count is clamped to supported range', () {
+    final highBotState = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      botCount: 99,
+      seed: 45,
+    );
+    final lowBotState = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      botCount: 0,
+      seed: 46,
+    );
+
+    expect(
+      highBotState.players.where((player) => player.isBot),
+      hasLength(GameConstants.maxBotPlayers),
+    );
+    expect(
+      lowBotState.players.where((player) => player.isBot),
+      hasLength(GameConstants.minBotPlayers),
+    );
+  });
+
+  test('bot colors avoid exact conflict with selected human color', () {
+    final state = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.atlasBotValue,
+      botCount: 5,
+      seed: 47,
+    );
+    final colorValues = state.players.map((player) => player.colorValue);
+
+    expect(colorValues.toSet(), hasLength(state.players.length));
+  });
+
   test('custom online players receive balanced starting territories', () {
     final state = generator.createInitialStateForPlayers(
       players: const <Player>[

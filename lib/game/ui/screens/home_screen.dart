@@ -180,32 +180,26 @@ class _HomeEmblem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      alignment: Alignment.center,
-      children: <Widget>[
-        Container(
-          width: 138,
-          height: 138,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: const RadialGradient(
-              colors: <Color>[Color(0xFF3A3222), Color(0xFF111820)],
-            ),
-            border: Border.all(color: const Color(0xFFC99C51), width: 2),
-            boxShadow: <BoxShadow>[
-              BoxShadow(
-                color: AppColors.premiumGold.withValues(alpha: 0.24),
-                blurRadius: 24,
-              ),
-            ],
+    return Container(
+      width: 150,
+      height: 150,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(34),
+        border: Border.all(color: const Color(0xFFE6B45F), width: 1.5),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.premiumGold.withValues(alpha: 0.28),
+            blurRadius: 28,
+            spreadRadius: 2,
           ),
-        ),
-        const Icon(Icons.public, size: 78, color: Color(0xFFD6C3A0)),
-        const Positioned(
-          top: 12,
-          child: Icon(Icons.star, size: 36, color: Color(0xFFEBC46B)),
-        ),
-      ],
+          BoxShadow(
+            color: AppColors.premiumCyan.withValues(alpha: 0.12),
+            blurRadius: 22,
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Image.asset('assets/branding/app_icon.png', fit: BoxFit.cover),
     );
   }
 }

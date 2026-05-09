@@ -5,7 +5,10 @@ class GameConstants {
   static const neutralOwnerId = null;
   static const defaultHumanName = 'Commander';
 
-  static const totalBotPlayers = 3;
+  static const defaultBotPlayers = 3;
+  static const minBotPlayers = 1;
+  static const maxBotPlayers = 9;
+  static const totalBotPlayers = defaultBotPlayers;
   static const totalTerritories = 48;
   static const startingTerritoriesPerPlayer = 3;
   static const startingArmies = 6;

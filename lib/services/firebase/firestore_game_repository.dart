@@ -93,6 +93,7 @@ class FirestoreGameRepository {
   Future<OnlineGameSession> createOnlineGame({
     required String hostPlayerName,
     required int hostColorValue,
+    int botCount = 2,
   }) async {
     for (var attempt = 0; attempt < 10; attempt += 1) {
       final gameId = _newGameCode();
@@ -118,19 +119,10 @@ class FirestoreGameRepository {
             isBot: true,
             botPersonality: BotPersonality.aggressive,
           ),
-          const Player(
-            id: 'nova_bot',
-            name: 'Nova Bot',
-            colorValue: AppColors.novaBotValue,
-            isBot: true,
-            botPersonality: BotPersonality.opportunistic,
-          ),
-          const Player(
-            id: 'terra_bot',
-            name: 'Terra Bot',
-            colorValue: AppColors.terraBotValue,
-            isBot: true,
-            botPersonality: BotPersonality.defensive,
+          ..._mapGenerator.createBotPlayers(
+            count: botCount,
+            startIndex: 1,
+            reservedColorValues: <int>{hostColorValue, AppColors.atlasBotValue},
           ),
         ],
         gameId: gameId,
@@ -144,6 +136,7 @@ class FirestoreGameRepository {
         'guestPlayerId': guestPlayerId,
         'hostName': hostName,
         'hostColorValue': hostColorValue,
+        'botCount': botCount,
         'state': _stateToFirestoreMap(waitingState),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
@@ -183,6 +176,7 @@ class FirestoreGameRepository {
         ? AppColors.atlasBotValue
         : playerColorValue;
     final guestName = _cleanName(playerName);
+    final botCount = data['botCount'] as int? ?? 2;
 
     final activeState = _mapGenerator.createInitialStateForPlayers(
       players: <Player>[
@@ -198,19 +192,10 @@ class FirestoreGameRepository {
           colorValue: guestColorValue,
           isBot: false,
         ),
-        const Player(
-          id: 'nova_bot',
-          name: 'Nova Bot',
-          colorValue: AppColors.novaBotValue,
-          isBot: true,
-          botPersonality: BotPersonality.opportunistic,
-        ),
-        const Player(
-          id: 'terra_bot',
-          name: 'Terra Bot',
-          colorValue: AppColors.terraBotValue,
-          isBot: true,
-          botPersonality: BotPersonality.defensive,
+        ..._mapGenerator.createBotPlayers(
+          count: botCount,
+          startIndex: 1,
+          reservedColorValues: <int>{hostColorValue, guestColorValue},
         ),
       ],
       gameId: normalizedGameId,

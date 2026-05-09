@@ -1,11 +1,11 @@
 {
-    "name": "border_wars_lite",
-    "short_name": "border_wars_lite",
+    "name": "Border Wars Lite",
+    "short_name": "Border Wars",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#020A12",
+    "theme_color": "#020A12",
+    "description": "A premium territory conquest strategy game for Android and Web.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -20,6 +20,7 @@ class _SetupScreenState extends State<SetupScreen> {
     text: GameConstants.defaultHumanName,
   );
   int _selectedColorValue = AppColors.humanBlueValue;
+  int _selectedBotCount = GameConstants.defaultBotPlayers;
 
   @override
   void dispose() {
@@ -37,113 +38,192 @@ class _SetupScreenState extends State<SetupScreen> {
               constraints: const BoxConstraints(maxWidth: 430),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.arrow_back),
-                        color: AppColors.premiumText,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: <Widget>[
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.arrow_back),
+                          color: AppColors.premiumText,
+                        ),
                       ),
-                    ),
-                    const Spacer(),
-                    const _SetupHeader(),
-                    const SizedBox(height: 28),
-                    PremiumPanel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const _PanelLabel('COMMANDER NAME'),
-                          const SizedBox(height: 14),
-                          TextField(
-                            controller: _nameController,
-                            textInputAction: TextInputAction.done,
-                            style: const TextStyle(color: AppColors.premiumText),
-                            decoration: InputDecoration(
-                              hintText: 'Enter commander name...',
-                              hintStyle: const TextStyle(
-                                color: AppColors.premiumMutedText,
-                              ),
-                              prefixIcon: const Icon(Icons.person),
-                              prefixIconColor: const Color(0xFFD8D1C8),
-                              filled: true,
-                              fillColor: const Color(0xAA06121D),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(
-                                  color: Color(0xFF748395),
-                                ),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(8),
-                                borderSide: const BorderSide(
-                                  color: AppColors.premiumCyan,
-                                  width: 1.4,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    PremiumPanel(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const _PanelLabel('CHOOSE YOUR COLOR'),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: AppColors.humanColorValues.map((colorValue) {
-                              final isSelected = colorValue == _selectedColorValue;
-                              return _ColorOrb(
-                                colorValue: colorValue,
-                                isSelected: isSelected,
-                                onTap: () {
-                                  setState(() {
-                                    _selectedColorValue = colorValue;
-                                  });
-                                },
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 44),
-                    const PremiumPanel(
-                      borderColor: Color(0xFFB9915A),
-                      child: Row(
-                        children: <Widget>[
-                          Icon(
-                            Icons.workspace_premium,
-                            color: Color(0xFFEFC66F),
-                            size: 42,
-                          ),
-                          SizedBox(width: 18),
-                          Expanded(
-                            child: Text(
-                              'Each commander starts with 3 territories and 6 armies.',
-                              style: TextStyle(
+                      const SizedBox(height: 24),
+                      const _SetupHeader(),
+                      const SizedBox(height: 28),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('COMMANDER NAME'),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _nameController,
+                              textInputAction: TextInputAction.done,
+                              style: const TextStyle(
                                 color: AppColors.premiumText,
-                                height: 1.35,
-                                fontSize: 15,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'Enter commander name...',
+                                hintStyle: const TextStyle(
+                                  color: AppColors.premiumMutedText,
+                                ),
+                                prefixIcon: const Icon(Icons.person),
+                                prefixIconColor: const Color(0xFFD8D1C8),
+                                filled: true,
+                                fillColor: const Color(0xAA06121D),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF748395),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(
+                                    color: AppColors.premiumCyan,
+                                    width: 1.4,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const Spacer(flex: 2),
-                    PremiumButton(
-                      label: 'START GAME',
-                      icon: Icons.flag,
-                      onPressed: _startGame,
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('CHOOSE YOUR COLOR'),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 10,
+                              children: AppColors.humanColorValues.map((
+                                colorValue,
+                              ) {
+                                final isSelected =
+                                    colorValue == _selectedColorValue;
+                                return _ColorOrb(
+                                  colorValue: colorValue,
+                                  isSelected: isSelected,
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedColorValue = colorValue;
+                                    });
+                                  },
+                                );
+                              }).toList(),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('BOT COMMANDERS'),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: <Widget>[
+                                _StepperButton(
+                                  icon: Icons.remove,
+                                  onPressed:
+                                      _selectedBotCount >
+                                          GameConstants.minBotPlayers
+                                      ? () => _changeBotCount(-1)
+                                      : null,
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    children: <Widget>[
+                                      Text(
+                                        '$_selectedBotCount',
+                                        style: const TextStyle(
+                                          color: AppColors.premiumText,
+                                          fontSize: 34,
+                                          height: 1,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      Text(
+                                        _selectedBotCount == 1
+                                            ? 'bot opponent'
+                                            : 'bot opponents',
+                                        style: const TextStyle(
+                                          color: AppColors.premiumMutedText,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                _StepperButton(
+                                  icon: Icons.add,
+                                  onPressed:
+                                      _selectedBotCount <
+                                          GameConstants.maxBotPlayers
+                                      ? () => _changeBotCount(1)
+                                      : null,
+                                ),
+                              ],
+                            ),
+                            Slider(
+                              value: _selectedBotCount.toDouble(),
+                              min: GameConstants.minBotPlayers.toDouble(),
+                              max: GameConstants.maxBotPlayers.toDouble(),
+                              divisions:
+                                  GameConstants.maxBotPlayers -
+                                  GameConstants.minBotPlayers,
+                              activeColor: AppColors.premiumCyan,
+                              inactiveColor: AppColors.premiumBorder,
+                              onChanged: (value) {
+                                setState(() {
+                                  _selectedBotCount = value.round();
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      const PremiumPanel(
+                        borderColor: Color(0xFFB9915A),
+                        child: Row(
+                          children: <Widget>[
+                            Icon(
+                              Icons.workspace_premium,
+                              color: Color(0xFFEFC66F),
+                              size: 42,
+                            ),
+                            SizedBox(width: 18),
+                            Expanded(
+                              child: Text(
+                                'Each commander starts with 3 territories and 6 armies.',
+                                style: TextStyle(
+                                  color: AppColors.premiumText,
+                                  height: 1.35,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 28),
+                      PremiumButton(
+                        label: 'START GAME',
+                        icon: Icons.flag,
+                        onPressed: _startGame,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -157,6 +237,7 @@ class _SetupScreenState extends State<SetupScreen> {
     final initialState = const MapGenerator().createInitialState(
       humanName: _nameController.text,
       humanColorValue: _selectedColorValue,
+      botCount: _selectedBotCount,
     );
 
     Navigator.of(context).pushReplacement(
@@ -164,6 +245,14 @@ class _SetupScreenState extends State<SetupScreen> {
         builder: (_) => GameScreen(initialState: initialState),
       ),
     );
+  }
+
+  void _changeBotCount(int delta) {
+    setState(() {
+      _selectedBotCount = (_selectedBotCount + delta)
+          .clamp(GameConstants.minBotPlayers, GameConstants.maxBotPlayers)
+          .toInt();
+    });
   }
 }
 
@@ -200,10 +289,7 @@ class _SetupHeader extends StatelessWidget {
         Text(
           'Choose your identity and lead your empire.',
           textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AppColors.premiumMutedText,
-            fontSize: 16,
-          ),
+          style: TextStyle(color: AppColors.premiumMutedText, fontSize: 16),
         ),
       ],
     );
@@ -249,8 +335,8 @@ class _ColorOrb extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 140),
-          width: 58,
-          height: 58,
+          width: 48,
+          height: 48,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
@@ -275,6 +361,39 @@ class _ColorOrb extends StatelessWidget {
           child: isSelected
               ? const Icon(Icons.check, color: Colors.white, size: 30)
               : null,
+        ),
+      ),
+    );
+  }
+}
+
+class _StepperButton extends StatelessWidget {
+  const _StepperButton({required this.icon, required this.onPressed});
+
+  final IconData icon;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 48,
+      height: 48,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xAA06121D),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: onPressed == null
+                ? AppColors.premiumBorder.withValues(alpha: 0.32)
+                : AppColors.premiumCyan.withValues(alpha: 0.70),
+          ),
+        ),
+        child: IconButton(
+          onPressed: onPressed,
+          icon: Icon(icon),
+          color: onPressed == null
+              ? AppColors.premiumMutedText.withValues(alpha: 0.55)
+              : AppColors.premiumText,
         ),
       ),
     );

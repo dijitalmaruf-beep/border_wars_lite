@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="border_wars_lite"
+        android:label="Border Wars Lite"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
