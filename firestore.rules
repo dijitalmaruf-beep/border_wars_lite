@@ -3,9 +3,87 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /games/{gameId} {
-      // MVP online rooms use short room codes and no auth yet.
-      // Tighten this before public production release.
-      allow read, write: if true;
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function participantUidsMatch(uidA, uidB) {
+        return request.resource.data.participantUids is list
+          && request.resource.data.participantUids.size() == 2
+          && request.resource.data.participantUids[0] == uidA
+          && request.resource.data.participantUids[1] == uidB;
+      }
+
+      function isParticipant() {
+        return signedIn()
+          && resource.data.participantUids is list
+          && request.auth.uid in resource.data.participantUids;
+      }
+
+      function isCreateRoom() {
+        return signedIn()
+          && request.resource.data.gameId == gameId
+          && request.resource.data.status == 'waiting'
+          && request.resource.data.hostUid == request.auth.uid
+          && request.resource.data.guestUid == null
+          && request.resource.data.participantUids is list
+          && request.resource.data.participantUids.size() == 1
+          && request.resource.data.participantUids[0] == request.auth.uid
+          && request.resource.data.updatedByUid == request.auth.uid;
+      }
+
+      function isJoinRoom() {
+        return signedIn()
+          && resource.data.status == 'waiting'
+          && resource.data.guestUid == null
+          && resource.data.hostUid != request.auth.uid
+          && request.resource.data.gameId == resource.data.gameId
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == request.auth.uid
+          && participantUidsMatch(resource.data.hostUid, request.auth.uid)
+          && request.resource.data.status == 'active'
+          && request.resource.data.updatedByUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status',
+            'guestUid',
+            'participantUids',
+            'guestName',
+            'guestColorValue',
+            'state',
+            'updatedByUid',
+            'updatedAt'
+          ]);
+      }
+
+      function keepsRoomOwnership() {
+        return request.resource.data.gameId == resource.data.gameId
+          && request.resource.data.hostUid == resource.data.hostUid
+          && request.resource.data.guestUid == resource.data.guestUid
+          && request.resource.data.participantUids == resource.data.participantUids
+          && request.resource.data.hostPlayerId == resource.data.hostPlayerId
+          && request.resource.data.guestPlayerId == resource.data.guestPlayerId;
+      }
+
+      function isParticipantGameUpdate() {
+        return isParticipant()
+          && resource.data.status in ['active', 'finished']
+          && request.resource.data.status in ['active', 'finished']
+          && keepsRoomOwnership()
+          && request.resource.data.updatedByUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'status',
+            'state',
+            'updatedByUid',
+            'updatedAt'
+          ]);
+      }
+
+      allow get: if signedIn()
+        && (resource.data.status == 'waiting' || isParticipant());
+      allow list: if false;
+      allow create: if isCreateRoom();
+      allow update: if isJoinRoom() || isParticipantGameUpdate();
+      allow delete: if false;
     }
   }
 }

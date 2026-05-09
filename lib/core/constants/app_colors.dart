@@ -28,19 +28,19 @@ class AppColors {
 
   static const humanBlueValue = 0xFF2563EB;
   static const humanGreenValue = 0xFF16A34A;
-  static const humanRedValue = 0xFFDC2626;
+  static const humanRedValue = 0xFFE11D48;
   static const humanVioletValue = 0xFF7C3AED;
-  static const humanAmberValue = 0xFFD97706;
-  static const humanCyanValue = 0xFF06B6D4;
-  static const humanRoseValue = 0xFFE11D48;
-  static const humanLimeValue = 0xFF84CC16;
-  static const humanOrangeValue = 0xFFF97316;
+  static const humanAmberValue = 0xFFF59E0B;
+  static const humanCyanValue = 0xFF0891B2;
+  static const humanRoseValue = 0xFFC026D3;
+  static const humanLimeValue = 0xFF65A30D;
+  static const humanOrangeValue = 0xFFEA580C;
   static const humanIndigoValue = 0xFF4F46E5;
   static const humanGoldValue = 0xFFEAB308;
   static const humanSlateValue = 0xFF64748B;
 
-  static const atlasBotValue = 0xFF0891B2;
-  static const novaBotValue = 0xFFBE185D;
+  static const atlasBotValue = 0xFF06B6D4;
+  static const novaBotValue = 0xFFC026D3;
   static const terraBotValue = 0xFF65A30D;
 
   static const humanBlue = Color(humanBlueValue);
@@ -53,10 +53,6 @@ class AppColors {
     humanAmberValue,
     humanCyanValue,
     humanRoseValue,
-    humanLimeValue,
-    humanOrangeValue,
-    humanIndigoValue,
     humanGoldValue,
-    humanSlateValue,
   ];
 }

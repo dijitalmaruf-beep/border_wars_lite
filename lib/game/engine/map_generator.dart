@@ -14,8 +14,9 @@ class MapGenerator {
 
   final ReinforcementCalculator reinforcementCalculator;
 
-  static const _atlasBotColorValue = 0xFF0891B2;
-  static const _novaBotColorValue = 0xFFBE185D;
+  static const _minimumColorDistance = 108.0;
+  static const _atlasBotColorValue = 0xFF06B6D4;
+  static const _novaBotColorValue = 0xFFC026D3;
   static const _terraBotColorValue = 0xFF65A30D;
   static const _botTemplates = <_BotTemplate>[
     _BotTemplate(
@@ -51,7 +52,7 @@ class MapGenerator {
     _BotTemplate(
       id: 'sol_bot',
       name: 'Sol Bot',
-      colorValue: 0xFFDC2626,
+      colorValue: 0xFFE11D48,
       personality: BotPersonality.defensive,
     ),
     _BotTemplate(
@@ -63,7 +64,7 @@ class MapGenerator {
     _BotTemplate(
       id: 'aegis_bot',
       name: 'Aegis Bot',
-      colorValue: 0xFF14B8A6,
+      colorValue: 0xFF64748B,
       personality: BotPersonality.opportunistic,
     ),
     _BotTemplate(
@@ -74,15 +75,21 @@ class MapGenerator {
     ),
   ];
   static const _fallbackBotColorValues = <int>[
-    0xFF22C55E,
-    0xFFF43F5E,
-    0xFF38BDF8,
-    0xFFA855F7,
-    0xFFF97316,
-    0xFF84CC16,
+    0xFF2563EB,
+    0xFF16A34A,
+    0xFFE11D48,
+    0xFF7C3AED,
+    0xFFF59E0B,
+    0xFF06B6D4,
+    0xFFC026D3,
     0xFFEAB308,
+    0xFF65A30D,
     0xFF64748B,
-    0xFF14B8A6,
+    0xFFEA580C,
+    0xFF0F766E,
+    0xFF1E40AF,
+    0xFF9F1239,
+    0xFF78350F,
   ];
 
   GameState createInitialState({
@@ -203,18 +210,34 @@ class MapGenerator {
     if (!_isTooCloseToAny(preferredColor, usedColors)) {
       return preferredColor;
     }
-    for (final fallbackColor in _fallbackBotColorValues) {
-      if (!_isTooCloseToAny(fallbackColor, usedColors)) {
-        return fallbackColor;
+
+    var bestColor = preferredColor;
+    var bestDistance = -1.0;
+    final candidates = <int>{preferredColor, ..._fallbackBotColorValues};
+    for (final candidateColor in candidates) {
+      final distance = _minimumDistanceToUsed(candidateColor, usedColors);
+      if (distance > bestDistance) {
+        bestDistance = distance;
+        bestColor = candidateColor;
       }
     }
-    return preferredColor;
+    return bestColor;
   }
 
   bool _isTooCloseToAny(int candidateColor, Set<int> usedColors) {
     return usedColors.any(
-      (usedColor) => _colorDistance(candidateColor, usedColor) < 95,
+      (usedColor) =>
+          _colorDistance(candidateColor, usedColor) < _minimumColorDistance,
     );
+  }
+
+  double _minimumDistanceToUsed(int candidateColor, Set<int> usedColors) {
+    if (usedColors.isEmpty) {
+      return double.infinity;
+    }
+    return usedColors
+        .map((usedColor) => _colorDistance(candidateColor, usedColor))
+        .reduce(min);
   }
 
   double _colorDistance(int leftColor, int rightColor) {

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:border_wars_lite/core/constants/app_colors.dart';
 import 'package:border_wars_lite/core/constants/game_constants.dart';
 import 'package:border_wars_lite/game/data/sample_world_map.dart';
@@ -23,6 +25,21 @@ void main() {
       for (final territory in state.territories)
         if (territory.ownerId != null) territory.id: territory.ownerId!,
     };
+  }
+
+  double colorDistance(int leftColor, int rightColor) {
+    final leftRed = (leftColor >> 16) & 0xFF;
+    final leftGreen = (leftColor >> 8) & 0xFF;
+    final leftBlue = leftColor & 0xFF;
+    final rightRed = (rightColor >> 16) & 0xFF;
+    final rightGreen = (rightColor >> 8) & 0xFF;
+    final rightBlue = rightColor & 0xFF;
+    final redDelta = leftRed - rightRed;
+    final greenDelta = leftGreen - rightGreen;
+    final blueDelta = leftBlue - rightBlue;
+    return sqrt(
+      redDelta * redDelta + greenDelta * greenDelta + blueDelta * blueDelta,
+    );
   }
 
   test('same seed produces same assignment', () {
@@ -131,6 +148,27 @@ void main() {
     final colorValues = state.players.map((player) => player.colorValue);
 
     expect(colorValues.toSet(), hasLength(state.players.length));
+  });
+
+  test('max bot palette keeps player colors visibly separated', () {
+    final state = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanGoldValue,
+      botCount: GameConstants.maxBotPlayers,
+      seed: 48,
+    );
+    final colorValues = state.players
+        .map((player) => player.colorValue)
+        .toList(growable: false);
+
+    for (var left = 0; left < colorValues.length; left += 1) {
+      for (var right = left + 1; right < colorValues.length; right += 1) {
+        expect(
+          colorDistance(colorValues[left], colorValues[right]),
+          greaterThanOrEqualTo(65),
+        );
+      }
+    }
   });
 
   test('custom online players receive balanced starting territories', () {

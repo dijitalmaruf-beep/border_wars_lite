@@ -47,15 +47,18 @@ class FirestoreGameRepository {
       _db.collection('games');
 
   Future<void> saveGameState(GameState state) async {
+    final uid = await FirebaseService.ensureSignedInAnonymously();
     await _games.doc(state.id).set(<String, dynamic>{
       'gameId': state.id,
       'status': state.winnerId == null ? statusActive : statusFinished,
       'state': _stateToFirestoreMap(state),
+      'updatedByUid': uid,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 
   Future<GameState?> loadGameState(String gameId) async {
+    await FirebaseService.ensureSignedInAnonymously();
     final snapshot = await _games.doc(_normalizeGameId(gameId)).get();
     final data = snapshot.data();
     if (!snapshot.exists || data == null) {
@@ -95,6 +98,7 @@ class FirestoreGameRepository {
     required int hostColorValue,
     int botCount = 2,
   }) async {
+    final uid = await FirebaseService.ensureSignedInAnonymously();
     for (var attempt = 0; attempt < 10; attempt += 1) {
       final gameId = _newGameCode();
       final doc = _games.doc(gameId);
@@ -134,10 +138,14 @@ class FirestoreGameRepository {
         'status': statusWaiting,
         'hostPlayerId': hostPlayerId,
         'guestPlayerId': guestPlayerId,
+        'hostUid': uid,
+        'guestUid': null,
+        'participantUids': <String>[uid],
         'hostName': hostName,
         'hostColorValue': hostColorValue,
         'botCount': botCount,
         'state': _stateToFirestoreMap(waitingState),
+        'updatedByUid': uid,
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -158,58 +166,75 @@ class FirestoreGameRepository {
     required String playerName,
     required int playerColorValue,
   }) async {
+    final uid = await FirebaseService.ensureSignedInAnonymously();
     final normalizedGameId = _normalizeGameId(gameId);
     final doc = _games.doc(normalizedGameId);
-    final snapshot = await doc.get();
-    final data = snapshot.data();
-    if (!snapshot.exists || data == null) {
-      throw StateError('Game not found.');
-    }
-    if ((data['status'] as String? ?? statusWaiting) != statusWaiting) {
-      throw StateError('This game has already started.');
-    }
+    late final GameState activeState;
 
-    final hostName = _cleanName(data['hostName'] as String?);
-    final hostColorValue =
-        data['hostColorValue'] as int? ?? AppColors.humanBlueValue;
-    final guestColorValue = playerColorValue == hostColorValue
-        ? AppColors.atlasBotValue
-        : playerColorValue;
-    final guestName = _cleanName(playerName);
-    final botCount = data['botCount'] as int? ?? 2;
+    await _db.runTransaction((transaction) async {
+      final snapshot = await transaction.get(doc);
+      final data = snapshot.data();
+      if (!snapshot.exists || data == null) {
+        throw StateError('Game not found.');
+      }
+      if ((data['status'] as String? ?? statusWaiting) != statusWaiting ||
+          data['guestUid'] != null) {
+        throw StateError('This game has already started.');
+      }
 
-    final activeState = _mapGenerator.createInitialStateForPlayers(
-      players: <Player>[
-        Player(
-          id: hostPlayerId,
-          name: hostName,
-          colorValue: hostColorValue,
-          isBot: false,
-        ),
-        Player(
-          id: guestPlayerId,
-          name: guestName,
-          colorValue: guestColorValue,
-          isBot: false,
-        ),
-        ..._mapGenerator.createBotPlayers(
-          count: botCount,
-          startIndex: 1,
-          reservedColorValues: <int>{hostColorValue, guestColorValue},
-        ),
-      ],
-      gameId: normalizedGameId,
-      firstPlayerId: hostPlayerId,
-    );
+      final hostUid = data['hostUid'] as String?;
+      if (hostUid == null || hostUid.isEmpty) {
+        throw StateError('This online game was created by an older build.');
+      }
+      if (hostUid == uid) {
+        throw StateError('Use another device to join your own room.');
+      }
 
-    await doc.set(<String, dynamic>{
-      'gameId': normalizedGameId,
-      'status': statusActive,
-      'guestName': guestName,
-      'guestColorValue': guestColorValue,
-      'state': _stateToFirestoreMap(activeState),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+      final hostName = _cleanName(data['hostName'] as String?);
+      final hostColorValue =
+          data['hostColorValue'] as int? ?? AppColors.humanBlueValue;
+      final guestColorValue = playerColorValue == hostColorValue
+          ? AppColors.atlasBotValue
+          : playerColorValue;
+      final guestName = _cleanName(playerName);
+      final botCount = data['botCount'] as int? ?? 2;
+
+      activeState = _mapGenerator.createInitialStateForPlayers(
+        players: <Player>[
+          Player(
+            id: hostPlayerId,
+            name: hostName,
+            colorValue: hostColorValue,
+            isBot: false,
+          ),
+          Player(
+            id: guestPlayerId,
+            name: guestName,
+            colorValue: guestColorValue,
+            isBot: false,
+          ),
+          ..._mapGenerator.createBotPlayers(
+            count: botCount,
+            startIndex: 1,
+            reservedColorValues: <int>{hostColorValue, guestColorValue},
+          ),
+        ],
+        gameId: normalizedGameId,
+        firstPlayerId: hostPlayerId,
+      );
+
+      transaction.set(doc, <String, dynamic>{
+        'gameId': normalizedGameId,
+        'status': statusActive,
+        'guestUid': uid,
+        'participantUids': <String>[hostUid, uid],
+        'guestName': guestName,
+        'guestColorValue': guestColorValue,
+        'state': _stateToFirestoreMap(activeState),
+        'updatedByUid': uid,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    });
 
     return OnlineGameSession(
       gameId: normalizedGameId,
