@@ -14,6 +14,7 @@ class GameState {
     required this.phase,
     required this.remainingReinforcements,
     required this.turnNumber,
+    required this.turnStartedAtMillis,
     this.transferUsedThisTurn = false,
     this.selectedSourceId,
     this.selectedTargetId,
@@ -29,6 +30,7 @@ class GameState {
   final GamePhase phase;
   final int remainingReinforcements;
   final int turnNumber;
+  final int turnStartedAtMillis;
   final bool transferUsedThisTurn;
   final String? selectedSourceId;
   final String? selectedTargetId;
@@ -85,6 +87,7 @@ class GameState {
     GamePhase? phase,
     int? remainingReinforcements,
     int? turnNumber,
+    int? turnStartedAtMillis,
     bool? transferUsedThisTurn,
     Object? selectedSourceId = _gameStateSentinel,
     Object? selectedTargetId = _gameStateSentinel,
@@ -100,6 +103,7 @@ class GameState {
       remainingReinforcements:
           remainingReinforcements ?? this.remainingReinforcements,
       turnNumber: turnNumber ?? this.turnNumber,
+      turnStartedAtMillis: turnStartedAtMillis ?? this.turnStartedAtMillis,
       transferUsedThisTurn: transferUsedThisTurn ?? this.transferUsedThisTurn,
       selectedSourceId: identical(selectedSourceId, _gameStateSentinel)
           ? this.selectedSourceId
@@ -123,6 +127,7 @@ class GameState {
       'phase': phase.name,
       'remainingReinforcements': remainingReinforcements,
       'turnNumber': turnNumber,
+      'turnStartedAtMillis': turnStartedAtMillis,
       'transferUsedThisTurn': transferUsedThisTurn,
       'selectedSourceId': selectedSourceId,
       'selectedTargetId': selectedTargetId,
@@ -154,6 +159,9 @@ class GameState {
       ),
       remainingReinforcements: map['remainingReinforcements'] as int,
       turnNumber: map['turnNumber'] as int,
+      turnStartedAtMillis:
+          map['turnStartedAtMillis'] as int? ??
+          DateTime.now().millisecondsSinceEpoch,
       transferUsedThisTurn: map['transferUsedThisTurn'] as bool? ?? false,
       selectedSourceId: map['selectedSourceId'] as String?,
       selectedTargetId: map['selectedTargetId'] as String?,

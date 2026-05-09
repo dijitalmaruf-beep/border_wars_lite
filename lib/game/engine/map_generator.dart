@@ -143,6 +143,7 @@ class MapGenerator {
       selectedSourceId: null,
       selectedTargetId: null,
       turnNumber: 1,
+      turnStartedAtMillis: DateTime.now().millisecondsSinceEpoch,
       statusMessage: 'Choose a territory to reinforce.',
     );
 

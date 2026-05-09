@@ -8,6 +8,7 @@ class TerritoryMap extends StatelessWidget {
     required this.state,
     required this.validSourceIds,
     required this.validTargetIds,
+    required this.controlledContinents,
     required this.onTerritoryTap,
     super.key,
   });
@@ -15,6 +16,7 @@ class TerritoryMap extends StatelessWidget {
   final GameState state;
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
+  final Set<String> controlledContinents;
   final ValueChanged<String> onTerritoryTap;
 
   @override
@@ -23,6 +25,7 @@ class TerritoryMap extends StatelessWidget {
       state: state,
       validSourceIds: validSourceIds,
       validTargetIds: validTargetIds,
+      controlledContinents: controlledContinents,
       onTerritoryTap: onTerritoryTap,
     );
   }

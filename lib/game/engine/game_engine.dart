@@ -296,6 +296,7 @@ class GameEngine {
       selectedSourceId: null,
       selectedTargetId: null,
       turnNumber: state.turnNumber + 1,
+      turnStartedAtMillis: DateTime.now().millisecondsSinceEpoch,
       statusMessage: nextPlayer.isBot
           ? '${nextPlayer.name} begins turn ${state.turnNumber + 1}.'
           : 'Choose a territory to reinforce.',

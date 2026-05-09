@@ -14,6 +14,7 @@ class TerritoryOverlayPainter extends CustomPainter {
     required this.territoryLabelAnchors,
     required this.validSourceIds,
     required this.validTargetIds,
+    required this.controlledContinents,
     this.mapZoom = 1.0,
     this.paintOwnership = false,
     this.paintLabelsAndHighlights = false,
@@ -25,6 +26,7 @@ class TerritoryOverlayPainter extends CustomPainter {
   final Map<String, Offset> territoryLabelAnchors;
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
+  final Set<String> controlledContinents;
   final double mapZoom;
   final bool paintOwnership;
   final bool paintLabelsAndHighlights;
@@ -33,10 +35,66 @@ class TerritoryOverlayPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (paintOwnership) {
       _paintOwnership(canvas, size);
+      _paintContinentBorders(canvas, size);
     }
     if (paintLabelsAndHighlights) {
       _paintHighlights(canvas, size);
       _paintArmyLabels(canvas, size);
+    }
+  }
+
+  void _paintContinentBorders(Canvas canvas, Size size) {
+    final pathsByContinent = <String, List<Path>>{};
+    final colorByContinent = <String, Color>{};
+    for (final territory in state.territories) {
+      final paths = territoryPaths[territory.id] ?? const <Path>[];
+      if (paths.isEmpty) {
+        continue;
+      }
+      pathsByContinent
+          .putIfAbsent(territory.continent, () => <Path>[])
+          .addAll(paths);
+      final owner = state.playerById(territory.ownerId);
+      if (owner != null) {
+        colorByContinent[territory.continent] = Color(owner.colorValue);
+      }
+    }
+
+    for (final entry in pathsByContinent.entries) {
+      final isControlled = controlledContinents.contains(entry.key);
+      final color = colorByContinent[entry.key] ?? AppColors.premiumGold;
+      final path = _combinedPath(entry.value);
+      final baseBorderPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _scaledStroke(size, 1.15)
+        ..color = Colors.white.withValues(alpha: 0.20);
+
+      canvas.drawPath(path, baseBorderPaint);
+
+      if (!isControlled) {
+        continue;
+      }
+
+      final auraPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _scaledStroke(size, 6.0)
+        ..color = color.withValues(alpha: 0.34)
+        ..maskFilter = ui.MaskFilter.blur(
+          ui.BlurStyle.outer,
+          6 / _effectiveZoom,
+        );
+      final borderPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _scaledStroke(size, 2.1)
+        ..color = AppColors.premiumGold.withValues(alpha: 0.92);
+      final innerPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = _scaledStroke(size, 0.8)
+        ..color = Colors.white.withValues(alpha: 0.52);
+
+      canvas.drawPath(path, auraPaint);
+      canvas.drawPath(path, borderPaint);
+      canvas.drawPath(path, innerPaint);
     }
   }
 
@@ -259,6 +317,7 @@ class TerritoryOverlayPainter extends CustomPainter {
         oldDelegate.territoryLabelAnchors != territoryLabelAnchors ||
         oldDelegate.validSourceIds != validSourceIds ||
         oldDelegate.validTargetIds != validTargetIds ||
+        oldDelegate.controlledContinents != controlledContinents ||
         oldDelegate.mapZoom != mapZoom ||
         oldDelegate.paintOwnership != paintOwnership ||
         oldDelegate.paintLabelsAndHighlights != paintLabelsAndHighlights;

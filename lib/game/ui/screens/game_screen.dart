@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/game_constants.dart';
 import '../../../services/firebase/firestore_game_repository.dart';
 import '../../../services/local/game_settings.dart';
 import '../../../services/local/local_save_repository.dart';
@@ -50,23 +51,30 @@ class _GameScreenState extends State<GameScreen> {
   GameSettings _settings = const GameSettings();
   _MapCommandMode _commandMode = _MapCommandMode.attack;
   Timer? _botTimer;
+  Timer? _turnTimer;
   StreamSubscription<GameState?>? _onlineSubscription;
   bool _isBotThinking = false;
   bool _navigatedToVictory = false;
   bool _isSavingOnline = false;
+  int _remainingTurnSeconds = GameConstants.turnDurationSeconds;
+  Set<String> _announcedControlledContinents = const <String>{};
 
   @override
   void initState() {
     super.initState();
     _state = widget.initialState;
+    _remainingTurnSeconds = _secondsLeftFor(_state);
+    _announcedControlledContinents = _controlledContinentsFor(_state);
     unawaited(_loadSettings());
     _subscribeToOnlineGame();
+    _startTurnTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) => _afterStateChanged());
   }
 
   @override
   void dispose() {
     _botTimer?.cancel();
+    _turnTimer?.cancel();
     _onlineSubscription?.cancel();
     super.dispose();
   }
@@ -85,6 +93,7 @@ class _GameScreenState extends State<GameScreen> {
     final winChance = canAttack ? _engine.winChanceForSelection(_state) : 0.0;
     final reinforcementBreakdown = _engine.reinforcementCalculator
         .breakdownForPlayer(_state, _state.currentPlayer.id);
+    final controlledContinents = _controlledContinentsFor(_state);
     final validSourceIds = _validSourceIdsFor(_state);
     final validTargetIds = _validTargetIdsFor(_state);
     final canAct = _canLocalPlayerAct;
@@ -110,6 +119,7 @@ class _GameScreenState extends State<GameScreen> {
                           isOnline: _isOnline,
                           isLocalTurn: canAct,
                           gameId: _state.id,
+                          remainingTurnSeconds: _remainingTurnSeconds,
                           onMenuPressed: _showGameMenu,
                         ),
                         const SizedBox(height: 8),
@@ -120,6 +130,7 @@ class _GameScreenState extends State<GameScreen> {
                             state: _state,
                             validSourceIds: validSourceIds,
                             validTargetIds: validTargetIds,
+                            controlledContinents: controlledContinents,
                             onTerritoryTap: _handleTerritoryTap,
                           ),
                         ),
@@ -253,6 +264,8 @@ class _GameScreenState extends State<GameScreen> {
         _commandMode = _MapCommandMode.attack;
       }
     });
+    _startTurnTimer();
+    _maybeAnnounceControlledContinents(nextState);
     if (syncOnline) {
       unawaited(_saveOnlineState(nextState));
     }
@@ -690,6 +703,120 @@ class _GameScreenState extends State<GameScreen> {
     });
   }
 
+  void _startTurnTimer() {
+    _turnTimer?.cancel();
+    final secondsLeft = _secondsLeftFor(_state);
+    if (mounted) {
+      setState(() {
+        _remainingTurnSeconds = secondsLeft;
+      });
+    } else {
+      _remainingTurnSeconds = secondsLeft;
+    }
+    if (_state.winnerId != null || _state.currentPlayer.isBot) {
+      return;
+    }
+    _turnTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) {
+        return;
+      }
+      final secondsLeft = _secondsLeftFor(_state);
+      if (secondsLeft <= 0) {
+        _handleTurnTimeout();
+        return;
+      }
+      setState(() {
+        _remainingTurnSeconds = secondsLeft;
+      });
+    });
+  }
+
+  int _secondsLeftFor(GameState state) {
+    final elapsedMillis =
+        DateTime.now().millisecondsSinceEpoch - state.turnStartedAtMillis;
+    final elapsedSeconds = elapsedMillis ~/ 1000;
+    return (GameConstants.turnDurationSeconds - elapsedSeconds).clamp(
+      0,
+      GameConstants.turnDurationSeconds,
+    );
+  }
+
+  void _handleTurnTimeout() {
+    _turnTimer?.cancel();
+    if (_state.currentPlayer.isBot) {
+      return;
+    }
+    setState(() {
+      _remainingTurnSeconds = 0;
+    });
+    if (!_canLocalPlayerAct) {
+      return;
+    }
+
+    var nextState = _state;
+    if (nextState.phase == GamePhase.reinforce &&
+        nextState.remainingReinforcements > 0) {
+      final target = nextState
+          .territoriesOwnedBy(nextState.currentPlayer.id)
+          .fold<Territory?>(null, (best, territory) {
+            if (best == null || territory.armyCount > best.armyCount) {
+              return territory;
+            }
+            return best;
+          });
+      if (target != null) {
+        nextState = _engine.addReinforcementsToTerritory(nextState, target.id);
+      }
+    }
+
+    _setGameState(
+      _engine.endTurn(
+        nextState.copyWith(
+          phase: GamePhase.end,
+          statusMessage: 'Turn timer expired.',
+        ),
+      ),
+    );
+  }
+
+  Set<String> _controlledContinentsFor(GameState state) {
+    return state.players
+        .expand(
+          (player) => _engine.reinforcementCalculator
+              .controlledContinentBonuses(state, player.id)
+              .map((bonus) => bonus.continent),
+        )
+        .toSet();
+  }
+
+  void _maybeAnnounceControlledContinents(GameState state) {
+    final currentControlled = _controlledContinentsFor(state);
+    final newlyControlled = currentControlled
+        .difference(_announcedControlledContinents)
+        .toList(growable: false);
+    _announcedControlledContinents = currentControlled;
+    if (newlyControlled.isEmpty || !mounted) {
+      return;
+    }
+
+    final continent = newlyControlled.first;
+    final owner = state.players.firstWhere(
+      (player) => _engine.reinforcementCalculator
+          .controlledContinentBonuses(state, player.id)
+          .any((bonus) => bonus.continent == continent),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: Color(owner.colorValue).withValues(alpha: 0.92),
+        content: Text(
+          '${owner.name} controls $continent!',
+          style: const TextStyle(fontWeight: FontWeight.w900),
+        ),
+      ),
+    );
+  }
+
   bool get _isOnline =>
       widget.onlineRepository != null && widget.localPlayerId != null;
 
@@ -724,11 +851,14 @@ class _GameScreenState extends State<GameScreen> {
           setState(() {
             _state = remoteState;
             _isSavingOnline = false;
+            _remainingTurnSeconds = _secondsLeftFor(_state);
             if (_state.phase != GamePhase.attack ||
                 _state.currentPlayer.isBot) {
               _commandMode = _MapCommandMode.attack;
             }
           });
+          _startTurnTimer();
+          _maybeAnnounceControlledContinents(remoteState);
           _afterStateChanged();
         }, onError: _handleOnlineStreamError);
   }
@@ -860,6 +990,7 @@ class _WorldHeader extends StatelessWidget {
     required this.isOnline,
     required this.isLocalTurn,
     required this.gameId,
+    required this.remainingTurnSeconds,
     required this.onMenuPressed,
   });
 
@@ -867,6 +998,7 @@ class _WorldHeader extends StatelessWidget {
   final bool isOnline;
   final bool isLocalTurn;
   final String gameId;
+  final int remainingTurnSeconds;
   final VoidCallback onMenuPressed;
 
   @override
@@ -905,17 +1037,18 @@ class _WorldHeader extends StatelessWidget {
                   fontWeight: FontWeight.w800,
                 ),
               ),
-              if (isOnline)
-                Text(
-                  isLocalTurn ? 'YOUR TURN' : gameId,
-                  style: TextStyle(
-                    color: isLocalTurn
-                        ? const Color(0xFF91F05B)
-                        : AppColors.premiumCyan,
-                    fontSize: 9,
-                    fontWeight: FontWeight.w900,
-                  ),
+              Text(
+                _timerLabel,
+                style: TextStyle(
+                  color: remainingTurnSeconds <= 10
+                      ? AppColors.premiumRed
+                      : isLocalTurn
+                      ? const Color(0xFF91F05B)
+                      : AppColors.premiumCyan,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
                 ),
+              ),
             ],
           ),
           const SizedBox(width: 6),
@@ -928,6 +1061,17 @@ class _WorldHeader extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String get _timerLabel {
+    final minutes = remainingTurnSeconds ~/ 60;
+    final seconds = remainingTurnSeconds % 60;
+    final time =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    if (isOnline && !isLocalTurn) {
+      return '$time | $gameId';
+    }
+    return time;
   }
 }
 
@@ -1099,12 +1243,14 @@ class _MapStage extends StatelessWidget {
     required this.state,
     required this.validSourceIds,
     required this.validTargetIds,
+    required this.controlledContinents,
     required this.onTerritoryTap,
   });
 
   final GameState state;
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
+  final Set<String> controlledContinents;
   final ValueChanged<String> onTerritoryTap;
 
   @override
@@ -1129,6 +1275,7 @@ class _MapStage extends StatelessWidget {
                 state: state,
                 validSourceIds: validSourceIds,
                 validTargetIds: validTargetIds,
+                controlledContinents: controlledContinents,
                 onTerritoryTap: onTerritoryTap,
               ),
             ),

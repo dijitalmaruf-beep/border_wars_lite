@@ -13,6 +13,7 @@ class WorldConquestMap extends StatefulWidget {
     required this.state,
     required this.validSourceIds,
     required this.validTargetIds,
+    required this.controlledContinents,
     required this.onTerritoryTap,
     super.key,
   });
@@ -20,6 +21,7 @@ class WorldConquestMap extends StatefulWidget {
   final GameState state;
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
+  final Set<String> controlledContinents;
   final ValueChanged<String> onTerritoryTap;
 
   @override
@@ -137,6 +139,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                           territoryLabelAnchors: labelAnchors,
                           validSourceIds: widget.validSourceIds,
                           validTargetIds: widget.validTargetIds,
+                          controlledContinents: widget.controlledContinents,
                           mapZoom: mapZoom,
                           paintOwnership: true,
                         ),
@@ -154,6 +157,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                           territoryLabelAnchors: labelAnchors,
                           validSourceIds: widget.validSourceIds,
                           validTargetIds: widget.validTargetIds,
+                          controlledContinents: widget.controlledContinents,
                           mapZoom: mapZoom,
                           paintLabelsAndHighlights: true,
                         ),
