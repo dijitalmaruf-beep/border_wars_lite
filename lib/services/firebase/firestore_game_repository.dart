@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -49,7 +50,7 @@ class FirestoreGameRepository {
     await _games.doc(state.id).set(<String, dynamic>{
       'gameId': state.id,
       'status': state.winnerId == null ? statusActive : statusFinished,
-      'state': state.toMap(),
+      'state': _stateToFirestoreMap(state),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
@@ -143,7 +144,7 @@ class FirestoreGameRepository {
         'guestPlayerId': guestPlayerId,
         'hostName': hostName,
         'hostColorValue': hostColorValue,
-        'state': waitingState.toMap(),
+        'state': _stateToFirestoreMap(waitingState),
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });
@@ -221,7 +222,7 @@ class FirestoreGameRepository {
       'status': statusActive,
       'guestName': guestName,
       'guestColorValue': guestColorValue,
-      'state': activeState.toMap(),
+      'state': _stateToFirestoreMap(activeState),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
@@ -239,12 +240,45 @@ class FirestoreGameRepository {
     }
     final stateMap = data['state'];
     if (stateMap is Map) {
-      return GameState.fromMap(Map<String, dynamic>.from(stateMap));
+      return GameState.fromMap(
+        _stateFromFirestoreMap(Map<String, dynamic>.from(stateMap)),
+      );
     }
     if (data.containsKey('players') && data.containsKey('territories')) {
-      return GameState.fromMap(data);
+      return GameState.fromMap(_stateFromFirestoreMap(data));
     }
     return null;
+  }
+
+  Map<String, dynamic> _stateToFirestoreMap(GameState state) {
+    final map = state.toMap();
+    map['territories'] = state.territories.map((territory) {
+      final territoryMap = territory.toMap();
+      territoryMap['boundaryGroups'] = jsonEncode(
+        territoryMap['boundaryGroups'],
+      );
+      return territoryMap;
+    }).toList();
+    return map;
+  }
+
+  Map<String, dynamic> _stateFromFirestoreMap(Map<String, dynamic> map) {
+    final territories = map['territories'];
+    if (territories is! List) {
+      return map;
+    }
+
+    return <String, dynamic>{
+      ...map,
+      'territories': territories.map((territory) {
+        final territoryMap = Map<String, dynamic>.from(territory as Map);
+        final boundaryGroups = territoryMap['boundaryGroups'];
+        if (boundaryGroups is String) {
+          territoryMap['boundaryGroups'] = jsonDecode(boundaryGroups);
+        }
+        return territoryMap;
+      }).toList(),
+    };
   }
 
   String _newGameCode() {

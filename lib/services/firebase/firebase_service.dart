@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 
+import '../../firebase_options.dart';
+
 class FirebaseService {
   const FirebaseService._();
 
@@ -12,7 +14,9 @@ class FirebaseService {
 
   static Future<void> initialize() async {
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
       _isAvailable = true;
       _initializationError = null;
     } catch (error) {
