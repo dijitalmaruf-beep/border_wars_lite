@@ -1795,15 +1795,15 @@ class _MapPulseBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 950),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 1700),
+      curve: Curves.easeOutQuart,
       builder: (context, value, child) {
-        final opacity = value < 0.72 ? 1.0 : (1 - value) / 0.28;
+        final opacity = value < 0.78 ? 1.0 : (1 - value) / 0.22;
         return Opacity(
           opacity: opacity.clamp(0, 1).toDouble(),
           child: Transform.translate(
-            offset: Offset(0, -24 * value),
-            child: Transform.scale(scale: 0.82 + 0.26 * value, child: child),
+            offset: Offset(0, -12 * value),
+            child: Transform.scale(scale: 0.92 + 0.08 * value, child: child),
           ),
         );
       },

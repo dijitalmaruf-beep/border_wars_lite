@@ -117,12 +117,8 @@ class TerritoryOverlayPainter extends CustomPainter {
           ..color = ownerColor.withValues(alpha: 0.62);
         final glowPaint = Paint()
           ..style = PaintingStyle.stroke
-          ..strokeWidth = _scaledStroke(size, 2.4)
-          ..color = ownerColor.withValues(alpha: 0.20)
-          ..maskFilter = ui.MaskFilter.blur(
-            ui.BlurStyle.outer,
-            2.4 / _effectiveZoom,
-          );
+          ..strokeWidth = _scaledStroke(size, 1.6)
+          ..color = ownerColor.withValues(alpha: 0.20);
         final edgePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 0.86)
@@ -308,10 +304,6 @@ class TerritoryOverlayPainter extends CustomPainter {
         Paint()
           ..color = ownerColor.withValues(
             alpha: isStrongArmy ? 0.26 * neutralAlpha : 0.14 * neutralAlpha,
-          )
-          ..maskFilter = ui.MaskFilter.blur(
-            ui.BlurStyle.outer,
-            isNeutral ? 0.9 / zoom : (isStrongArmy ? 3.2 : 2.1) / zoom,
           ),
       );
       canvas.drawRRect(

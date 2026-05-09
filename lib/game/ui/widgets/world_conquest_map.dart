@@ -81,14 +81,34 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   Size? _cachedSize;
   Size? _lastMapSize;
   Size? _lastViewportSize;
+  double _mapZoom = 1.0;
   Map<String, List<Path>> _cachedPaths = const <String, List<Path>>{};
   Map<String, Path> _cachedHighlightPaths = const <String, Path>{};
   Map<String, Offset> _cachedLabelAnchors = const <String, Offset>{};
 
   @override
+  void initState() {
+    super.initState();
+    _transformationController.addListener(_handleTransformChanged);
+  }
+
+  @override
   void dispose() {
+    _transformationController.removeListener(_handleTransformChanged);
     _transformationController.dispose();
     super.dispose();
+  }
+
+  void _handleTransformChanged() {
+    final nextZoom = _currentMapZoom();
+    if ((nextZoom - _mapZoom).abs() < 0.04) {
+      return;
+    }
+    if (!mounted) {
+      _mapZoom = nextZoom;
+      return;
+    }
+    setState(() => _mapZoom = nextZoom);
   }
 
   @override
@@ -102,83 +122,74 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         final labelAnchors = _labelAnchorsFor(mapSize, paths);
         _syncInitialView(viewportSize, mapSize);
 
-        return AnimatedBuilder(
-          animation: _transformationController,
-          builder: (context, _) {
-            final mapZoom = _currentMapZoom();
-            return InteractiveViewer(
-              transformationController: _transformationController,
-              minScale: 0.75,
-              maxScale: 4,
-              constrained: false,
-              clipBehavior: Clip.hardEdge,
-              boundaryMargin: const EdgeInsets.all(24),
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapDown: (details) {
-                  final territoryId = _territoryAt(
-                    details.localPosition,
-                    paths,
-                  );
-                  if (territoryId != null) {
-                    widget.onTerritoryTap(territoryId);
-                  }
-                },
-                child: SizedBox(
-                  width: mapSize.width,
-                  height: mapSize.height,
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      RepaintBoundary(
-                        child: Image.asset(_baseMapAsset, fit: BoxFit.fill),
-                      ),
-                      const RepaintBoundary(
-                        child: CustomPaint(painter: _MapDepthPainter()),
-                      ),
-                      RepaintBoundary(
-                        child: CustomPaint(
-                          painter: TerritoryOverlayPainter(
-                            state: widget.state,
-                            territoryPaths: paths,
-                            territoryHighlightPaths: highlightPaths,
-                            territoryLabelAnchors: labelAnchors,
-                            validSourceIds: widget.validSourceIds,
-                            validTargetIds: widget.validTargetIds,
-                            controlledContinents: widget.controlledContinents,
-                            mapZoom: mapZoom,
-                            paintOwnership: true,
-                          ),
-                        ),
-                      ),
-                      RepaintBoundary(
-                        child: SvgPicture.asset(
-                          _borderMapAsset,
-                          fit: BoxFit.fill,
-                          allowDrawingOutsideViewBox: false,
-                        ),
-                      ),
-                      RepaintBoundary(
-                        child: CustomPaint(
-                          painter: TerritoryOverlayPainter(
-                            state: widget.state,
-                            territoryPaths: paths,
-                            territoryHighlightPaths: highlightPaths,
-                            territoryLabelAnchors: labelAnchors,
-                            validSourceIds: widget.validSourceIds,
-                            validTargetIds: widget.validTargetIds,
-                            controlledContinents: widget.controlledContinents,
-                            mapZoom: mapZoom,
-                            paintLabelsAndHighlights: true,
-                          ),
-                        ),
-                      ),
-                    ],
+        return InteractiveViewer(
+          transformationController: _transformationController,
+          minScale: 0.75,
+          maxScale: 4,
+          constrained: false,
+          clipBehavior: Clip.hardEdge,
+          boundaryMargin: const EdgeInsets.all(24),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (details) {
+              final territoryId = _territoryAt(details.localPosition, paths);
+              if (territoryId != null) {
+                widget.onTerritoryTap(territoryId);
+              }
+            },
+            child: SizedBox(
+              width: mapSize.width,
+              height: mapSize.height,
+              child: Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  RepaintBoundary(
+                    child: Image.asset(_baseMapAsset, fit: BoxFit.fill),
                   ),
-                ),
+                  const RepaintBoundary(
+                    child: CustomPaint(painter: _MapDepthPainter()),
+                  ),
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      painter: TerritoryOverlayPainter(
+                        state: widget.state,
+                        territoryPaths: paths,
+                        territoryHighlightPaths: highlightPaths,
+                        territoryLabelAnchors: labelAnchors,
+                        validSourceIds: widget.validSourceIds,
+                        validTargetIds: widget.validTargetIds,
+                        controlledContinents: widget.controlledContinents,
+                        mapZoom: _mapZoom,
+                        paintOwnership: true,
+                      ),
+                    ),
+                  ),
+                  RepaintBoundary(
+                    child: SvgPicture.asset(
+                      _borderMapAsset,
+                      fit: BoxFit.fill,
+                      allowDrawingOutsideViewBox: false,
+                    ),
+                  ),
+                  RepaintBoundary(
+                    child: CustomPaint(
+                      painter: TerritoryOverlayPainter(
+                        state: widget.state,
+                        territoryPaths: paths,
+                        territoryHighlightPaths: highlightPaths,
+                        territoryLabelAnchors: labelAnchors,
+                        validSourceIds: widget.validSourceIds,
+                        validTargetIds: widget.validTargetIds,
+                        controlledContinents: widget.controlledContinents,
+                        mapZoom: _mapZoom,
+                        paintLabelsAndHighlights: true,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -397,6 +408,39 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
       return;
     }
 
+    final previousViewportSize = _lastViewportSize;
+    final previousMapSize = _lastMapSize;
+    if (previousViewportSize != null && previousMapSize != null) {
+      final matrix = _transformationController.value;
+      final scale = matrix.getMaxScaleOnAxis().clamp(0.75, 4.0).toDouble();
+      final translation = matrix.getTranslation();
+      final previousCenter = Offset(
+        (previousViewportSize.width / 2 - translation.x) / scale,
+        (previousViewportSize.height / 2 - translation.y) / scale,
+      );
+      final normalizedCenter = Offset(
+        (previousCenter.dx / previousMapSize.width).clamp(0.0, 1.0),
+        (previousCenter.dy / previousMapSize.height).clamp(0.0, 1.0),
+      );
+      final nextCenter = Offset(
+        normalizedCenter.dx * mapSize.width,
+        normalizedCenter.dy * mapSize.height,
+      );
+
+      _lastViewportSize = viewportSize;
+      _lastMapSize = mapSize;
+      _mapZoom = scale;
+      _transformationController.value = Matrix4.identity()
+        ..translateByDouble(
+          viewportSize.width / 2 - nextCenter.dx * scale,
+          viewportSize.height / 2 - nextCenter.dy * scale,
+          0,
+          1,
+        )
+        ..scaleByDouble(scale, scale, scale, 1);
+      return;
+    }
+
     _lastViewportSize = viewportSize;
     _lastMapSize = mapSize;
     final dx = mapSize.width <= viewportSize.width + 0.5
@@ -408,6 +452,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     final dy = mapSize.height <= viewportSize.height + 0.5
         ? rawDy
         : math.min(0.0, rawDy);
+    _mapZoom = 1.0;
     _transformationController.value = Matrix4.translationValues(dx, dy, 0);
   }
 
