@@ -77,6 +77,63 @@ workflows:
     artifacts:
       - build/ios/iphoneos/Runner.app
 
-# iOS release/App Store workflow will be added later in Codemagic after Apple
-# Developer credentials, signing certificates, and provisioning profiles are
-# available. Planned bundle id: com.marleklabs.chromaconquest.
+  ios-testflight-upload:
+    name: iOS TestFlight Upload
+    max_build_duration: 90
+    instance_type: mac_mini_m2
+    integrations:
+      app_store_connect: Codemagic
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.marleklabs.chromaconquest
+      vars:
+        BUNDLE_ID: com.marleklabs.chromaconquest
+        APP_STORE_APPLE_ID: 6768103796
+        APP_VERSION: 1.0.0
+    scripts:
+      - name: Generate Flutter iOS platform wrapper
+        script: flutter create . --platforms=ios --org com.marleklabs --project-name chroma_conquest
+      - name: Set iOS deployment target
+        script: |
+          perl -0pi -e "s/# platform :ios, '13\.0'/platform :ios, '15.0'/" ios/Podfile
+          perl -0pi -e "s/platform :ios, '13\.0'/platform :ios, '15.0'/" ios/Podfile
+          perl -0pi -e "s/IPHONEOS_DEPLOYMENT_TARGET = 13\.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" ios/Runner.xcodeproj/project.pbxproj
+      - name: Get dependencies
+        script: flutter pub get
+      - name: Analyze
+        script: flutter analyze
+      - name: Run tests
+        script: flutter test
+      - name: Initialize keychain
+        script: keychain initialize
+      - name: Fetch signing files
+        script: |
+          app-store-connect fetch-signing-files "$BUNDLE_ID" \
+            --type IOS_APP_STORE \
+            --create
+      - name: Add certificates to keychain
+        script: keychain add-certificates
+      - name: Set up Xcode code signing
+        script: xcode-project use-profiles
+      - name: Build signed IPA
+        script: |
+          LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          if ! [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]]; then
+            LATEST_BUILD_NUMBER=0
+          fi
+          BUILD_NUMBER=$((LATEST_BUILD_NUMBER + 1))
+          flutter build ipa --release \
+            --build-name="$APP_VERSION" \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      app_store_connect:
+        auth: integration
