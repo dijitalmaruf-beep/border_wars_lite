@@ -1,11 +1,11 @@
 {
-    "name": "Border Wars Lite",
-    "short_name": "Border Wars",
+    "name": "Chroma Conquest",
+    "short_name": "Chroma",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#020A12",
     "theme_color": "#020A12",
-    "description": "A premium territory conquest strategy game for Android and Web.",
+    "description": "One Color. One World. Until the last color stands.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

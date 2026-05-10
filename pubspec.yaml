@@ -1,5 +1,5 @@
-name: border_wars_lite
-description: A first playable Flutter MVP for a lightweight territory conquest game.
+name: chroma_conquest
+description: Chroma Conquest is a lightweight territory conquest strategy game.
 publish_to: 'none'
 version: 0.1.0+1
 

@@ -1857,7 +1857,7 @@ class _WorldHeader extends StatelessWidget {
           ),
           const Expanded(
             child: Text(
-              'BORDER WARS LITE',
+              'CHROMA CONQUEST',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppColors.premiumText,

@@ -60,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       const _GameLogo(),
                       const SizedBox(height: 18),
                       const Text(
-                        'Dünyayı fethet.\nRakiplerinden daha akıllı oyna.',
+                        'Tek Renk. Tüm Dünya.\nSon renk kalana kadar.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumMutedText,
@@ -220,35 +220,23 @@ class _GameLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Border Wars Lite',
+      label: 'Chroma Conquest',
       child: Column(
         children: <Widget>[
           Text(
-            'BORDER',
+            'CHROMA',
             textAlign: TextAlign.center,
-            style: _logoTextStyle(56),
+            style: _logoTextStyle(50),
           ),
-          Text('WARS', textAlign: TextAlign.center, style: _logoTextStyle(60)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              const SizedBox(
-                width: 70,
-                child: Divider(color: Color(0xFFD19B4A)),
-              ),
-              const SizedBox(width: 16),
-              Text(
-                'LITE',
-                style: _logoTextStyle(
-                  25,
-                ).copyWith(color: const Color(0xFFFFD78B), letterSpacing: 7),
-              ),
-              const SizedBox(width: 16),
-              const SizedBox(
-                width: 70,
-                child: Divider(color: Color(0xFFD19B4A)),
-              ),
-            ],
+          Text(
+            'CONQUEST',
+            textAlign: TextAlign.center,
+            style: _logoTextStyle(44),
+          ),
+          const SizedBox(height: 8),
+          const SizedBox(
+            width: 170,
+            child: Divider(color: Color(0xFFD19B4A), thickness: 1.2),
           ),
         ],
       ),

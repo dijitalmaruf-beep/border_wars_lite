@@ -6,5 +6,5 @@ import 'services/firebase/firebase_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebaseService.initialize();
-  runApp(const BorderWarsLiteApp());
+  runApp(const ChromaConquestApp());
 }

@@ -6,14 +6,14 @@ import 'core/localization/app_language.dart';
 import 'game/ui/screens/home_screen.dart';
 import 'services/local/settings_repository.dart';
 
-class BorderWarsLiteApp extends StatefulWidget {
-  const BorderWarsLiteApp({super.key});
+class ChromaConquestApp extends StatefulWidget {
+  const ChromaConquestApp({super.key});
 
   @override
-  State<BorderWarsLiteApp> createState() => _BorderWarsLiteAppState();
+  State<ChromaConquestApp> createState() => _ChromaConquestAppState();
 }
 
-class _BorderWarsLiteAppState extends State<BorderWarsLiteApp> {
+class _ChromaConquestAppState extends State<ChromaConquestApp> {
   final SettingsRepository _settingsRepository = const SettingsRepository();
 
   @override
@@ -33,7 +33,7 @@ class _BorderWarsLiteAppState extends State<BorderWarsLiteApp> {
       valueListenable: AppLanguageController.languageCode,
       builder: (context, languageCode, _) {
         return MaterialApp(
-          title: 'Border Wars Lite',
+          title: 'Chroma Conquest',
           debugShowCheckedModeBanner: false,
           locale: Locale(AppLanguageController.normalize(languageCode)),
           supportedLocales: const <Locale>[

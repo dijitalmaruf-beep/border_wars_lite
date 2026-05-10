@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.border_wars_lite"
+    namespace = "com.marleklabs.chromaconquest"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -20,8 +20,7 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.border_wars_lite"
+        applicationId = "com.marleklabs.chromaconquest"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

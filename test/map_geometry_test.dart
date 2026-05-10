@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:border_wars_lite/game/data/sample_world_map.dart';
-import 'package:border_wars_lite/game/models/territory.dart';
+import 'package:chroma_conquest/game/data/sample_world_map.dart';
+import 'package:chroma_conquest/game/models/territory.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,5 +1,5 @@
-import 'package:border_wars_lite/game/engine/combat_resolver.dart';
-import 'package:border_wars_lite/game/models/territory.dart';
+import 'package:chroma_conquest/game/engine/combat_resolver.dart';
+import 'package:chroma_conquest/game/models/territory.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

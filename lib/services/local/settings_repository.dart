@@ -6,10 +6,9 @@ import 'game_settings.dart';
 class SettingsRepository {
   const SettingsRepository();
 
-  static const _autoSaveKey = 'border_wars_lite.settings.auto_save';
-  static const _confirmEndTurnKey =
-      'border_wars_lite.settings.confirm_end_turn';
-  static const _languageCodeKey = 'border_wars_lite.settings.language_code';
+  static const _autoSaveKey = 'chroma_conquest.settings.auto_save';
+  static const _confirmEndTurnKey = 'chroma_conquest.settings.confirm_end_turn';
+  static const _languageCodeKey = 'chroma_conquest.settings.language_code';
 
   Future<GameSettings> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();

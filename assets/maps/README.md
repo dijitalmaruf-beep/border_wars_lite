@@ -1,6 +1,6 @@
 # World Map Assets
 
-These assets provide the real-world visual board for Border Wars Lite.
+These assets provide the real-world visual board for Chroma Conquest.
 
 - `world_base.png`: optimized raster base map generated from Natural Earth 110m Admin 0 country boundaries.
 - `world_borders.svg`: optimized SVG border overlay generated from the same Natural Earth country boundaries.

@@ -1,20 +1,35 @@
-# Border Wars Lite Game Design
+# Chroma Conquest Game Design
 
 ## Premise
 
-Border Wars Lite is a compact territory conquest game inspired by classic map-control strategy. The MVP uses a committed, simplified world-map dataset so the first version feels like a global conquest game without parsing a huge GeoJSON file at runtime.
+Chroma Conquest is a compact territory conquest game inspired by classic map-control strategy. The MVP uses a committed, simplified world-map dataset so the first version feels like a global conquest game without parsing a huge GeoJSON file at runtime.
+
+Official English slogan:
+
+```text
+One Color. One World.
+Until the last color stands.
+```
+
+Official Turkish slogan:
+
+```text
+Tek Renk. Tüm Dünya.
+Son renk kalana kadar.
+```
 
 ## Players
 
 - 1 human player with chosen name and color.
-- 3 bot players:
+- Selectable bot count in local play.
+- Bot personalities:
   - Atlas Bot: aggressive, attacks at 45% or better.
   - Nova Bot: opportunistic, attacks at 60% or better.
   - Terra Bot: defensive, attacks at 75% or better.
 
 ## Map
 
-The MVP map has 48 larger real-world-style territories. Each territory has:
+The MVP map has 47 larger real-world-style territories. Each territory has:
 
 - Stable id.
 - Display name.
@@ -66,14 +81,15 @@ defenderPower = target.armyCount * 1.15
 winChance = attackerPower / (attackerPower + defenderPower)
 ```
 
-On victory, the target changes owner and receives a clamped minimum of 1 moved army so conquered territories remain usable. On defeat, source and target army losses are bounded so counts never become negative and the source never drops below 1.
+On victory, the target changes owner and the player chooses how many available armies advance. On defeat, source and target army losses are bounded so counts never become negative and the source never drops below 1.
 
 ## Victory
 
-A player wins by:
+Match modes:
 
-- Owning at least 70% of all territories.
-- Being the only non-neutral player with territories left.
+- Quick Match: win by controlling 40% of territories.
+- Standard Match: win by controlling 70% of territories.
+- Total Conquest: win by eliminating all opponents or controlling all territories.
 
 ## Architecture
 

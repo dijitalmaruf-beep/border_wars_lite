@@ -1,9 +1,9 @@
-# MVP Roadmap
+# Chroma Conquest MVP Roadmap
 
 ## Done in First Playable
 
 - Flutter app shell with home, setup, game, and victory screens.
-- 48-territory simplified world map with polygon borders.
+- 47-territory simplified world map with polygon borders.
 - Human setup with name and color.
 - 3 bot players with fixed personalities.
 - Reinforcement, attack, combat, bot turn, and victory rules.
@@ -24,5 +24,7 @@
 - Online async multiplayer lobby.
 - Player accounts and auth rules.
 - Codemagic iOS build and release workflow after Apple Developer setup.
+- App Store display name and planned iOS app name: Chroma Conquest.
+- Planned iOS bundle ID: `com.marleklabs.chromaconquest`.
 - Push notifications for online turns.
 - Real world map variant using curated GeoJSON.

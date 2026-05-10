@@ -7,7 +7,7 @@ import '../../game/models/game_state.dart';
 class LocalSaveRepository {
   const LocalSaveRepository();
 
-  static const _saveKey = 'border_wars_lite.local_game_state';
+  static const _saveKey = 'chroma_conquest.local_game_state';
 
   Future<void> saveGameState(GameState state) async {
     final prefs = await SharedPreferences.getInstance();

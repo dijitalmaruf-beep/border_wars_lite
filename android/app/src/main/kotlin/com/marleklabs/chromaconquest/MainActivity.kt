@@ -1,4 +1,4 @@
-package com.example.border_wars_lite
+package com.marleklabs.chromaconquest
 
 import io.flutter.embedding.android.FlutterActivity
 

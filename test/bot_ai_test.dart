@@ -1,8 +1,8 @@
-import 'package:border_wars_lite/core/constants/app_colors.dart';
-import 'package:border_wars_lite/game/engine/bot_ai.dart';
-import 'package:border_wars_lite/game/engine/game_engine.dart';
-import 'package:border_wars_lite/game/engine/map_generator.dart';
-import 'package:border_wars_lite/game/models/game_state.dart';
+import 'package:chroma_conquest/core/constants/app_colors.dart';
+import 'package:chroma_conquest/game/engine/bot_ai.dart';
+import 'package:chroma_conquest/game/engine/game_engine.dart';
+import 'package:chroma_conquest/game/engine/map_generator.dart';
+import 'package:chroma_conquest/game/models/game_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
