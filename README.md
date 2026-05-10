@@ -131,6 +131,7 @@ com.marleklabs.chromaconquest
 Notes:
 
 - The committed `ios/` wrapper uses bundle id `com.marleklabs.chromaconquest`.
+- Minimum iOS deployment target is `15.0` because the current Firestore iOS pod requires it.
 - On Windows, local iOS builds are not available. Use Codemagic's macOS/Xcode runner.
 - `ios-debug-no-codesign` can validate the iOS project without Apple signing.
 - iOS release/signing workflow will be added later in Codemagic.

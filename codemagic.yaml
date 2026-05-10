@@ -62,6 +62,10 @@ workflows:
     scripts:
       - name: Generate Flutter iOS platform wrapper
         script: flutter create . --platforms=ios --org com.marleklabs --project-name chroma_conquest
+      - name: Set iOS deployment target
+        script: |
+          perl -0pi -e "s/# platform :ios, '13\.0'/platform :ios, '15.0'/" ios/Podfile
+          perl -0pi -e "s/IPHONEOS_DEPLOYMENT_TARGET = 13\.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" ios/Runner.xcodeproj/project.pbxproj
       - name: Get dependencies
         script: flutter pub get
       - name: Analyze
