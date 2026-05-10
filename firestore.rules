@@ -98,6 +98,49 @@ service cloud.firestore {
       allow create: if isCreateRoom();
       allow update: if isJoinRoom() || isHostStartGame() || isParticipantGameUpdate();
       allow delete: if false;
+
+      match /chatMessages/{messageId} {
+        // TODO: Before production, also verify senderPlayerId against the
+        // participant record for request.auth.uid. This development rule keeps
+        // chat scoped to room participants and limits text size.
+        function gamePath() {
+          return /databases/$(database)/documents/games/$(gameId);
+        }
+
+        function isChatParticipant() {
+          return signedIn()
+            && exists(gamePath())
+            && get(gamePath()).data.participantUids is list
+            && request.auth.uid in get(gamePath()).data.participantUids;
+        }
+
+        function isValidChatMessage() {
+          return request.resource.data.keys().hasOnly([
+            'gameId',
+            'senderPlayerId',
+            'senderName',
+            'senderColor',
+            'text',
+            'createdAt',
+            'type'
+          ])
+          && request.resource.data.gameId == gameId
+          && request.resource.data.senderPlayerId is string
+          && request.resource.data.senderName is string
+          && request.resource.data.senderName.size() > 0
+          && request.resource.data.senderName.size() <= 18
+          && request.resource.data.senderColor is int
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 120
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.type in ['user', 'system'];
+        }
+
+        allow read: if isChatParticipant();
+        allow create: if isChatParticipant() && isValidChatMessage();
+        allow update, delete: if false;
+      }
     }
   }
 }

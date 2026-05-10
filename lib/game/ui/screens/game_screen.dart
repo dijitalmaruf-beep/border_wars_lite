@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/game_constants.dart';
+import '../../../services/firebase/firestore_chat_repository.dart';
 import '../../../services/firebase/firestore_game_repository.dart';
 import '../../../services/local/game_settings.dart';
 import '../../../services/local/local_save_repository.dart';
@@ -18,6 +19,7 @@ import '../../models/player.dart';
 import '../../models/territory.dart';
 import '../widgets/attack_dialog.dart';
 import '../widgets/commander_banner_picker.dart';
+import '../widgets/match_chat_button.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
@@ -89,6 +91,7 @@ class _GameScreenState extends State<GameScreen> {
   final Random _random = Random();
   final LocalSaveRepository _localSaveRepository = const LocalSaveRepository();
   final SettingsRepository _settingsRepository = const SettingsRepository();
+  final FirestoreChatRepository _chatRepository = FirestoreChatRepository();
 
   late GameState _state;
   GameSettings _settings = const GameSettings();
@@ -148,6 +151,7 @@ class _GameScreenState extends State<GameScreen> {
     final validSourceIds = _validSourceIdsFor(_state);
     final validTargetIds = _validTargetIdsFor(_state);
     final canAct = _canLocalPlayerAct;
+    final localPlayer = _state.playerById(widget.localPlayerId);
 
     return Scaffold(
       body: PremiumBackground(
@@ -175,6 +179,17 @@ class _GameScreenState extends State<GameScreen> {
                               remainingTurnSeconds: _remainingTurnSeconds,
                               onMenuPressed: _showGameMenu,
                               onHelpPressed: _showHowToPlay,
+                              chatButton:
+                                  MatchChatButton.shouldShow(
+                                        isOnline: _isOnline,
+                                      ) &&
+                                      localPlayer != null
+                                  ? MatchChatButton(
+                                      gameId: _state.id,
+                                      localPlayer: localPlayer,
+                                      repository: _chatRepository,
+                                    )
+                                  : null,
                             ),
                             const SizedBox(height: 8),
                             _PlayerStrip(
@@ -2025,6 +2040,7 @@ class _WorldHeader extends StatelessWidget {
     required this.remainingTurnSeconds,
     required this.onMenuPressed,
     required this.onHelpPressed,
+    this.chatButton,
   });
 
   final GameState state;
@@ -2034,6 +2050,7 @@ class _WorldHeader extends StatelessWidget {
   final int remainingTurnSeconds;
   final VoidCallback onMenuPressed;
   final VoidCallback onHelpPressed;
+  final Widget? chatButton;
 
   @override
   Widget build(BuildContext context) {
@@ -2069,6 +2086,11 @@ class _WorldHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (chatButton != null) ...<Widget>[
+            const SizedBox(width: 6),
+            chatButton!,
+            const SizedBox(width: 8),
+          ],
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,

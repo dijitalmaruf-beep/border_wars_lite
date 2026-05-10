@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -8,6 +9,7 @@ import '../../core/constants/game_constants.dart';
 import '../../game/engine/map_generator.dart';
 import '../../game/models/game_state.dart';
 import '../../game/models/player.dart';
+import 'firestore_chat_repository.dart';
 import 'firebase_service.dart';
 
 class OnlineGameSession {
@@ -292,6 +294,14 @@ class FirestoreGameRepository {
         maxHumanPlayers: _maxHumanPlayersFromData(data),
       );
     });
+
+    unawaited(
+      FirestoreChatRepository(
+        firestore: _firestore,
+      )
+          .sendSystemMessage(gameId: normalizedGameId, text: 'Oyun başladı.')
+          .catchError((Object _) {}),
+    );
 
     return session;
   }
