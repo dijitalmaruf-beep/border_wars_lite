@@ -32,11 +32,11 @@ Son renk kalana kadar.
 Install Flutter, then from the repo root run:
 
 ```sh
-flutter create . --platforms=android,web
+flutter create . --platforms=android,web,ios
 flutter pub get
 ```
 
-The `flutter create` command generates Android/Web platform wrappers on machines or CI runners that have Flutter installed. It is safe to run over this source scaffold.
+The `flutter create` command refreshes platform wrappers on machines or CI runners that have Flutter installed. It is safe to run over this source scaffold.
 
 ## Run Locally
 
@@ -92,6 +92,7 @@ Connect the GitHub repository in Codemagic and choose one of the workflows in `c
 
 - `android-debug-apk`
 - `web-release`
+- `ios-debug-no-codesign`
 - `tests`
 
 ## Firebase / Online Play
@@ -107,6 +108,7 @@ To enable real online play, configure Firebase for each target:
 
 - Android: `android/app/google-services.json` should include package id `com.marleklabs.chromaconquest`.
 - Web: generated Firebase options, normally via FlutterFire CLI.
+- iOS: add the Firebase iOS app for bundle id `com.marleklabs.chromaconquest`, commit `ios/Runner/GoogleService-Info.plist`, and update `lib/firebase_options.dart` with iOS options.
 - Firebase Console: enable `Authentication > Sign-in method > Anonymous`.
 - Firestore: deploy `firestore.rules` so only signed-in room participants can update active games.
 
@@ -128,7 +130,10 @@ com.marleklabs.chromaconquest
 
 Notes:
 
-- iOS workflow/signing will be added later in Codemagic.
+- The committed `ios/` wrapper uses bundle id `com.marleklabs.chromaconquest`.
+- On Windows, local iOS builds are not available. Use Codemagic's macOS/Xcode runner.
+- `ios-debug-no-codesign` can validate the iOS project without Apple signing.
+- iOS release/signing workflow will be added later in Codemagic.
 - App Store display name should be `Chroma Conquest`.
 - Subtitle/marketing slogan: `One Color. One World. Until the last color stands.`
 
