@@ -112,30 +112,44 @@ class TerritoryOverlayPainter extends CustomPainter {
 
       if (owner != null) {
         final ownerColor = Color(owner.colorValue);
+        final liftShadowPaint = Paint()
+          ..style = PaintingStyle.fill
+          ..color = Colors.black.withValues(alpha: 0.13);
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = ownerColor.withValues(alpha: 0.62);
+          ..color = ownerColor.withValues(alpha: 0.66);
+        final bevelPaint = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = _scaledStroke(size, 0.58)
+          ..color = Colors.white.withValues(alpha: 0.16);
         final glowPaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 1.6)
-          ..color = ownerColor.withValues(alpha: 0.20);
+          ..color = ownerColor.withValues(alpha: 0.26);
         final edgePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 0.86)
-          ..color = ownerColor.withValues(alpha: 0.62);
+          ..color = ownerColor.withValues(alpha: 0.74);
+        canvas.save();
+        canvas.translate(0.9 / _effectiveZoom, 1.15 / _effectiveZoom);
+        for (final path in paths) {
+          canvas.drawPath(path, liftShadowPaint);
+        }
+        canvas.restore();
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
+          canvas.drawPath(path, bevelPaint);
           canvas.drawPath(path, glowPaint);
           canvas.drawPath(path, edgePaint);
         }
       } else {
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = const Color(0xFF6B7480).withValues(alpha: 0.15);
+          ..color = const Color(0xFF6B7480).withValues(alpha: 0.11);
         final edgePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 0.7)
-          ..color = Colors.white.withValues(alpha: 0.15);
+          ..color = Colors.white.withValues(alpha: 0.11);
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, edgePaint);

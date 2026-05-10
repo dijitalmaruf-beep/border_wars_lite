@@ -43,6 +43,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   static const _portraitOpeningCenterX = 0.54;
   static const _portraitOpeningCenterY = 0.40;
   static const _portraitMapZoom = 1.16;
+  static const _zoomPaintStep = 0.20;
   static const _labelAnchorOverrides = <String, Offset>{
     'western_canada': Offset(0.173, 0.176),
     'eastern_canada': Offset(0.305, 0.190),
@@ -108,8 +109,8 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   }
 
   void _handleTransformChanged() {
-    final nextZoom = _currentMapZoom();
-    if ((nextZoom - _mapZoom).abs() < 0.04) {
+    final nextZoom = _quantizedZoom(_currentMapZoom());
+    if ((nextZoom - _mapZoom).abs() < 0.01) {
       return;
     }
     if (!mounted) {
@@ -159,6 +160,11 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                   ),
                   RepaintBoundary(
                     child: CustomPaint(
+                      painter: _MapReliefPainter(territoryPaths: paths),
+                    ),
+                  ),
+                  RepaintBoundary(
+                    child: CustomPaint(
                       painter: TerritoryOverlayPainter(
                         state: widget.state,
                         territoryPaths: paths,
@@ -167,7 +173,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                         validSourceIds: widget.validSourceIds,
                         validTargetIds: widget.validTargetIds,
                         controlledContinents: widget.controlledContinents,
-                        mapZoom: _mapZoom,
+                        mapZoom: 1.0,
                         paintOwnership: true,
                       ),
                     ),
@@ -427,6 +433,11 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         .toDouble();
   }
 
+  double _quantizedZoom(double zoom) {
+    final clamped = zoom.clamp(0.75, 4.0).toDouble();
+    return (clamped / _zoomPaintStep).round() * _zoomPaintStep;
+  }
+
   void _syncInitialView(Size viewportSize, Size mapSize) {
     if (_lastViewportSize == viewportSize && _lastMapSize == mapSize) {
       return;
@@ -453,7 +464,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
 
       _lastViewportSize = viewportSize;
       _lastMapSize = mapSize;
-      _mapZoom = scale;
+      _mapZoom = _quantizedZoom(scale);
       _transformationController.value = Matrix4.identity()
         ..translateByDouble(
           viewportSize.width / 2 - nextCenter.dx * scale,
@@ -595,6 +606,19 @@ class _MapDepthPainter extends CustomPainter {
       ).createShader(Offset.zero & size);
     canvas.drawRect(Offset.zero & size, oceanWash);
 
+    final warmCommandLight = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.42, -0.44),
+        radius: 0.78,
+        colors: <Color>[
+          const Color(0x33F6D28B),
+          const Color(0x1018D3F0),
+          Colors.transparent,
+        ],
+        stops: const <double>[0.0, 0.44, 1.0],
+      ).createShader(Offset.zero & size);
+    canvas.drawRect(Offset.zero & size, warmCommandLight);
+
     final gridPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.55
@@ -618,4 +642,43 @@ class _MapDepthPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _MapDepthPainter oldDelegate) => false;
+}
+
+class _MapReliefPainter extends CustomPainter {
+  const _MapReliefPainter({required this.territoryPaths});
+
+  final Map<String, List<Path>> territoryPaths;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final shadowPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.black.withValues(alpha: 0.13);
+    final rimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.55, size.width * 0.00035)
+      ..color = Colors.white.withValues(alpha: 0.10);
+    final lowRimPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.7, size.width * 0.00042)
+      ..color = const Color(0xFF001622).withValues(alpha: 0.22);
+
+    final paths = territoryPaths.values.expand((paths) => paths);
+    canvas.save();
+    canvas.translate(1.4, 1.8);
+    for (final path in paths) {
+      canvas.drawPath(path, shadowPaint);
+    }
+    canvas.restore();
+
+    for (final path in territoryPaths.values.expand((paths) => paths)) {
+      canvas.drawPath(path, lowRimPaint);
+      canvas.drawPath(path, rimPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _MapReliefPainter oldDelegate) {
+    return oldDelegate.territoryPaths != territoryPaths;
+  }
 }
