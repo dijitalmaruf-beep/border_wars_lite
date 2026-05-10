@@ -41,7 +41,7 @@ class GameScreen extends StatefulWidget {
 
 enum _MapCommandMode { attack, transfer }
 
-enum _GameMenuAction { continueGame, exitToHome }
+enum _GameMenuAction { continueGame, howToPlay, events, exitToHome }
 
 String _localizedStatusForContext(
   BuildContext context,
@@ -391,18 +391,31 @@ class _GameScreenState extends State<GameScreen> {
     bool syncOnline = true,
   }) {
     final previousState = _state;
+    final previousLastEvent = previousState.eventLog.isEmpty
+        ? null
+        : previousState.eventLog.last;
+    final nextLastEvent = nextState.eventLog.isEmpty
+        ? null
+        : nextState.eventLog.last;
+    final engineAddedEvent = previousLastEvent != nextLastEvent;
+    var committedState = nextState;
+    if (eventMessage != null &&
+        eventMessage.trim().isNotEmpty &&
+        !engineAddedEvent) {
+      committedState = committedState.addEvent(eventMessage);
+    }
     setState(() {
-      _state = nextState;
+      _state = committedState;
       if (isBotThinking != null) {
         _isBotThinking = isBotThinking;
       }
       if (eventMessage != null && eventMessage.trim().isNotEmpty) {
         _lastEventMessage = eventMessage;
-      } else if (nextState.statusMessage.trim().isNotEmpty &&
-          previousState.statusMessage != nextState.statusMessage) {
+      } else if (committedState.statusMessage.trim().isNotEmpty &&
+          previousState.statusMessage != committedState.statusMessage) {
         _lastEventMessage = _localizedStatusMessage(
-          nextState.statusMessage,
-          nextState,
+          committedState.statusMessage,
+          committedState,
         );
       }
       if (mapPulse != null) {
@@ -413,16 +426,16 @@ class _GameScreenState extends State<GameScreen> {
         _commandMode = _MapCommandMode.attack;
       }
     });
-    if (previousState.currentPlayer.id != nextState.currentPlayer.id ||
-        previousState.turnNumber != nextState.turnNumber) {
-      _showTurnBannerFor(nextState);
+    if (previousState.currentPlayer.id != committedState.currentPlayer.id ||
+        previousState.turnNumber != committedState.turnNumber) {
+      _showTurnBannerFor(committedState);
     }
     _startTurnTimer();
-    _maybeAnnounceControlledContinents(nextState);
+    _maybeAnnounceControlledContinents(committedState);
     if (syncOnline) {
-      unawaited(_saveOnlineState(nextState));
+      unawaited(_saveOnlineState(committedState));
     }
-    unawaited(_saveLocalState(nextState));
+    unawaited(_saveLocalState(committedState));
     _afterStateChanged();
   }
 
@@ -460,6 +473,15 @@ class _GameScreenState extends State<GameScreen> {
           ),
           TextButton(
             onPressed: () =>
+                Navigator.of(context).pop(_GameMenuAction.howToPlay),
+            child: const Text('Nasıl Oynanır'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(_GameMenuAction.events),
+            child: const Text('Son Olaylar'),
+          ),
+          TextButton(
+            onPressed: () =>
                 Navigator.of(context).pop(_GameMenuAction.exitToHome),
             child: const Text('Ana Ekrana Çık'),
           ),
@@ -467,7 +489,18 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
 
-    if (action != _GameMenuAction.exitToHome || !mounted) {
+    if (!mounted || action == null || action == _GameMenuAction.continueGame) {
+      return;
+    }
+    if (action == _GameMenuAction.howToPlay) {
+      await _showHowToPlay();
+      return;
+    }
+    if (action == _GameMenuAction.events) {
+      await _showEventLog();
+      return;
+    }
+    if (action != _GameMenuAction.exitToHome) {
       return;
     }
 
@@ -503,6 +536,62 @@ class _GameScreenState extends State<GameScreen> {
     _botTimer?.cancel();
     unawaited(_saveLocalState(_state));
     Navigator.of(context).popUntil((route) => route.isFirst);
+  }
+
+  Future<void> _showEventLog() async {
+    final events = _state.eventLog.isEmpty
+        ? <String>[_lastEventMessage]
+        : _state.eventLog.reversed.toList(growable: false);
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF101923),
+        title: const Text(
+          'Son Olaylar',
+          style: TextStyle(color: AppColors.premiumText),
+        ),
+        content: SizedBox(
+          width: 360,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: events.length,
+            separatorBuilder: (context, index) =>
+                const Divider(color: AppColors.premiumBorder, height: 14),
+            itemBuilder: (context, index) {
+              final event = _localizedStatusMessage(events[index], _state);
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  const Icon(
+                    Icons.bolt,
+                    color: AppColors.premiumGold,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      event,
+                      style: const TextStyle(
+                        color: AppColors.premiumMutedText,
+                        fontSize: 12,
+                        height: 1.25,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showHowToPlay() async {
@@ -1100,7 +1189,9 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
     setState(() {
-      _lastEventMessage = '$localizedContinent kontrol edildi: ${owner.name}.';
+      final message = '$localizedContinent kontrol edildi: ${owner.name}.';
+      _state = _state.addEvent(message);
+      _lastEventMessage = message;
     });
   }
 
@@ -1244,9 +1335,11 @@ class _GameScreenState extends State<GameScreen> {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => VictoryScreen(
+            state: _state,
             winner: winner,
-            territoryCount: _state.ownedTerritoryCount(winner.id),
-            totalTerritoryCount: _state.territories.length,
+            didLocalPlayerWin: _isOnline
+                ? winner.id == widget.localPlayerId
+                : !winner.isBot,
           ),
         ),
       );

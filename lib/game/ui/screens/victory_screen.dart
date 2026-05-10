@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../engine/reinforcement_calculator.dart';
+import '../../localization/map_localizations.dart';
+import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
@@ -9,89 +12,112 @@ import 'setup_screen.dart';
 
 class VictoryScreen extends StatelessWidget {
   const VictoryScreen({
+    required this.state,
     required this.winner,
-    required this.territoryCount,
-    required this.totalTerritoryCount,
+    required this.didLocalPlayerWin,
     super.key,
   });
 
+  final GameState state;
   final Player winner;
-  final int territoryCount;
-  final int totalTerritoryCount;
+  final bool didLocalPlayerWin;
 
   @override
   Widget build(BuildContext context) {
+    final winnerColor = Color(winner.colorValue);
+    final territoryCount = state.ownedTerritoryCount(winner.id);
+    final controlledRegions = const ReinforcementCalculator()
+        .controlledContinentBonuses(state, winner.id);
+    final resultTitle = didLocalPlayerWin ? 'ZAFER' : 'YENİLGİ';
+    final resultIcon = didLocalPlayerWin ? Icons.emoji_events : Icons.gpp_maybe;
+
     return Scaffold(
       body: PremiumBackground(
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Padding(
-                padding: const EdgeInsets.all(24),
+              constraints: const BoxConstraints(maxWidth: 430),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(22),
                 child: PremiumPanel(
-                  borderColor: Color(winner.colorValue).withValues(alpha: 0.72),
+                  borderColor: winnerColor.withValues(alpha: 0.72),
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
                     children: <Widget>[
                       Icon(
-                        Icons.emoji_events,
+                        resultIcon,
                         size: 72,
-                        color: Color(winner.colorValue),
+                        color: winnerColor,
                         shadows: <Shadow>[
                           Shadow(
-                            color: Color(
-                              winner.colorValue,
-                            ).withValues(alpha: 0.70),
+                            color: winnerColor.withValues(alpha: 0.70),
                             blurRadius: 18,
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Text(
-                        winner.name.toUpperCase(),
+                        resultTitle,
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.premiumText,
-                          fontSize: 30,
+                          fontSize: 34,
                           height: 1,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 0.8,
+                          letterSpacing: 1.2,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
-                        'KOMUTAN KAZANDI',
+                      Text(
+                        'Kazanan: ${winner.name}',
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: Color(0xFFFFD66D),
-                          fontSize: 14,
+                          fontSize: 15,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: 1.4,
                         ),
+                      ),
+                      const SizedBox(height: 20),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: <Widget>[
+                          _StatChip(
+                            icon: Icons.flag,
+                            label: 'Mod',
+                            value: _matchModeLabel(state.matchMode),
+                          ),
+                          _StatChip(
+                            icon: Icons.hourglass_bottom,
+                            label: 'Tur',
+                            value: '${state.turnNumber}',
+                          ),
+                          _StatChip(
+                            icon: Icons.public,
+                            label: 'Bölge',
+                            value:
+                                '$territoryCount / ${state.territories.length}',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _RegionSummary(
+                        controlledRegions: controlledRegions,
+                        winnerColor: winnerColor,
                       ),
                       const SizedBox(height: 18),
                       Text(
-                        '$territoryCount / $totalTerritoryCount bölge kontrol altında',
+                        _goalSummary(state.matchMode, state.territories.length),
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.premiumMutedText,
-                          fontSize: 15,
+                          fontSize: 12,
+                          height: 1.3,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Zafer dünya hakimiyetiyle güvence altına alındı.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.premiumMutedText,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 24),
                       PremiumButton(
                         label: 'YENİ OYUN',
                         icon: Icons.refresh,
@@ -104,7 +130,19 @@ class VictoryScreen extends StatelessWidget {
                           );
                         },
                         tone: PremiumButtonTone.blue,
-                        height: 56,
+                        height: 54,
+                      ),
+                      const SizedBox(height: 10),
+                      PremiumButton(
+                        label: 'ANA EKRAN',
+                        icon: Icons.home,
+                        onPressed: () {
+                          Navigator.of(
+                            context,
+                          ).popUntil((route) => route.isFirst);
+                        },
+                        tone: PremiumButtonTone.dark,
+                        height: 54,
                       ),
                     ],
                   ),
@@ -113,6 +151,163 @@ class VictoryScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  String _matchModeLabel(MatchMode mode) {
+    switch (mode) {
+      case MatchMode.quick:
+        return 'Hızlı';
+      case MatchMode.standard:
+        return 'Standart';
+      case MatchMode.conquest:
+        return 'Tam Fetih';
+    }
+  }
+
+  String _goalSummary(MatchMode mode, int totalTerritories) {
+    switch (mode) {
+      case MatchMode.quick:
+        return 'Hızlı hedef: ${mode.requiredTerritories(totalTerritories)} bölge kontrolü.';
+      case MatchMode.standard:
+        return 'Standart hedef: ${mode.requiredTerritories(totalTerritories)} bölge kontrolü.';
+      case MatchMode.conquest:
+        return 'Tam fetih hedefi: rakipleri ele veya tüm haritayı kontrol et.';
+    }
+  }
+}
+
+class _RegionSummary extends StatelessWidget {
+  const _RegionSummary({
+    required this.controlledRegions,
+    required this.winnerColor,
+  });
+
+  final List<ContinentBonus> controlledRegions;
+  final Color winnerColor;
+
+  @override
+  Widget build(BuildContext context) {
+    if (controlledRegions.isEmpty) {
+      return _SummaryPanel(
+        icon: Icons.map,
+        text: 'Kontrol edilen tam kıta yok.',
+        color: winnerColor,
+      );
+    }
+
+    final labels = controlledRegions
+        .map(
+          (bonus) =>
+              '${MapLocalizations.continentName(context, bonus.continent)} +${bonus.value}',
+        )
+        .join('  •  ');
+    return _SummaryPanel(
+      icon: Icons.workspace_premium,
+      text: labels,
+      color: winnerColor,
+    );
+  }
+}
+
+class _SummaryPanel extends StatelessWidget {
+  const _SummaryPanel({
+    required this.icon,
+    required this.text,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xAA06121D),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.premiumText,
+                fontSize: 12,
+                height: 1.3,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  const _StatChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 118,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xAA081521),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.premiumBorder.withValues(alpha: 0.65),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          Icon(icon, color: AppColors.premiumGold, size: 17),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.premiumMutedText,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.premiumText,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

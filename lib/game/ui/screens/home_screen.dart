@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../services/local/local_save_repository.dart';
+import '../widgets/how_to_play_dialog.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import 'game_screen.dart';
@@ -44,7 +45,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: <Widget>[
-                      const SizedBox(height: 26),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: IconButton(
+                          onPressed: () => showHowToPlayDialog(context),
+                          icon: const Icon(Icons.help_outline),
+                          color: AppColors.premiumText,
+                          tooltip: 'Nasıl oynanır',
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       const _HomeEmblem(),
                       const SizedBox(height: 24),
                       const _GameLogo(),

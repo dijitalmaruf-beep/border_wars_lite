@@ -68,17 +68,18 @@ class _PremiumBackgroundPainter extends CustomPainter {
     }
 
     final glowPaint = Paint()
-      ..shader = RadialGradient(
-        colors: <Color>[
-          AppColors.premiumCyan.withValues(alpha: 0.22),
-          Colors.transparent,
-        ],
-      ).createShader(
-        Rect.fromCircle(
-          center: Offset(size.width * 0.74, size.height * 0.18),
-          radius: size.width * 0.42,
-        ),
-      );
+      ..shader =
+          RadialGradient(
+            colors: <Color>[
+              AppColors.premiumCyan.withValues(alpha: 0.22),
+              Colors.transparent,
+            ],
+          ).createShader(
+            Rect.fromCircle(
+              center: Offset(size.width * 0.74, size.height * 0.18),
+              radius: size.width * 0.42,
+            ),
+          );
     canvas.drawCircle(
       Offset(size.width * 0.74, size.height * 0.18),
       size.width * 0.42,

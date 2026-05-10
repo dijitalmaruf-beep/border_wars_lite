@@ -94,7 +94,7 @@ class GameEngine {
       armyCount: territory.armyCount + state.remainingReinforcements,
     );
 
-    return state.copyWith(
+    final nextState = state.copyWith(
       territories: _replaceTerritories(state.territories, <String, Territory>{
         updatedTerritory.id: updatedTerritory,
       }),
@@ -103,6 +103,9 @@ class GameEngine {
       selectedSourceId: territoryId,
       selectedTargetId: null,
       statusMessage: '${territory.name} takviye aldı.',
+    );
+    return nextState.addEvent(
+      '${state.currentPlayer.name} reinforced ${territory.name} +${state.remainingReinforcements}.',
     );
   }
 
@@ -168,7 +171,7 @@ class GameEngine {
     final updatedSource = source.copyWith(armyCount: source.armyCount - amount);
     final updatedTarget = target.copyWith(armyCount: target.armyCount + amount);
 
-    return state.copyWith(
+    final nextState = state.copyWith(
       territories: _replaceTerritories(state.territories, <String, Territory>{
         updatedSource.id: updatedSource,
         updatedTarget.id: updatedTarget,
@@ -177,6 +180,9 @@ class GameEngine {
       selectedSourceId: updatedSource.id,
       selectedTargetId: updatedTarget.id,
       statusMessage: '${updatedTarget.name} bölgesine $amount asker taşındı.',
+    );
+    return nextState.addEvent(
+      '${state.currentPlayer.name} transferred $amount armies to ${target.name}.',
     );
   }
 
@@ -306,7 +312,7 @@ class GameEngine {
       );
     }
 
-    final nextState = state.copyWith(
+    var nextState = state.copyWith(
       territories: _replaceTerritories(state.territories, <String, Territory>{
         updatedSource.id: updatedSource,
         updatedTarget.id: updatedTarget,
@@ -318,13 +324,21 @@ class GameEngine {
           : result.message,
     );
 
+    nextState = nextState.addEvent(
+      result.didWin
+          ? '${state.currentPlayer.name} captured ${target.name}.'
+          : '${state.currentPlayer.name} failed attack on ${target.name}.',
+    );
+
     final winnerId = findWinner(nextState);
     if (winnerId != null) {
-      return nextState.copyWith(
+      final winnerName = nextState.playerById(winnerId)?.name ?? winnerId;
+      final winningState = nextState.copyWith(
         phase: GamePhase.end,
         winnerId: winnerId,
         statusMessage: '${nextState.playerById(winnerId)?.name} kazandı!',
       );
+      return winningState.addEvent('$winnerName won the match.');
     }
     return nextState;
   }
@@ -332,12 +346,14 @@ class GameEngine {
   GameState endTurn(GameState state) {
     final winnerId = findWinner(state);
     if (winnerId != null) {
-      return state.copyWith(
+      final winnerName = state.playerById(winnerId)?.name ?? winnerId;
+      final winningState = state.copyWith(
         phase: GamePhase.end,
         winnerId: winnerId,
         selectedSourceId: null,
         selectedTargetId: null,
       );
+      return winningState.addEvent('$winnerName won the match.');
     }
 
     final nextPlayerIndex = _nextActivePlayerIndex(state);
@@ -347,7 +363,7 @@ class GameEngine {
       nextPlayer.id,
     );
 
-    return state.copyWith(
+    final nextState = state.copyWith(
       currentPlayerIndex: nextPlayerIndex,
       phase: GamePhase.reinforce,
       remainingReinforcements: reinforcements,
@@ -360,6 +376,9 @@ class GameEngine {
           ? '${nextPlayer.name} ${state.turnNumber + 1}. tura başladı.'
           : 'Takviye yapmak için bir bölge seç.',
     );
+    return nextState.addEvent(
+      'Turn ${nextState.turnNumber}: ${nextPlayer.name} turn started.',
+    );
   }
 
   GameState runBotTurn(GameState state, {Random? random}) {
@@ -367,7 +386,9 @@ class GameEngine {
       return state;
     }
 
-    var nextState = state;
+    var nextState = state.addEvent(
+      '${state.currentPlayer.name} is reinforcing.',
+    );
     final bot = nextState.currentPlayer;
     final reinforcementTarget = botAI.chooseReinforcementTerritory(
       nextState,
@@ -414,24 +435,35 @@ class GameEngine {
   }
 
   String? findWinner(GameState state) {
-    final requiredTerritories =
-        (state.territories.length * GameConstants.victoryTerritoryRatio).ceil();
+    final totalTerritories = state.territories.length;
 
-    for (final player in state.players) {
-      final ownedCount = state.ownedTerritoryCount(player.id);
-      if (ownedCount >= requiredTerritories) {
-        return player.id;
-      }
+    switch (state.matchMode) {
+      case MatchMode.quick:
+      case MatchMode.standard:
+        final requiredTerritories = state.matchMode.requiredTerritories(
+          totalTerritories,
+        );
+        for (final player in state.players) {
+          if (state.ownedTerritoryCount(player.id) >= requiredTerritories) {
+            return player.id;
+          }
+        }
+        return null;
+      case MatchMode.conquest:
+        for (final player in state.players) {
+          if (state.ownedTerritoryCount(player.id) == totalTerritories) {
+            return player.id;
+          }
+        }
+
+        final activePlayers = state.players
+            .where((player) => state.ownedTerritoryCount(player.id) > 0)
+            .toList(growable: false);
+        if (activePlayers.length == 1) {
+          return activePlayers.first.id;
+        }
+        return null;
     }
-
-    final activePlayers = state.players
-        .where((player) => state.ownedTerritoryCount(player.id) > 0)
-        .toList(growable: false);
-    if (activePlayers.length == 1) {
-      return activePlayers.first.id;
-    }
-
-    return null;
   }
 
   int _nextActivePlayerIndex(GameState state) {

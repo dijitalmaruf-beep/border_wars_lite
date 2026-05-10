@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/game_constants.dart';
 import '../../engine/map_generator.dart';
+import '../../models/game_state.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
@@ -21,6 +22,7 @@ class _SetupScreenState extends State<SetupScreen> {
   );
   int _selectedColorValue = AppColors.humanBlueValue;
   int _selectedBotCount = GameConstants.defaultBotPlayers;
+  MatchMode _selectedMatchMode = MatchMode.standard;
 
   @override
   void dispose() {
@@ -88,6 +90,24 @@ class _SetupScreenState extends State<SetupScreen> {
                                   ),
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('MAÇ MODU'),
+                            const SizedBox(height: 14),
+                            _MatchModeSelector(
+                              selectedMode: _selectedMatchMode,
+                              onChanged: (mode) {
+                                setState(() {
+                                  _selectedMatchMode = mode;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -238,6 +258,7 @@ class _SetupScreenState extends State<SetupScreen> {
       humanName: _nameController.text,
       humanColorValue: _selectedColorValue,
       botCount: _selectedBotCount,
+      matchMode: _selectedMatchMode,
     );
 
     Navigator.of(context).pushReplacement(
@@ -253,6 +274,130 @@ class _SetupScreenState extends State<SetupScreen> {
           .clamp(GameConstants.minBotPlayers, GameConstants.maxBotPlayers)
           .toInt();
     });
+  }
+}
+
+class _MatchModeSelector extends StatelessWidget {
+  const _MatchModeSelector({
+    required this.selectedMode,
+    required this.onChanged,
+  });
+
+  final MatchMode selectedMode;
+  final ValueChanged<MatchMode> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: MatchMode.values
+          .map((mode) {
+            final isSelected = mode == selectedMode;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: mode == MatchMode.conquest ? 0 : 8,
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => onChanged(mode),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isSelected
+                            ? const <Color>[
+                                Color(0xFF087BFF),
+                                Color(0xFF003B99),
+                              ]
+                            : const <Color>[
+                                Color(0xFF12202D),
+                                Color(0xFF07111A),
+                              ],
+                      ),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.premiumCyan
+                            : AppColors.premiumBorder,
+                        width: isSelected ? 1.4 : 1,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        if (isSelected)
+                          BoxShadow(
+                            color: AppColors.premiumBlue.withValues(
+                              alpha: 0.32,
+                            ),
+                            blurRadius: 18,
+                            offset: const Offset(0, 5),
+                          ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _modeTitle(mode),
+                            maxLines: 1,
+                            style: const TextStyle(
+                              color: AppColors.premiumText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _modeSubtitle(mode),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected
+                                ? const Color(0xFFFFD66D)
+                                : AppColors.premiumMutedText,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+
+  String _modeTitle(MatchMode mode) {
+    switch (mode) {
+      case MatchMode.quick:
+        return 'HIZLI';
+      case MatchMode.standard:
+        return 'STANDART';
+      case MatchMode.conquest:
+        return 'FETİH';
+    }
+  }
+
+  String _modeSubtitle(MatchMode mode) {
+    switch (mode) {
+      case MatchMode.quick:
+        return '%40';
+      case MatchMode.standard:
+        return '%70';
+      case MatchMode.conquest:
+        return 'Tam kontrol';
+    }
   }
 }
 

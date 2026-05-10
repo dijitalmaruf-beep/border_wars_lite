@@ -5,6 +5,29 @@ const Object _gameStateSentinel = Object();
 
 enum GamePhase { reinforce, attack, end }
 
+enum MatchMode { quick, standard, conquest }
+
+extension MatchModeInfo on MatchMode {
+  double? get territoryRatio {
+    switch (this) {
+      case MatchMode.quick:
+        return 0.40;
+      case MatchMode.standard:
+        return 0.70;
+      case MatchMode.conquest:
+        return null;
+    }
+  }
+
+  int requiredTerritories(int totalTerritories) {
+    final ratio = territoryRatio;
+    if (ratio == null) {
+      return totalTerritories;
+    }
+    return (totalTerritories * ratio).ceil();
+  }
+}
+
 class GameState {
   GameState({
     required this.id,
@@ -15,13 +38,16 @@ class GameState {
     required this.remainingReinforcements,
     required this.turnNumber,
     required this.turnStartedAtMillis,
+    this.matchMode = MatchMode.standard,
     this.transferUsedThisTurn = false,
     this.selectedSourceId,
     this.selectedTargetId,
     this.statusMessage = '',
     this.winnerId,
+    List<String> eventLog = const <String>[],
   }) : players = List<Player>.unmodifiable(players),
-       territories = List<Territory>.unmodifiable(territories);
+       territories = List<Territory>.unmodifiable(territories),
+       eventLog = List<String>.unmodifiable(eventLog);
 
   final String id;
   final List<Player> players;
@@ -31,11 +57,13 @@ class GameState {
   final int remainingReinforcements;
   final int turnNumber;
   final int turnStartedAtMillis;
+  final MatchMode matchMode;
   final bool transferUsedThisTurn;
   final String? selectedSourceId;
   final String? selectedTargetId;
   final String statusMessage;
   final String? winnerId;
+  final List<String> eventLog;
 
   Player get currentPlayer => players[currentPlayerIndex];
 
@@ -88,11 +116,13 @@ class GameState {
     int? remainingReinforcements,
     int? turnNumber,
     int? turnStartedAtMillis,
+    MatchMode? matchMode,
     bool? transferUsedThisTurn,
     Object? selectedSourceId = _gameStateSentinel,
     Object? selectedTargetId = _gameStateSentinel,
     String? statusMessage,
     Object? winnerId = _gameStateSentinel,
+    List<String>? eventLog,
   }) {
     return GameState(
       id: id ?? this.id,
@@ -104,6 +134,7 @@ class GameState {
           remainingReinforcements ?? this.remainingReinforcements,
       turnNumber: turnNumber ?? this.turnNumber,
       turnStartedAtMillis: turnStartedAtMillis ?? this.turnStartedAtMillis,
+      matchMode: matchMode ?? this.matchMode,
       transferUsedThisTurn: transferUsedThisTurn ?? this.transferUsedThisTurn,
       selectedSourceId: identical(selectedSourceId, _gameStateSentinel)
           ? this.selectedSourceId
@@ -115,7 +146,20 @@ class GameState {
       winnerId: identical(winnerId, _gameStateSentinel)
           ? this.winnerId
           : winnerId as String?,
+      eventLog: eventLog ?? this.eventLog,
     );
+  }
+
+  GameState addEvent(String message) {
+    final trimmed = message.trim();
+    if (trimmed.isEmpty) {
+      return this;
+    }
+    final nextLog = <String>[...eventLog, trimmed];
+    final compactLog = nextLog.length <= 10
+        ? nextLog
+        : nextLog.sublist(nextLog.length - 10);
+    return copyWith(eventLog: compactLog);
   }
 
   Map<String, dynamic> toMap() {
@@ -128,11 +172,13 @@ class GameState {
       'remainingReinforcements': remainingReinforcements,
       'turnNumber': turnNumber,
       'turnStartedAtMillis': turnStartedAtMillis,
+      'matchMode': matchMode.name,
       'transferUsedThisTurn': transferUsedThisTurn,
       'selectedSourceId': selectedSourceId,
       'selectedTargetId': selectedTargetId,
       'statusMessage': statusMessage,
       'winnerId': winnerId,
+      'eventLog': eventLog,
     };
   }
 
@@ -162,11 +208,18 @@ class GameState {
       turnStartedAtMillis:
           map['turnStartedAtMillis'] as int? ??
           DateTime.now().millisecondsSinceEpoch,
+      matchMode: MatchMode.values.firstWhere(
+        (mode) => mode.name == (map['matchMode'] as String?),
+        orElse: () => MatchMode.standard,
+      ),
       transferUsedThisTurn: map['transferUsedThisTurn'] as bool? ?? false,
       selectedSourceId: map['selectedSourceId'] as String?,
       selectedTargetId: map['selectedTargetId'] as String?,
       statusMessage: map['statusMessage'] as String? ?? '',
       winnerId: map['winnerId'] as String?,
+      eventLog: (map['eventLog'] as List<dynamic>? ?? const <dynamic>[])
+          .map((event) => event.toString())
+          .toList(),
     );
   }
 }

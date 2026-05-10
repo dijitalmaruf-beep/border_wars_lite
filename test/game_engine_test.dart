@@ -308,10 +308,11 @@ void main() {
     expect(humanTurn.statusMessage, 'Takviye yapmak için bir bölge seç.');
   });
 
-  test('detects victory at seventy percent territory control', () {
-    final state = newState();
-    final requiredTerritories =
-        (state.territories.length * GameConstants.victoryTerritoryRatio).ceil();
+  test('quick match detects victory at forty percent territory control', () {
+    final state = newState().copyWith(matchMode: MatchMode.quick);
+    final requiredTerritories = state.matchMode.requiredTerritories(
+      state.territories.length,
+    );
     final conqueredState = state.copyWith(
       territories: state.territories.asMap().entries.map((entry) {
         return entry.value.copyWith(
@@ -325,8 +326,29 @@ void main() {
     expect(engine.findWinner(conqueredState), GameConstants.humanPlayerId);
   });
 
-  test('detects victory when only one non-neutral player remains', () {
-    final state = newState();
+  test(
+    'standard match detects victory at seventy percent territory control',
+    () {
+      final state = newState().copyWith(matchMode: MatchMode.standard);
+      final requiredTerritories =
+          (state.territories.length * GameConstants.victoryTerritoryRatio)
+              .ceil();
+      final conqueredState = state.copyWith(
+        territories: state.territories.asMap().entries.map((entry) {
+          return entry.value.copyWith(
+            ownerId: entry.key < requiredTerritories
+                ? GameConstants.humanPlayerId
+                : null,
+          );
+        }).toList(),
+      );
+
+      expect(engine.findWinner(conqueredState), GameConstants.humanPlayerId);
+    },
+  );
+
+  test('conquest detects victory when only one non-neutral player remains', () {
+    final state = newState().copyWith(matchMode: MatchMode.conquest);
     final soloState = state.copyWith(
       territories: state.territories.map((territory) {
         return territory.copyWith(
@@ -338,5 +360,34 @@ void main() {
     );
 
     expect(engine.findWinner(soloState), GameConstants.humanPlayerId);
+  });
+
+  test('conquest detects victory when one player controls every territory', () {
+    final state = newState().copyWith(
+      matchMode: MatchMode.conquest,
+      territories: newState().territories.map((territory) {
+        return territory.copyWith(ownerId: GameConstants.humanPlayerId);
+      }).toList(),
+    );
+
+    expect(engine.findWinner(state), GameConstants.humanPlayerId);
+  });
+
+  test('match mode is stored in GameState serialization', () {
+    final state = newState().copyWith(matchMode: MatchMode.quick);
+    final restored = GameState.fromMap(state.toMap());
+
+    expect(restored.matchMode, MatchMode.quick);
+  });
+
+  test('event log keeps the last ten events', () {
+    var state = newState();
+    for (var index = 0; index < 12; index += 1) {
+      state = state.addEvent('event $index');
+    }
+
+    expect(state.eventLog, hasLength(10));
+    expect(state.eventLog.first, 'event 2');
+    expect(state.eventLog.last, 'event 11');
   });
 }

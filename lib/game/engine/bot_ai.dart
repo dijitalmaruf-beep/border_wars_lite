@@ -31,17 +31,18 @@ class BotAI {
 
     final borderTerritories = owned.where(
       (territory) => territory.neighbors.any(
-        (neighborId) =>
-            state.territoryById(neighborId).ownerId != botPlayerId,
+        (neighborId) => state.territoryById(neighborId).ownerId != botPlayerId,
       ),
     );
 
     final candidates = borderTerritories.isEmpty ? owned : borderTerritories;
     final sorted = candidates.toList()
       ..sort(
-        (left, right) => _enemyPressure(state, right, botPlayerId).compareTo(
-          _enemyPressure(state, left, botPlayerId),
-        ),
+        (left, right) => _enemyPressure(
+          state,
+          right,
+          botPlayerId,
+        ).compareTo(_enemyPressure(state, left, botPlayerId)),
       );
     return sorted.first;
   }
@@ -49,10 +50,11 @@ class BotAI {
   BotAttackPlan? chooseBestAttack(GameState state, Player botPlayer) {
     final personality =
         botPlayer.botPersonality ?? BotPersonality.opportunistic;
-    final plans = findValidAttackPlans(state, botPlayer)
-        .where((plan) => plan.winChance >= personality.attackThreshold)
-        .toList()
-      ..sort((left, right) => right.score.compareTo(left.score));
+    final plans =
+        findValidAttackPlans(state, botPlayer)
+            .where((plan) => plan.winChance >= personality.attackThreshold)
+            .toList()
+          ..sort((left, right) => right.score.compareTo(left.score));
 
     if (plans.isEmpty) {
       return null;
@@ -96,11 +98,7 @@ class BotAI {
     return pressure;
   }
 
-  double _attackScore(
-    double winChance,
-    Territory source,
-    Territory target,
-  ) {
+  double _attackScore(double winChance, Territory source, Territory target) {
     final neutralBonus = target.ownerId == null ? 0.08 : 0;
     final expansionValue = target.neighbors.length / 20;
     final sourceSafety = source.armyCount / 100;

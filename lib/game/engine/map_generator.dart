@@ -97,6 +97,7 @@ class MapGenerator {
     required int humanColorValue,
     int botCount = GameConstants.defaultBotPlayers,
     int? seed,
+    MatchMode matchMode = MatchMode.standard,
   }) {
     final players = createPlayers(
       humanName: humanName,
@@ -108,6 +109,7 @@ class MapGenerator {
       gameId: 'local-${DateTime.now().millisecondsSinceEpoch}',
       firstPlayerId: GameConstants.humanPlayerId,
       seed: seed,
+      matchMode: matchMode,
     );
   }
 
@@ -116,6 +118,7 @@ class MapGenerator {
     required String gameId,
     required String firstPlayerId,
     int? seed,
+    MatchMode matchMode = MatchMode.standard,
   }) {
     final random = seed == null ? Random() : Random(seed);
     final startingOwners = _startingTerritoryOwners(players, random);
@@ -144,6 +147,8 @@ class MapGenerator {
       selectedTargetId: null,
       turnNumber: 1,
       turnStartedAtMillis: DateTime.now().millisecondsSinceEpoch,
+      matchMode: matchMode,
+      eventLog: const <String>['Game started.'],
       statusMessage: 'Takviye yapmak için bir bölge seç.',
     );
 
