@@ -88,8 +88,10 @@ workflows:
       xcode: latest
       cocoapods: default
       ios_signing:
-        distribution_type: app_store
-        bundle_identifier: com.marleklabs.chromaconquest
+        provisioning_profiles:
+          - chroma_conquest_appstore
+        certificates:
+          - chroma_conquest_distribution
       vars:
         BUNDLE_ID: com.marleklabs.chromaconquest
         APP_STORE_APPLE_ID: 6768103796
@@ -109,10 +111,6 @@ workflows:
         script: flutter analyze
       - name: Run tests
         script: flutter test
-      - name: Initialize keychain
-        script: keychain initialize
-      - name: Add certificates to keychain
-        script: keychain add-certificates
       - name: Set up Xcode code signing
         script: xcode-project use-profiles --project "$XCODE_PROJECT"
       - name: Build signed IPA
