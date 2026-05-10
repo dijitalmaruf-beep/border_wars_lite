@@ -61,7 +61,12 @@ workflows:
       xcode: latest
     scripts:
       - name: Generate Flutter iOS platform wrapper
-        script: flutter create . --platforms=ios --org com.marleklabs --project-name chroma_conquest
+        script: |
+          if [ ! -d ios/Runner.xcodeproj ]; then
+            flutter create . --platforms=ios --org com.marleklabs --project-name chroma_conquest
+          else
+            echo "Using committed iOS platform wrapper."
+          fi
       - name: Set iOS deployment target
         script: |
           perl -0pi -e "s/# platform :ios, '13\.0'/platform :ios, '15.0'/" ios/Podfile
@@ -121,19 +126,27 @@ workflows:
         script: flutter analyze
       - name: Run tests
         script: flutter test
-      - name: Inspect Codemagic signing files
+      - name: Verify Codemagic signing files
         script: |
+          set -euo pipefail
           echo "Provisioning profiles:"
-          find "$HOME/Library/MobileDevice/Provisioning Profiles" -maxdepth 1 -type f -print || true
+          PROFILE_DIR="$HOME/Library/MobileDevice/Provisioning Profiles"
+          test -d "$PROFILE_DIR"
+          find "$PROFILE_DIR" -maxdepth 1 -type f -name "*.mobileprovision" -print
+          PROFILE_COUNT=$(find "$PROFILE_DIR" -maxdepth 1 -type f -name "*.mobileprovision" | wc -l | tr -d ' ')
+          if [ "$PROFILE_COUNT" -lt 1 ]; then
+            echo "No provisioning profiles found."
+            exit 1
+          fi
           echo "Code signing certificates:"
-          security find-identity -v -p codesigning || true
+          security find-identity -v -p codesigning
       - name: Set up Xcode code signing
         script: |
+          set -euo pipefail
           xcode-project use-profiles \
             --project "$XCODE_PROJECT" \
             --profile "$HOME/Library/MobileDevice/Provisioning Profiles/*.mobileprovision" \
             --export-options-plist "$CM_EXPORT_OPTIONS_PLIST" \
-            --warn-only \
             --code-signing-setup-verbose-logging
       - name: Build signed IPA
         script: |
