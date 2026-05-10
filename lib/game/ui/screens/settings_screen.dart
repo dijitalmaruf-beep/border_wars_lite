@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/localization/app_language.dart';
 import '../../../services/local/game_settings.dart';
 import '../../../services/local/local_save_repository.dart';
 import '../../../services/local/settings_repository.dart';
@@ -90,6 +91,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               PremiumPanel(
                                 child: Column(
                                   children: <Widget>[
+                                    _SettingsLanguageSelector(
+                                      selectedCode: _settings.languageCode,
+                                      onChanged: (code) => _updateSettings(
+                                        _settings.copyWith(languageCode: code),
+                                      ),
+                                    ),
+                                    const _SettingsDivider(),
                                     _SettingsSwitch(
                                       title: 'Yerel oyunları otomatik kaydet',
                                       subtitle:
@@ -197,6 +205,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _settings = settings;
     });
     await _settingsRepository.saveSettings(settings);
+    AppLanguageController.setLanguageCode(settings.languageCode);
   }
 
   Future<void> _confirmClearSavedGame() async {
@@ -239,6 +248,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(const SnackBar(content: Text('Kayıtlı oyun silindi.')));
+  }
+}
+
+class _SettingsLanguageSelector extends StatelessWidget {
+  const _SettingsLanguageSelector({
+    required this.selectedCode,
+    required this.onChanged,
+  });
+
+  final String selectedCode;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const Text(
+            'Dil',
+            style: TextStyle(
+              color: AppColors.premiumText,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Arayüz dili ve harita bölge isimleri.',
+            style: TextStyle(
+              color: AppColors.premiumMutedText,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              for (final code in AppLanguageController.supportedLanguageCodes)
+                ChoiceChip(
+                  label: Text(AppLanguageController.labelForCode(code)),
+                  selected:
+                      AppLanguageController.normalize(selectedCode) == code,
+                  selectedColor: AppColors.premiumCyan.withValues(alpha: 0.28),
+                  backgroundColor: const Color(0xAA07131F),
+                  side: BorderSide(
+                    color: AppLanguageController.normalize(selectedCode) == code
+                        ? AppColors.premiumCyan
+                        : AppColors.premiumBorder.withValues(alpha: 0.50),
+                  ),
+                  labelStyle: TextStyle(
+                    color: AppLanguageController.normalize(selectedCode) == code
+                        ? AppColors.premiumText
+                        : AppColors.premiumMutedText,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  onSelected: (_) => onChanged(code),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

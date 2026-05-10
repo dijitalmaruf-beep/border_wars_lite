@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../localization/map_localizations.dart';
 import '../../models/territory.dart';
 import 'premium_button.dart';
 
@@ -19,6 +20,12 @@ class AttackDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = (winChance * 100).round();
+    final sourceName = MapLocalizations.territoryName(context, source);
+    final targetName = MapLocalizations.territoryName(context, target);
+    final targetContinent = MapLocalizations.continentName(
+      context,
+      target.continent,
+    );
     final advantageColor = percent >= 70
         ? const Color(0xFF91F05B)
         : percent >= 50
@@ -118,7 +125,7 @@ class AttackDialog extends StatelessWidget {
                   Expanded(
                     child: _AttackRouteCard(
                       label: 'KAYNAK',
-                      name: source.name,
+                      name: sourceName,
                       armies: source.armyCount,
                       color: AppColors.premiumBlue,
                     ),
@@ -134,7 +141,7 @@ class AttackDialog extends StatelessWidget {
                   Expanded(
                     child: _AttackRouteCard(
                       label: 'HEDEF',
-                      name: target.name,
+                      name: targetName,
                       armies: target.armyCount,
                       color: AppColors.premiumRed,
                     ),
@@ -194,7 +201,7 @@ class AttackDialog extends StatelessWidget {
                         _AttackStat(
                           icon: Icons.public,
                           label: 'Bölge',
-                          value: target.continent,
+                          value: targetContinent,
                         ),
                       ],
                     ),

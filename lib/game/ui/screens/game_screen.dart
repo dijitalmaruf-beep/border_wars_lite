@@ -11,6 +11,7 @@ import '../../../services/local/local_save_repository.dart';
 import '../../../services/local/settings_repository.dart';
 import '../../engine/game_engine.dart';
 import '../../engine/reinforcement_calculator.dart';
+import '../../localization/map_localizations.dart';
 import '../../models/attack_result.dart';
 import '../../models/game_state.dart';
 import '../../models/player.dart';
@@ -41,6 +42,27 @@ class GameScreen extends StatefulWidget {
 enum _MapCommandMode { attack, transfer }
 
 enum _GameMenuAction { continueGame, exitToHome }
+
+String _localizedStatusForContext(
+  BuildContext context,
+  GameState state,
+  String message,
+) {
+  var localizedMessage = message;
+  for (final territory in state.territories) {
+    localizedMessage = localizedMessage.replaceAll(
+      territory.name,
+      MapLocalizations.territoryName(context, territory),
+    );
+  }
+  for (final continent in ReinforcementCalculator.continentBonusValues.keys) {
+    localizedMessage = localizedMessage.replaceAll(
+      continent,
+      MapLocalizations.continentName(context, continent),
+    );
+  }
+  return localizedMessage;
+}
 
 class _MapPulse {
   const _MapPulse({
@@ -235,7 +257,7 @@ class _GameScreenState extends State<GameScreen> {
               territory.ownerId == _state.currentPlayer.id &&
               reinforcementAmount > 0 &&
               nextState.phase == GamePhase.attack
-          ? '${territory.name} +$reinforcementAmount takviye aldı.'
+          ? '${_territoryName(territory)} +$reinforcementAmount takviye aldı.'
           : null,
       mapPulse:
           wasReinforce &&
@@ -288,7 +310,8 @@ class _GameScreenState extends State<GameScreen> {
         final failedTarget = battleState.territoryById(result.targetId);
         _setGameState(
           _engine.applyAttackResult(battleState, result),
-          eventMessage: '${failedTarget.name} saldırısı başarısız oldu.',
+          eventMessage:
+              '${_territoryName(failedTarget)} saldırısı başarısız oldu.',
         );
         return;
       }
@@ -306,7 +329,7 @@ class _GameScreenState extends State<GameScreen> {
           result.copyWith(movedArmies: selectedAmount),
         ),
         eventMessage:
-            '${capturedTarget.name} fethedildi. $selectedAmount asker ilerledi.',
+            '${_territoryName(capturedTarget)} fethedildi. $selectedAmount asker ilerledi.',
       );
     }
   }
@@ -377,7 +400,10 @@ class _GameScreenState extends State<GameScreen> {
         _lastEventMessage = eventMessage;
       } else if (nextState.statusMessage.trim().isNotEmpty &&
           previousState.statusMessage != nextState.statusMessage) {
-        _lastEventMessage = nextState.statusMessage;
+        _lastEventMessage = _localizedStatusMessage(
+          nextState.statusMessage,
+          nextState,
+        );
       }
       if (mapPulse != null) {
         _mapPulse = mapPulse;
@@ -584,7 +610,8 @@ class _GameScreenState extends State<GameScreen> {
 
     _setGameState(
       _engine.transferArmies(_state, source.id, target.id, amount),
-      eventMessage: '${target.name} bölgesine $amount asker transfer edildi.',
+      eventMessage:
+          '${_territoryName(target)} bölgesine $amount asker transfer edildi.',
     );
   }
 
@@ -630,7 +657,7 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        '${source.name} -> ${target.name}',
+                        '${_territoryName(source)} -> ${_territoryName(target)}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                           color: AppColors.premiumMutedText,
@@ -808,7 +835,7 @@ class _GameScreenState extends State<GameScreen> {
       return state.copyWith(
         selectedSourceId: territoryId,
         selectedTargetId: null,
-        statusMessage: '${territory.name} transfer kaynağı seçildi.',
+        statusMessage: '${_territoryName(territory)} transfer kaynağı seçildi.',
       );
     }
 
@@ -817,7 +844,7 @@ class _GameScreenState extends State<GameScreen> {
       return state.copyWith(
         selectedSourceId: territoryId,
         selectedTargetId: null,
-        statusMessage: '${territory.name} transfer kaynağı seçildi.',
+        statusMessage: '${_territoryName(territory)} transfer kaynağı seçildi.',
       );
     }
 
@@ -1056,6 +1083,7 @@ class _GameScreenState extends State<GameScreen> {
     }
 
     final continent = newlyControlled.first;
+    final localizedContinent = _continentName(continent);
     final owner = state.players.firstWhere(
       (player) => _engine.reinforcementCalculator
           .controlledContinentBonuses(state, player.id)
@@ -1066,14 +1094,26 @@ class _GameScreenState extends State<GameScreen> {
         behavior: SnackBarBehavior.floating,
         backgroundColor: Color(owner.colorValue).withValues(alpha: 0.92),
         content: Text(
-          '${owner.name} $continent kıtasını kontrol ediyor!',
+          '${owner.name} $localizedContinent kıtasını kontrol ediyor!',
           style: const TextStyle(fontWeight: FontWeight.w900),
         ),
       ),
     );
     setState(() {
-      _lastEventMessage = '$continent kontrol edildi: ${owner.name}.';
+      _lastEventMessage = '$localizedContinent kontrol edildi: ${owner.name}.';
     });
+  }
+
+  String _territoryName(Territory territory) {
+    return MapLocalizations.territoryName(context, territory);
+  }
+
+  String _continentName(String continent) {
+    return MapLocalizations.continentName(context, continent);
+  }
+
+  String _localizedStatusMessage(String message, GameState state) {
+    return _localizedStatusForContext(context, state, message);
   }
 
   bool get _isOnline =>
@@ -1277,6 +1317,8 @@ class _ConquestMoveSheetContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final remaining = source.armyCount - selectedAmount;
+    final sourceName = MapLocalizations.territoryName(context, source);
+    final targetName = MapLocalizations.territoryName(context, target);
     return PremiumPanel(
       borderColor: AppColors.premiumGold.withValues(alpha: 0.82),
       padding: const EdgeInsets.all(0),
@@ -1330,7 +1372,7 @@ class _ConquestMoveSheetContent extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
                           Text(
-                            '${target.name} FETHEDİLDİ',
+                            '$targetName FETHEDİLDİ',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -1360,7 +1402,7 @@ class _ConquestMoveSheetContent extends StatelessWidget {
                     Expanded(
                       child: _MoveSummaryCard(
                         label: 'KAYNAKTA KALIR',
-                        territoryName: source.name,
+                        territoryName: sourceName,
                         armies: remaining,
                         color: AppColors.premiumBlue,
                       ),
@@ -1375,7 +1417,7 @@ class _ConquestMoveSheetContent extends StatelessWidget {
                     Expanded(
                       child: _MoveSummaryCard(
                         label: 'YENİ BÖLGE',
-                        territoryName: target.name,
+                        territoryName: targetName,
                         armies: selectedAmount,
                         color: AppColors.premiumGold,
                       ),
@@ -2190,7 +2232,10 @@ class _ReinforcePhasePanel extends StatelessWidget {
               const _InfoPill(label: 'Kontrollü kıta yok')
             else
               for (final bonus in controlled)
-                _InfoPill(label: '${bonus.continent} +${bonus.value}'),
+                _InfoPill(
+                  label:
+                      '${MapLocalizations.continentName(context, bonus.continent)} +${bonus.value}',
+                ),
           ],
         ),
         const SizedBox(height: 7),
@@ -2201,7 +2246,7 @@ class _ReinforcePhasePanel extends StatelessWidget {
               ? 'Online oyun eşitleniyor...'
               : isOnline && !canAct
               ? '${state.currentPlayer.name} bekleniyor...'
-              : state.statusMessage,
+              : _localizedStatusForContext(context, state, state.statusMessage),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           textAlign: TextAlign.center,
@@ -2354,7 +2399,11 @@ class _BattleCommandPanel extends StatelessWidget {
                           ? 'Online oyun eşitleniyor...'
                           : isOnline && !canAct
                           ? '${state.currentPlayer.name} bekleniyor...'
-                          : state.statusMessage,
+                          : _localizedStatusForContext(
+                              context,
+                              state,
+                              state.statusMessage,
+                            ),
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.premiumMutedText,
@@ -2495,6 +2544,9 @@ class _TerritoryReadout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final displayName = territory == null
+        ? 'Yok'
+        : MapLocalizations.territoryName(context, territory!);
     final owner = state.playerById(territory?.ownerId);
     final ownerColor = owner == null
         ? AppColors.neutral
@@ -2512,7 +2564,7 @@ class _TerritoryReadout extends StatelessWidget {
         ),
         const SizedBox(height: 5),
         Text(
-          territory?.name ?? 'Yok',
+          displayName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
