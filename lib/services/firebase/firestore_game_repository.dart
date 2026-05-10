@@ -17,6 +17,7 @@ class OnlineGameSession {
     required this.state,
     required this.status,
     required this.isHost,
+    required this.maxHumanPlayers,
   });
 
   final String gameId;
@@ -24,6 +25,7 @@ class OnlineGameSession {
   final GameState state;
   final String status;
   final bool isHost;
+  final int maxHumanPlayers;
 
   bool get isActive => status == FirestoreGameRepository.statusActive;
   bool get isWaiting => status == FirestoreGameRepository.statusWaiting;
@@ -93,6 +95,7 @@ class FirestoreGameRepository {
         state: state,
         status: data['status'] as String? ?? statusWaiting,
         isHost: data['hostUid'] == FirebaseService.auth.currentUser?.uid,
+        maxHumanPlayers: _maxHumanPlayersFromData(data),
       );
     });
   }
@@ -101,10 +104,12 @@ class FirestoreGameRepository {
     required String hostPlayerName,
     required int hostColorValue,
     int botCount = 2,
+    int maxHumanPlayers = GameConstants.maxOnlineHumanPlayers,
   }) async {
     final uid = await FirebaseService.ensureSignedInAnonymously();
     final gameId = _newGameCode();
     final doc = _games.doc(gameId);
+    final boundedMaxHumanPlayers = _boundedMaxHumanPlayers(maxHumanPlayers);
 
     final host = _OnlineRoomParticipant(
       uid: uid,
@@ -129,7 +134,7 @@ class FirestoreGameRepository {
       'participants': participants
           .map((participant) => participant.toMap())
           .toList(growable: false),
-      'maxHumanPlayers': GameConstants.maxOnlineHumanPlayers,
+      'maxHumanPlayers': boundedMaxHumanPlayers,
       'hostName': host.name,
       'hostColorValue': host.colorValue,
       'botCount': boundedBotCount,
@@ -145,6 +150,7 @@ class FirestoreGameRepository {
       state: waitingState,
       status: statusWaiting,
       isHost: true,
+      maxHumanPlayers: boundedMaxHumanPlayers,
     );
   }
 
@@ -180,7 +186,8 @@ class FirestoreGameRepository {
       if (participants.any((participant) => participant.uid == uid)) {
         throw StateError('You are already in this room.');
       }
-      if (participants.length >= GameConstants.maxOnlineHumanPlayers) {
+      final maxHumanPlayers = _maxHumanPlayersFromData(data);
+      if (participants.length >= maxHumanPlayers) {
         throw StateError('This room is full.');
       }
 
@@ -230,6 +237,7 @@ class FirestoreGameRepository {
         state: waitingState,
         status: statusWaiting,
         isHost: false,
+        maxHumanPlayers: maxHumanPlayers,
       );
     });
 
@@ -281,6 +289,7 @@ class FirestoreGameRepository {
         state: activeState,
         status: statusActive,
         isHost: true,
+        maxHumanPlayers: _maxHumanPlayersFromData(data),
       );
     });
 
@@ -391,6 +400,18 @@ class FirestoreGameRepository {
         GameConstants.startingTerritoriesPerPlayer;
     final maxBotsForMap = max(0, maxPlayersSupported - participants.length);
     return botCount.clamp(0, min(GameConstants.maxBotPlayers, maxBotsForMap));
+  }
+
+  int _boundedMaxHumanPlayers(int maxHumanPlayers) {
+    return maxHumanPlayers
+        .clamp(2, GameConstants.maxOnlineHumanPlayers)
+        .toInt();
+  }
+
+  int _maxHumanPlayersFromData(Map<String, dynamic> data) {
+    return _boundedMaxHumanPlayers(
+      data['maxHumanPlayers'] as int? ?? GameConstants.maxOnlineHumanPlayers,
+    );
   }
 
   List<_OnlineRoomParticipant> _participantsFromData(

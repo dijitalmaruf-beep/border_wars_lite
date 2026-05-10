@@ -30,6 +30,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
   StreamSubscription<OnlineGameSession?>? _waitingSubscription;
   OnlineGameSession? _createdSession;
   int _selectedColorValue = AppColors.humanBlueValue;
+  int _selectedMaxHumanPlayers = GameConstants.maxOnlineHumanPlayers;
   int _selectedBotCount = 2;
   bool _isBusy = false;
   String? _errorMessage;
@@ -153,6 +154,75 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
+                            const _PanelLabel('Ä°NSAN OYUNCU SAYISI'),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: <Widget>[
+                                _StepperButton(
+                                  icon: Icons.remove,
+                                  onPressed:
+                                      !_isBusy &&
+                                          _createdSession == null &&
+                                          _selectedMaxHumanPlayers > 2
+                                      ? () => _changeMaxHumanPlayers(-1)
+                                      : null,
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    children: <Widget>[
+                                      Text(
+                                        '$_selectedMaxHumanPlayers',
+                                        style: const TextStyle(
+                                          color: AppColors.premiumText,
+                                          fontSize: 30,
+                                          height: 1,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 5),
+                                      const Text(
+                                        'oda kapasitesi',
+                                        style: TextStyle(
+                                          color: AppColors.premiumMutedText,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                _StepperButton(
+                                  icon: Icons.add,
+                                  onPressed:
+                                      !_isBusy &&
+                                          _createdSession == null &&
+                                          _selectedMaxHumanPlayers <
+                                              GameConstants
+                                                  .maxOnlineHumanPlayers
+                                      ? () => _changeMaxHumanPlayers(1)
+                                      : null,
+                                ),
+                              ],
+                            ),
+                            Slider(
+                              value: _selectedMaxHumanPlayers.toDouble(),
+                              min: 2,
+                              max: GameConstants.maxOnlineHumanPlayers
+                                  .toDouble(),
+                              divisions:
+                                  GameConstants.maxOnlineHumanPlayers - 2,
+                              activeColor: AppColors.premiumGold,
+                              inactiveColor: AppColors.premiumBorder,
+                              onChanged: _isBusy || _createdSession != null
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _selectedMaxHumanPlayers = value
+                                            .round();
+                                      });
+                                    },
+                            ),
+                            const SizedBox(height: 14),
                             const _PanelLabel('BOT KOMUTANLAR'),
                             const SizedBox(height: 14),
                             Row(
@@ -297,7 +367,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               const SizedBox(height: 8),
                               _LobbyPlayerList(
                                 players: _createdSession!.humanPlayers,
-                                maxPlayers: GameConstants.maxOnlineHumanPlayers,
+                                maxPlayers: _createdSession!.maxHumanPlayers,
                               ),
                               const SizedBox(height: 10),
                               if (_createdSession!.isHost) ...<Widget>[
@@ -399,6 +469,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
         hostPlayerName: _nameController.text,
         hostColorValue: _selectedColorValue,
         botCount: _selectedBotCount,
+        maxHumanPlayers: _selectedMaxHumanPlayers,
       );
       if (!mounted) {
         return;
@@ -506,6 +577,14 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
     setState(() {
       _selectedBotCount = (_selectedBotCount + delta)
           .clamp(0, GameConstants.maxBotPlayers)
+          .toInt();
+    });
+  }
+
+  void _changeMaxHumanPlayers(int delta) {
+    setState(() {
+      _selectedMaxHumanPlayers = (_selectedMaxHumanPlayers + delta)
+          .clamp(2, GameConstants.maxOnlineHumanPlayers)
           .toInt();
     });
   }
