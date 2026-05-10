@@ -154,7 +154,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('Ä°NSAN OYUNCU SAYISI'),
+                            const _PanelLabel('OYUNCU SAYISI'),
                             const SizedBox(height: 14),
                             Row(
                               children: <Widget>[
@@ -474,7 +474,11 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
       if (!mounted) {
         return;
       }
+      final assignedColor = _assignedColorFor(session);
       setState(() {
+        if (assignedColor != null) {
+          _selectedColorValue = assignedColor;
+        }
         _createdSession = session;
         _isBusy = false;
       });
@@ -498,10 +502,19 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
       if (!mounted) {
         return;
       }
+      final assignedColor = _assignedColorFor(session);
+      final colorChanged =
+          assignedColor != null && assignedColor != _selectedColorValue;
       setState(() {
+        if (assignedColor != null) {
+          _selectedColorValue = assignedColor;
+        }
         _createdSession = session;
         _isBusy = false;
       });
+      if (colorChanged) {
+        _showColorReassignedNotice();
+      }
       _watchWaitingRoom(session);
     } catch (error) {
       _showError(error);
@@ -541,6 +554,10 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
           }
           if (!updatedSession.isActive) {
             setState(() {
+              final assignedColor = _assignedColorFor(updatedSession);
+              if (assignedColor != null) {
+                _selectedColorValue = assignedColor;
+              }
               _createdSession = updatedSession;
               _isBusy = false;
             });
@@ -571,6 +588,25 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
       _isBusy = false;
       _errorMessage = error.toString().replaceFirst('Bad state: ', '');
     });
+  }
+
+  int? _assignedColorFor(OnlineGameSession session) {
+    for (final player in session.humanPlayers) {
+      if (player.id == session.localPlayerId) {
+        return player.colorValue;
+      }
+    }
+    return null;
+  }
+
+  void _showColorReassignedNotice() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Seçtiğin renk odada kullanılıyordu. Sana uygun boş bir renk atandı.',
+        ),
+      ),
+    );
   }
 
   void _changeBotCount(int delta) {
