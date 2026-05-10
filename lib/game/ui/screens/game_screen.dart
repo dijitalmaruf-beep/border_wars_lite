@@ -242,7 +242,11 @@ class _GameScreenState extends State<GameScreen> {
     }
     if (_state.phase == GamePhase.attack &&
         _commandMode == _MapCommandMode.transfer) {
-      _setGameState(_selectTransferTerritory(_state, territoryId));
+      _setGameState(
+        _selectTransferTerritory(_state, territoryId),
+        syncOnline: false,
+        persistLocal: false,
+      );
       return;
     }
 
@@ -250,28 +254,26 @@ class _GameScreenState extends State<GameScreen> {
     final reinforcementAmount = _state.remainingReinforcements;
     final territory = _state.territoryByIdOrNull(territoryId);
     final nextState = _engine.selectTerritory(_state, territoryId);
+    final didReinforce =
+        wasReinforce &&
+        territory != null &&
+        territory.ownerId == _state.currentPlayer.id &&
+        reinforcementAmount > 0 &&
+        nextState.phase == GamePhase.attack;
     _setGameState(
       nextState,
-      eventMessage:
-          wasReinforce &&
-              territory != null &&
-              territory.ownerId == _state.currentPlayer.id &&
-              reinforcementAmount > 0 &&
-              nextState.phase == GamePhase.attack
+      eventMessage: didReinforce
           ? '${_territoryName(territory)} +$reinforcementAmount takviye aldı.'
           : null,
-      mapPulse:
-          wasReinforce &&
-              territory != null &&
-              territory.ownerId == _state.currentPlayer.id &&
-              reinforcementAmount > 0 &&
-              nextState.phase == GamePhase.attack
+      mapPulse: didReinforce
           ? _MapPulse(
               territoryId: territory.id,
               label: '+$reinforcementAmount',
               color: AppColors.premiumBlue,
             )
           : null,
+      syncOnline: didReinforce,
+      persistLocal: didReinforce,
     );
   }
 
@@ -304,6 +306,8 @@ class _GameScreenState extends State<GameScreen> {
         _setGameState(
           battleState.copyWith(statusMessage: 'Geçersiz saldırı.'),
           eventMessage: 'Saldırı geçersiz.',
+          syncOnline: false,
+          persistLocal: false,
         );
         return;
       }
@@ -390,8 +394,16 @@ class _GameScreenState extends State<GameScreen> {
     String? eventMessage,
     _MapPulse? mapPulse,
     bool syncOnline = true,
+    bool persistLocal = true,
   }) {
     final previousState = _state;
+    final turnChanged =
+        previousState.currentPlayer.id != nextState.currentPlayer.id ||
+        previousState.turnNumber != nextState.turnNumber;
+    final ownershipChanged = _territoryOwnershipChanged(
+      previousState,
+      nextState,
+    );
     final previousLastEvent = previousState.eventLog.isEmpty
         ? null
         : previousState.eventLog.last;
@@ -427,16 +439,19 @@ class _GameScreenState extends State<GameScreen> {
         _commandMode = _MapCommandMode.attack;
       }
     });
-    if (previousState.currentPlayer.id != committedState.currentPlayer.id ||
-        previousState.turnNumber != committedState.turnNumber) {
+    if (turnChanged) {
       _showTurnBannerFor(committedState);
+      _startTurnTimer();
     }
-    _startTurnTimer();
-    _maybeAnnounceControlledContinents(committedState);
+    if (ownershipChanged) {
+      _maybeAnnounceControlledContinents(committedState);
+    }
     if (syncOnline) {
       unawaited(_saveOnlineState(committedState));
     }
-    unawaited(_saveLocalState(committedState));
+    if (persistLocal) {
+      unawaited(_saveLocalState(committedState));
+    }
     _afterStateChanged();
   }
 
@@ -686,6 +701,8 @@ class _GameScreenState extends State<GameScreen> {
         _state.copyWith(
           statusMessage: 'Transfer için komşu dost bölgeleri seç.',
         ),
+        syncOnline: false,
+        persistLocal: false,
       );
       return;
     }
@@ -1231,6 +1248,44 @@ class _GameScreenState extends State<GameScreen> {
     return widget.localPlayerId == FirestoreGameRepository.hostPlayerId;
   }
 
+  bool _territoryOwnershipChanged(GameState previous, GameState next) {
+    if (previous.territories.length != next.territories.length) {
+      return true;
+    }
+    for (final territory in previous.territories) {
+      final nextTerritory = next.territoryByIdOrNull(territory.id);
+      if (nextTerritory == null || nextTerritory.ownerId != territory.ownerId) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _territoryBoardEquals(GameState local, GameState remote) {
+    if (local.territories.length != remote.territories.length) {
+      return false;
+    }
+    for (final territory in local.territories) {
+      final remoteTerritory = remote.territoryByIdOrNull(territory.id);
+      if (remoteTerritory == null ||
+          remoteTerritory.ownerId != territory.ownerId ||
+          remoteTerritory.armyCount != territory.armyCount) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  bool _shouldKeepLocalSelection(GameState local, GameState remote) {
+    if (!_isOnline || local.currentPlayer.id != widget.localPlayerId) {
+      return false;
+    }
+    return remote.currentPlayer.id == local.currentPlayer.id &&
+        remote.turnNumber == local.turnNumber &&
+        remote.phase == local.phase &&
+        _territoryBoardEquals(local, remote);
+  }
+
   void _subscribeToOnlineGame() {
     if (!_isOnline) {
       return;
@@ -1243,21 +1298,41 @@ class _GameScreenState extends State<GameScreen> {
             return;
           }
           final previousState = _state;
+          final keepLocalSelection = _shouldKeepLocalSelection(
+            previousState,
+            remoteState,
+          );
+          final displayState = keepLocalSelection
+              ? remoteState.copyWith(
+                  selectedSourceId: previousState.selectedSourceId,
+                  selectedTargetId: previousState.selectedTargetId,
+                  statusMessage: previousState.statusMessage,
+                )
+              : remoteState;
+          final turnChanged =
+              previousState.currentPlayer.id != displayState.currentPlayer.id ||
+              previousState.turnNumber != displayState.turnNumber;
+          final ownershipChanged = _territoryOwnershipChanged(
+            previousState,
+            displayState,
+          );
           setState(() {
-            _state = remoteState;
+            _state = displayState;
             _isSavingOnline = false;
             _remainingTurnSeconds = _secondsLeftFor(_state);
-            if (_state.phase != GamePhase.attack ||
-                _state.currentPlayer.isBot) {
+            if (!keepLocalSelection &&
+                (_state.phase != GamePhase.attack ||
+                    _state.currentPlayer.isBot)) {
               _commandMode = _MapCommandMode.attack;
             }
           });
-          if (previousState.currentPlayer.id != remoteState.currentPlayer.id ||
-              previousState.turnNumber != remoteState.turnNumber) {
-            _showTurnBannerFor(remoteState);
+          if (turnChanged) {
+            _showTurnBannerFor(displayState);
+            _startTurnTimer();
           }
-          _startTurnTimer();
-          _maybeAnnounceControlledContinents(remoteState);
+          if (ownershipChanged) {
+            _maybeAnnounceControlledContinents(displayState);
+          }
           _afterStateChanged();
         }, onError: _handleOnlineStreamError);
   }
