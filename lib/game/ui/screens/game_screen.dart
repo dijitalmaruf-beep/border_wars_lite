@@ -17,6 +17,7 @@ import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../../models/territory.dart';
 import '../widgets/attack_dialog.dart';
+import '../widgets/commander_banner_picker.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
@@ -1962,19 +1963,12 @@ class _PlayerCard extends StatelessWidget {
         children: <Widget>[
           Row(
             children: <Widget>[
-              Container(
-                width: compact ? 10 : 12,
-                height: compact ? 10 : 12,
-                decoration: BoxDecoration(
-                  color: isEliminated ? color.withValues(alpha: 0.35) : color,
-                  shape: BoxShape.circle,
-                  boxShadow: <BoxShadow>[
-                    if (!isEliminated)
-                      BoxShadow(
-                        color: color.withValues(alpha: 0.55),
-                        blurRadius: 8,
-                      ),
-                  ],
+              Opacity(
+                opacity: isEliminated ? 0.42 : 1,
+                child: CommanderBannerBadge(
+                  colorValue: player.colorValue,
+                  width: compact ? 21 : 24,
+                  height: compact ? 17 : 19,
                 ),
               ),
               SizedBox(width: compact ? 4 : 5),

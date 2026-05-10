@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../models/game_state.dart';
+import 'commander_banner_picker.dart';
 
 class TurnPanel extends StatelessWidget {
   const TurnPanel({
@@ -34,14 +35,7 @@ class TurnPanel extends StatelessWidget {
           children: <Widget>[
             Row(
               children: <Widget>[
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: Color(currentPlayer.colorValue),
-                    shape: BoxShape.circle,
-                  ),
-                ),
+                CommanderBannerBadge(colorValue: currentPlayer.colorValue),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

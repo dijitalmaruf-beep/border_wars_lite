@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../models/game_state.dart';
 import '../../models/territory.dart';
+import 'commander_banner_picker.dart';
 
 class SelectedTerritoryPanel extends StatelessWidget {
   const SelectedTerritoryPanel({
@@ -102,14 +103,22 @@ class _TerritorySummary extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Container(
-            width: 12,
-            height: 12,
-            decoration: BoxDecoration(
-              color: territory == null ? AppColors.panelBorder : ownerColor,
-              shape: BoxShape.circle,
-            ),
-          ),
+          owner == null
+              ? Container(
+                  width: 20,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: territory == null
+                        ? AppColors.panelBorder
+                        : ownerColor.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                )
+              : CommanderBannerBadge(
+                  colorValue: owner.colorValue,
+                  width: 24,
+                  height: 19,
+                ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(

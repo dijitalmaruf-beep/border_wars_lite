@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../models/game_state.dart';
+import 'commander_banner_picker.dart';
 
 class PlayerStatusBar extends StatelessWidget {
   const PlayerStatusBar({required this.state, super.key});
@@ -53,14 +54,7 @@ class PlayerStatusBar extends StatelessWidget {
                   ),
                   child: Row(
                     children: <Widget>[
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: Color(player.colorValue),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
+                      CommanderBannerBadge(colorValue: player.colorValue),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
