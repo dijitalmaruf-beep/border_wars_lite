@@ -8,6 +8,7 @@ import '../../../core/constants/game_constants.dart';
 import '../../../services/firebase/firebase_service.dart';
 import '../../../services/firebase/firestore_game_repository.dart';
 import '../../models/player.dart';
+import '../widgets/commander_banner_picker.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
@@ -125,26 +126,17 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            const _PanelLabel('RENGİNİ SEÇ'),
+                            const _PanelLabel('SANCAĞINI SEÇ'),
                             const SizedBox(height: 14),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: AppColors.humanColorValues.map((
-                                colorValue,
-                              ) {
-                                return _ColorOrb(
-                                  colorValue: colorValue,
-                                  isSelected: colorValue == _selectedColorValue,
-                                  onTap: _isBusy || _createdSession != null
-                                      ? null
-                                      : () {
-                                          setState(() {
-                                            _selectedColorValue = colorValue;
-                                          });
-                                        },
-                                );
-                              }).toList(),
+                            CommanderBannerPicker(
+                              colorValues: AppColors.humanColorValues,
+                              selectedColorValue: _selectedColorValue,
+                              enabled: !_isBusy && _createdSession == null,
+                              onSelected: (colorValue) {
+                                setState(() {
+                                  _selectedColorValue = colorValue;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -664,14 +656,7 @@ class _LobbyPlayerList extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Container(
-                    width: 10,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: Color(player.colorValue),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
+                  CommanderBannerBadge(colorValue: player.colorValue),
                   const SizedBox(width: 6),
                   Text(
                     player.name,
@@ -738,55 +723,6 @@ class _StepperButton extends StatelessWidget {
               ? AppColors.premiumMutedText.withValues(alpha: 0.55)
               : AppColors.premiumText,
         ),
-      ),
-    );
-  }
-}
-
-class _ColorOrb extends StatelessWidget {
-  const _ColorOrb({
-    required this.colorValue,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final int colorValue;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(30),
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        width: 46,
-        height: 46,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: <Color>[
-              Color(colorValue).withValues(alpha: 0.98),
-              Color(colorValue).withValues(alpha: 0.64),
-            ],
-          ),
-          border: Border.all(
-            color: isSelected ? Colors.white : Color(colorValue),
-            width: isSelected ? 3 : 1.5,
-          ),
-          boxShadow: <BoxShadow>[
-            if (isSelected)
-              BoxShadow(
-                color: Color(colorValue).withValues(alpha: 0.65),
-                blurRadius: 18,
-                spreadRadius: 2,
-              ),
-          ],
-        ),
-        child: isSelected
-            ? const Icon(Icons.check, color: Colors.white, size: 28)
-            : null,
       ),
     );
   }

@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/game_constants.dart';
 import '../../engine/map_generator.dart';
 import '../../models/game_state.dart';
+import '../widgets/commander_banner_picker.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
@@ -117,26 +118,16 @@ class _SetupScreenState extends State<SetupScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
-                            const _PanelLabel('RENGİNİ SEÇ'),
+                            const _PanelLabel('SANCAĞINI SEÇ'),
                             const SizedBox(height: 16),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: AppColors.humanColorValues.map((
-                                colorValue,
-                              ) {
-                                final isSelected =
-                                    colorValue == _selectedColorValue;
-                                return _ColorOrb(
-                                  colorValue: colorValue,
-                                  isSelected: isSelected,
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedColorValue = colorValue;
-                                    });
-                                  },
-                                );
-                              }).toList(),
+                            CommanderBannerPicker(
+                              colorValues: AppColors.humanColorValues,
+                              selectedColorValue: _selectedColorValue,
+                              onSelected: (colorValue) {
+                                setState(() {
+                                  _selectedColorValue = colorValue;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -455,58 +446,6 @@ class _PanelLabel extends StatelessWidget {
         fontSize: 13,
         fontWeight: FontWeight.w900,
         letterSpacing: 0.8,
-      ),
-    );
-  }
-}
-
-class _ColorOrb extends StatelessWidget {
-  const _ColorOrb({
-    required this.colorValue,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final int colorValue;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: isSelected ? 'Seçili' : 'Renk seç',
-      child: InkWell(
-        borderRadius: BorderRadius.circular(30),
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 140),
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: <Color>[
-                Color(colorValue).withValues(alpha: 0.98),
-                Color(colorValue).withValues(alpha: 0.64),
-              ],
-            ),
-            border: Border.all(
-              color: isSelected ? Colors.white : Color(colorValue),
-              width: isSelected ? 3 : 1.5,
-            ),
-            boxShadow: <BoxShadow>[
-              if (isSelected)
-                BoxShadow(
-                  color: Color(colorValue).withValues(alpha: 0.65),
-                  blurRadius: 18,
-                  spreadRadius: 2,
-                ),
-            ],
-          ),
-          child: isSelected
-              ? const Icon(Icons.check, color: Colors.white, size: 30)
-              : null,
-        ),
       ),
     );
   }
