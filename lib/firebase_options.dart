@@ -14,12 +14,13 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
+        return ios;
       case TargetPlatform.macOS:
       case TargetPlatform.windows:
       case TargetPlatform.linux:
       case TargetPlatform.fuchsia:
         throw UnsupportedError(
-          'Firebase options are configured for Android and Web only.',
+          'Firebase options are configured for Android, iOS, and Web only.',
         );
     }
   }
@@ -39,5 +40,14 @@ class DefaultFirebaseOptions {
     messagingSenderId: '776853906650',
     projectId: 'border-wars-lite',
     storageBucket: 'border-wars-lite.firebasestorage.app',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyBn3NbACtvEl0Ur2M1KBB1bk2y1uMT7yjM',
+    appId: '1:776853906650:ios:293462905649436100b1e3',
+    messagingSenderId: '776853906650',
+    projectId: 'border-wars-lite',
+    storageBucket: 'border-wars-lite.firebasestorage.app',
+    iosBundleId: 'com.marleklabs.chromaconquest',
   );
 }

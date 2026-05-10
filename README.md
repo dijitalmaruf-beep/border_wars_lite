@@ -108,7 +108,7 @@ To enable real online play, configure Firebase for each target:
 
 - Android: `android/app/google-services.json` should include package id `com.marleklabs.chromaconquest`.
 - Web: generated Firebase options, normally via FlutterFire CLI.
-- iOS: add the Firebase iOS app for bundle id `com.marleklabs.chromaconquest`, commit `ios/Runner/GoogleService-Info.plist`, and update `lib/firebase_options.dart` with iOS options.
+- iOS: `ios/Runner/GoogleService-Info.plist` and `lib/firebase_options.dart` are configured for bundle id `com.marleklabs.chromaconquest`.
 - Firebase Console: enable `Authentication > Sign-in method > Anonymous`.
 - Firestore: deploy `firestore.rules` so only signed-in room participants can update active games.
 
