@@ -446,8 +446,9 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _commandMode = _MapCommandMode.attack;
       _state = _state.copyWith(
+        selectedSourceId: null,
         selectedTargetId: null,
-        statusMessage: 'Saldırmak için komşu bir düşman bölgesi seç.',
+        statusMessage: 'Saldırı için önce kaynak bölgeyi seç.',
       );
     });
   }
@@ -666,8 +667,10 @@ class _GameScreenState extends State<GameScreen> {
     setState(() {
       _commandMode = _MapCommandMode.transfer;
       _state = _state.copyWith(
+        selectedSourceId: null,
         selectedTargetId: null,
-        statusMessage: 'Önce kaynak dost bölgeyi, sonra komşu dost hedefi seç.',
+        statusMessage:
+            'Transfer için önce kaynak dost bölgeyi, sonra komşu dost hedefi seç.',
       );
     });
   }
