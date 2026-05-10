@@ -764,101 +764,13 @@ class _GameScreenState extends State<GameScreen> {
                     });
                   }
 
-                  return PremiumPanel(
-                    borderColor: AppColors.premiumGold.withValues(alpha: 0.78),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: <Widget>[
-                        const Icon(
-                          Icons.flag,
-                          color: AppColors.premiumGold,
-                          size: 34,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${target.name} FETHEDİLDİ',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.premiumText,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          '${source.name} bölgesinden kaç asker ilerlesin?',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.premiumMutedText,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            _AmountButton(
-                              icon: Icons.remove,
-                              onPressed: selectedAmount > 1
-                                  ? () => updateAmount(selectedAmount - 1)
-                                  : null,
-                            ),
-                            SizedBox(
-                              width: 104,
-                              child: Text(
-                                '$selectedAmount',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: AppColors.premiumText,
-                                  fontSize: 40,
-                                  height: 1,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            _AmountButton(
-                              icon: Icons.add,
-                              onPressed: selectedAmount < maxMove
-                                  ? () => updateAmount(selectedAmount + 1)
-                                  : null,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        if (maxMove > 1)
-                          Slider(
-                            value: selectedAmount.toDouble(),
-                            min: 1,
-                            max: maxMove.toDouble(),
-                            divisions: maxMove - 1,
-                            activeColor: AppColors.premiumGold,
-                            inactiveColor: AppColors.premiumBorder,
-                            onChanged: (value) => updateAmount(value.round()),
-                          )
-                        else
-                          const SizedBox(height: 28),
-                        Text(
-                          '${target.name}: $selectedAmount asker | ${source.name}: ${source.armyCount - selectedAmount} asker kalır',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.premiumMutedText,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        PremiumButton(
-                          label: '$selectedAmount ASKERİ İLERLET',
-                          icon: Icons.flag,
-                          onPressed: () =>
-                              Navigator.of(context).pop(selectedAmount),
-                          tone: PremiumButtonTone.gold,
-                          height: 50,
-                        ),
-                      ],
-                    ),
+                  return _ConquestMoveSheetContent(
+                    source: source,
+                    target: target,
+                    selectedAmount: selectedAmount,
+                    maxMove: maxMove,
+                    onAmountChanged: updateAmount,
+                    onConfirm: () => Navigator.of(context).pop(selectedAmount),
                   );
                 },
               ),
@@ -1303,10 +1215,15 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class _AmountButton extends StatelessWidget {
-  const _AmountButton({required this.icon, required this.onPressed});
+  const _AmountButton({
+    required this.icon,
+    required this.onPressed,
+    this.accent = AppColors.premiumCyan,
+  });
 
   final IconData icon;
   final VoidCallback? onPressed;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) {
@@ -1320,8 +1237,12 @@ class _AmountButton extends StatelessWidget {
           border: Border.all(
             color: onPressed == null
                 ? AppColors.premiumBorder.withValues(alpha: 0.35)
-                : AppColors.premiumCyan.withValues(alpha: 0.70),
+                : accent.withValues(alpha: 0.70),
           ),
+          boxShadow: <BoxShadow>[
+            if (onPressed != null)
+              BoxShadow(color: accent.withValues(alpha: 0.20), blurRadius: 12),
+          ],
         ),
         child: IconButton(
           onPressed: onPressed,
@@ -1331,6 +1252,300 @@ class _AmountButton extends StatelessWidget {
               : AppColors.premiumText,
           tooltip: icon == Icons.add ? 'Artır' : 'Azalt',
         ),
+      ),
+    );
+  }
+}
+
+class _ConquestMoveSheetContent extends StatelessWidget {
+  const _ConquestMoveSheetContent({
+    required this.source,
+    required this.target,
+    required this.selectedAmount,
+    required this.maxMove,
+    required this.onAmountChanged,
+    required this.onConfirm,
+  });
+
+  final Territory source;
+  final Territory target;
+  final int selectedAmount;
+  final int maxMove;
+  final ValueChanged<int> onAmountChanged;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = source.armyCount - selectedAmount;
+    return PremiumPanel(
+      borderColor: AppColors.premiumGold.withValues(alpha: 0.82),
+      padding: const EdgeInsets.all(0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: <Color>[Color(0xF50C2232), Color(0xFA030910)],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: <Color>[
+                            AppColors.premiumGold,
+                            AppColors.premiumGoldDark,
+                          ],
+                        ),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: AppColors.premiumGold.withValues(
+                              alpha: 0.45,
+                            ),
+                            blurRadius: 20,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.flag,
+                        color: AppColors.premiumText,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '${target.name} FETHEDİLDİ',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.premiumText,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          const Text(
+                            'Yeni bölgeye kaç asker ilerlesin?',
+                            style: TextStyle(
+                              color: AppColors.premiumMutedText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: _MoveSummaryCard(
+                        label: 'KAYNAKTA KALIR',
+                        territoryName: source.name,
+                        armies: remaining,
+                        color: AppColors.premiumBlue,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.arrow_forward,
+                      color: AppColors.premiumGold,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _MoveSummaryCard(
+                        label: 'YENİ BÖLGE',
+                        territoryName: target.name,
+                        armies: selectedAmount,
+                        color: AppColors.premiumGold,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xB3071420),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: AppColors.premiumGold.withValues(alpha: 0.38),
+                    ),
+                  ),
+                  child: Column(
+                    children: <Widget>[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _AmountButton(
+                            icon: Icons.remove,
+                            accent: AppColors.premiumGold,
+                            onPressed: selectedAmount > 1
+                                ? () => onAmountChanged(selectedAmount - 1)
+                                : null,
+                          ),
+                          SizedBox(
+                            width: 112,
+                            child: Column(
+                              children: <Widget>[
+                                Text(
+                                  '$selectedAmount',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.premiumText,
+                                    fontSize: 42,
+                                    height: 1,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                const Text(
+                                  'ASKER',
+                                  style: TextStyle(
+                                    color: AppColors.premiumGold,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _AmountButton(
+                            icon: Icons.add,
+                            accent: AppColors.premiumGold,
+                            onPressed: selectedAmount < maxMove
+                                ? () => onAmountChanged(selectedAmount + 1)
+                                : null,
+                          ),
+                        ],
+                      ),
+                      if (maxMove > 1) ...<Widget>[
+                        const SizedBox(height: 6),
+                        SliderTheme(
+                          data: SliderTheme.of(context).copyWith(
+                            activeTrackColor: AppColors.premiumGold,
+                            inactiveTrackColor: AppColors.premiumBorder
+                                .withValues(alpha: 0.55),
+                            thumbColor: AppColors.premiumGold,
+                            overlayColor: AppColors.premiumGold.withValues(
+                              alpha: 0.18,
+                            ),
+                          ),
+                          child: Slider(
+                            value: selectedAmount.toDouble(),
+                            min: 1,
+                            max: maxMove.toDouble(),
+                            divisions: maxMove - 1,
+                            onChanged: (value) =>
+                                onAmountChanged(value.round()),
+                          ),
+                        ),
+                      ] else
+                        const SizedBox(height: 20),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+                PremiumButton(
+                  label: '$selectedAmount ASKERİ İLERLET',
+                  icon: Icons.flag,
+                  onPressed: onConfirm,
+                  tone: PremiumButtonTone.gold,
+                  height: 52,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MoveSummaryCard extends StatelessWidget {
+  const _MoveSummaryCard({
+    required this.label,
+    required this.territoryName,
+    required this.armies,
+    required this.color,
+  });
+
+  final String label;
+  final String territoryName;
+  final int armies;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: const BoxConstraints(minHeight: 86),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.52)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            territoryName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: AppColors.premiumText,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const Spacer(),
+          Row(
+            children: <Widget>[
+              Icon(Icons.shield, color: color, size: 15),
+              const SizedBox(width: 5),
+              Text(
+                '$armies',
+                style: const TextStyle(
+                  color: AppColors.premiumText,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1696,10 +1911,7 @@ class _MapStage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) {
-        final pulseTerritory = pulse == null
-            ? null
-            : state.territoryByIdOrNull(pulse!.territoryId);
+      builder: (context, _) {
         return Stack(
           children: <Widget>[
             Positioned.fill(
@@ -1726,6 +1938,10 @@ class _MapStage extends StatelessWidget {
                     validSourceIds: validSourceIds,
                     validTargetIds: validTargetIds,
                     controlledContinents: controlledContinents,
+                    pulseTerritoryId: pulse?.territoryId,
+                    pulseLabel: pulse?.label,
+                    pulseColor: pulse?.color,
+                    pulseSerial: pulseSerial,
                     onTerritoryTap: onTerritoryTap,
                   ),
                 ),
@@ -1734,19 +1950,6 @@ class _MapStage extends StatelessWidget {
             const Positioned.fill(
               child: IgnorePointer(child: _MapCardVignette()),
             ),
-            if (pulse != null && pulseTerritory != null)
-              Positioned(
-                key: ValueKey<int>(pulseSerial),
-                left: (pulseTerritory.x * constraints.maxWidth - 24).clamp(
-                  8.0,
-                  constraints.maxWidth - 56,
-                ),
-                top: (pulseTerritory.y * constraints.maxHeight - 28).clamp(
-                  8.0,
-                  constraints.maxHeight - 56,
-                ),
-                child: _MapPulseBadge(pulse: pulse!),
-              ),
             Positioned(
               right: 10,
               bottom: 14,
@@ -1780,53 +1983,6 @@ class _MapCardVignette extends StatelessWidget {
             Colors.black.withValues(alpha: 0.34),
           ],
           stops: const <double>[0.66, 1],
-        ),
-      ),
-    );
-  }
-}
-
-class _MapPulseBadge extends StatelessWidget {
-  const _MapPulseBadge({required this.pulse});
-
-  final _MapPulse pulse;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 1700),
-      curve: Curves.easeOutQuart,
-      builder: (context, value, child) {
-        final opacity = value < 0.78 ? 1.0 : (1 - value) / 0.22;
-        return Opacity(
-          opacity: opacity.clamp(0, 1).toDouble(),
-          child: Transform.translate(
-            offset: Offset(0, -12 * value),
-            child: Transform.scale(scale: 0.92 + 0.08 * value, child: child),
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: const Color(0xEE06111B),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: pulse.color.withValues(alpha: 0.88)),
-          boxShadow: <BoxShadow>[
-            BoxShadow(
-              color: pulse.color.withValues(alpha: 0.45),
-              blurRadius: 14,
-            ),
-          ],
-        ),
-        child: Text(
-          pulse.label,
-          style: const TextStyle(
-            color: AppColors.premiumText,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-          ),
         ),
       ),
     );

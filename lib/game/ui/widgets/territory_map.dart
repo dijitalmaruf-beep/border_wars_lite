@@ -10,6 +10,10 @@ class TerritoryMap extends StatelessWidget {
     required this.validTargetIds,
     required this.controlledContinents,
     required this.onTerritoryTap,
+    this.pulseTerritoryId,
+    this.pulseLabel,
+    this.pulseColor,
+    this.pulseSerial = 0,
     super.key,
   });
 
@@ -18,6 +22,10 @@ class TerritoryMap extends StatelessWidget {
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
   final ValueChanged<String> onTerritoryTap;
+  final String? pulseTerritoryId;
+  final String? pulseLabel;
+  final Color? pulseColor;
+  final int pulseSerial;
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +35,10 @@ class TerritoryMap extends StatelessWidget {
       validTargetIds: validTargetIds,
       controlledContinents: controlledContinents,
       onTerritoryTap: onTerritoryTap,
+      pulseTerritoryId: pulseTerritoryId,
+      pulseLabel: pulseLabel,
+      pulseColor: pulseColor,
+      pulseSerial: pulseSerial,
     );
   }
 }

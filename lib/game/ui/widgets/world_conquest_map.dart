@@ -15,6 +15,10 @@ class WorldConquestMap extends StatefulWidget {
     required this.validTargetIds,
     required this.controlledContinents,
     required this.onTerritoryTap,
+    this.pulseTerritoryId,
+    this.pulseLabel,
+    this.pulseColor,
+    this.pulseSerial = 0,
     super.key,
   });
 
@@ -23,6 +27,10 @@ class WorldConquestMap extends StatefulWidget {
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
   final ValueChanged<String> onTerritoryTap;
+  final String? pulseTerritoryId;
+  final String? pulseLabel;
+  final Color? pulseColor;
+  final int pulseSerial;
 
   @override
   State<WorldConquestMap> createState() => _WorldConquestMapState();
@@ -186,6 +194,22 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                       ),
                     ),
                   ),
+                  if (widget.pulseTerritoryId != null &&
+                      widget.pulseLabel != null &&
+                      widget.pulseColor != null &&
+                      labelAnchors.containsKey(widget.pulseTerritoryId))
+                    Positioned(
+                      key: ValueKey<int>(widget.pulseSerial),
+                      left: labelAnchors[widget.pulseTerritoryId]!.dx,
+                      top: labelAnchors[widget.pulseTerritoryId]!.dy,
+                      child: IgnorePointer(
+                        child: _MapPulseOverlay(
+                          label: widget.pulseLabel!,
+                          color: widget.pulseColor!,
+                          inverseScale: 1 / _mapZoom.clamp(0.75, 4.0),
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -478,6 +502,79 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
       return 0;
     }
     return bounds.width * bounds.height;
+  }
+}
+
+class _MapPulseOverlay extends StatelessWidget {
+  const _MapPulseOverlay({
+    required this.label,
+    required this.color,
+    required this.inverseScale,
+  });
+
+  final String label;
+  final Color color;
+  final double inverseScale;
+
+  @override
+  Widget build(BuildContext context) {
+    return FractionalTranslation(
+      translation: const Offset(-0.5, -1.35),
+      child: Transform.scale(
+        scale: inverseScale,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 2300),
+          curve: Curves.easeOutQuart,
+          builder: (context, value, child) {
+            final opacity = value < 0.84 ? 1.0 : (1 - value) / 0.16;
+            return Opacity(
+              opacity: opacity.clamp(0, 1).toDouble(),
+              child: Transform.translate(
+                offset: Offset(0, -10 * value),
+                child: Transform.scale(
+                  scale: 0.98 + 0.06 * value,
+                  child: child,
+                ),
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  color.withValues(alpha: 0.92),
+                  const Color(0xF4051019),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.82)),
+              boxShadow: <BoxShadow>[
+                BoxShadow(color: color.withValues(alpha: 0.62), blurRadius: 18),
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.44),
+                  blurRadius: 12,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                height: 1,
+                shadows: <Shadow>[Shadow(color: Colors.black, blurRadius: 5)],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 
