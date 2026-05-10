@@ -294,7 +294,7 @@ class _AttackRouteCard extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 12),
           Row(
             children: <Widget>[
               Icon(Icons.shield, color: color, size: 15),

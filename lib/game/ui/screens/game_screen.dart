@@ -1530,7 +1530,7 @@ class _MoveSummaryCard extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const Spacer(),
+          const SizedBox(height: 12),
           Row(
             children: <Widget>[
               Icon(Icons.shield, color: color, size: 15),
