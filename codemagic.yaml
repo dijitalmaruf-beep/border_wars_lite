@@ -127,7 +127,13 @@ workflows:
           echo "Code signing certificates:"
           security find-identity -v -p codesigning || true
       - name: Set up Xcode code signing
-        script: xcode-project use-profiles --project "$XCODE_PROJECT"
+        script: |
+          xcode-project use-profiles \
+            --project "$XCODE_PROJECT" \
+            --profile "$HOME/Library/MobileDevice/Provisioning Profiles/*.mobileprovision" \
+            --export-options-plist "$CM_EXPORT_OPTIONS_PLIST" \
+            --warn-only \
+            --code-signing-setup-verbose-logging
       - name: Build signed IPA
         script: |
           LATEST_BUILD_NUMBER=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
