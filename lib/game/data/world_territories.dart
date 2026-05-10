@@ -5631,7 +5631,6 @@ final worldMapTerritories = <Territory>[
       'australia_west',
       'indonesia',
       'new_guinea',
-      'pacific_islands',
       'new_zealand',
     ],
     boundaryGroups: const [
@@ -5702,7 +5701,7 @@ final worldMapTerritories = <Territory>[
       'southeast_asia',
       'indonesia',
       'australia_east',
-      'pacific_islands',
+      'new_zealand',
     ],
     boundaryGroups: const [
       [
@@ -5747,12 +5746,12 @@ final worldMapTerritories = <Territory>[
     ],
   ),
   _region(
-    id: 'pacific_islands',
-    name: 'Pacific Islands',
-    x: 0.9611,
-    y: 0.5944,
+    id: 'new_zealand',
+    name: 'New Zealand',
+    x: 0.9778,
+    y: 0.7333,
     continent: 'Oceania',
-    neighbors: const ['new_guinea', 'australia_east', 'new_zealand'],
+    neighbors: const ['australia_east', 'new_guinea'],
     boundaryGroups: const [
       [
         MapPoint(0.9605, 0.6171),
@@ -5773,16 +5772,6 @@ final worldMapTerritories = <Territory>[
         MapPoint(0.9925, 0.5985),
         MapPoint(0.9935, 0.5966),
       ],
-    ],
-  ),
-  _region(
-    id: 'new_zealand',
-    name: 'New Zealand',
-    x: 0.9778,
-    y: 0.7333,
-    continent: 'Oceania',
-    neighbors: const ['australia_east', 'pacific_islands'],
-    boundaryGroups: const [
       [
         MapPoint(0.9713, 0.742),
         MapPoint(0.98, 0.725),

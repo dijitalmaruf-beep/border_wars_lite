@@ -11,7 +11,7 @@ class GameConstants {
   static const maxOnlineHumanPlayers = 5;
   static const turnDurationSeconds = 90;
   static const totalBotPlayers = defaultBotPlayers;
-  static const totalTerritories = 48;
+  static const totalTerritories = 47;
   static const startingTerritoriesPerPlayer = 3;
   static const startingArmies = 6;
   static const neutralArmies = 2;
