@@ -472,38 +472,7 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> _showGameMenu() async {
     final action = await showDialog<_GameMenuAction>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF101923),
-        title: const Text(
-          'Oyun Menüsü',
-          style: TextStyle(color: AppColors.premiumText),
-        ),
-        content: const Text(
-          'Fethe devam et veya ana ekrana dön.',
-          style: TextStyle(color: AppColors.premiumMutedText),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_GameMenuAction.continueGame),
-            child: const Text('Devam Et'),
-          ),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_GameMenuAction.howToPlay),
-            child: const Text('Nasıl Oynanır'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(_GameMenuAction.events),
-            child: const Text('Son Olaylar'),
-          ),
-          TextButton(
-            onPressed: () =>
-                Navigator.of(context).pop(_GameMenuAction.exitToHome),
-            child: const Text('Ana Ekrana Çık'),
-          ),
-        ],
-      ),
+      builder: (context) => const _GameMenuDialog(),
     );
 
     if (!mounted || action == null || action == _GameMenuAction.continueGame) {
@@ -523,27 +492,7 @@ class _GameScreenState extends State<GameScreen> {
 
     final shouldExit = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF101923),
-        title: const Text(
-          'Oyundan çıkılsın mı?',
-          style: TextStyle(color: AppColors.premiumText),
-        ),
-        content: const Text(
-          'Otomatik kayıt açıksa yerel ilerleme kaydedilir.',
-          style: TextStyle(color: AppColors.premiumMutedText),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Vazgeç'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Çık'),
-          ),
-        ],
-      ),
+      builder: (context) => const _ExitConfirmDialog(),
     );
 
     if (shouldExit != true || !mounted) {
@@ -1809,6 +1758,259 @@ class _HelpStep extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _GameMenuDialog extends StatelessWidget {
+  const _GameMenuDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 380),
+        child: PremiumPanel(
+          borderColor: AppColors.premiumCyan.withValues(alpha: 0.60),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const Row(
+                children: <Widget>[
+                  Icon(Icons.menu, color: AppColors.premiumGold, size: 22),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Oyun Menüsü',
+                      style: TextStyle(
+                        color: AppColors.premiumText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Komuta ekranına dön, olayları incele veya ana ekrana çık.',
+                style: TextStyle(
+                  color: AppColors.premiumMutedText,
+                  fontSize: 12,
+                  height: 1.3,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _GameMenuRow(
+                icon: Icons.play_arrow,
+                label: 'Devam Et',
+                description: 'Oyuna kaldığın yerden devam et.',
+                accent: AppColors.premiumCyan,
+                onTap: () =>
+                    Navigator.of(context).pop(_GameMenuAction.continueGame),
+              ),
+              const SizedBox(height: 10),
+              _GameMenuRow(
+                icon: Icons.help_outline,
+                label: 'Nasıl Oynanır',
+                description: 'Temel sıra, saldırı ve bonus kuralları.',
+                accent: AppColors.premiumBlue,
+                onTap: () =>
+                    Navigator.of(context).pop(_GameMenuAction.howToPlay),
+              ),
+              const SizedBox(height: 10),
+              _GameMenuRow(
+                icon: Icons.receipt_long,
+                label: 'Son Olaylar',
+                description: 'Son hamleleri ve savaş sonuçlarını gör.',
+                accent: AppColors.premiumGold,
+                onTap: () => Navigator.of(context).pop(_GameMenuAction.events),
+              ),
+              const SizedBox(height: 10),
+              _GameMenuRow(
+                icon: Icons.logout,
+                label: 'Ana Ekrana Çık',
+                description: 'Mevcut oyundan ayrıl.',
+                accent: AppColors.premiumRed,
+                isDestructive: true,
+                onTap: () =>
+                    Navigator.of(context).pop(_GameMenuAction.exitToHome),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ExitConfirmDialog extends StatelessWidget {
+  const _ExitConfirmDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: PremiumPanel(
+          borderColor: AppColors.premiumRed.withValues(alpha: 0.55),
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              const Row(
+                children: <Widget>[
+                  Icon(Icons.logout, color: AppColors.premiumRed, size: 22),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Oyundan çıkılsın mı?',
+                      style: TextStyle(
+                        color: AppColors.premiumText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              const Text(
+                'Otomatik kayıt açıksa yerel ilerleme kaydedilir.',
+                style: TextStyle(
+                  color: AppColors.premiumMutedText,
+                  height: 1.3,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: PremiumButton(
+                      label: 'VAZGEÇ',
+                      icon: Icons.close,
+                      onPressed: () => Navigator.of(context).pop(false),
+                      tone: PremiumButtonTone.dark,
+                      height: 48,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: PremiumButton(
+                      label: 'ÇIK',
+                      icon: Icons.logout,
+                      onPressed: () => Navigator.of(context).pop(true),
+                      tone: PremiumButtonTone.red,
+                      height: 48,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GameMenuRow extends StatelessWidget {
+  const _GameMenuRow({
+    required this.icon,
+    required this.label,
+    required this.description,
+    required this.accent,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final String description;
+  final Color accent;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(8),
+        onTap: onTap,
+        splashColor: accent.withValues(alpha: 0.18),
+        highlightColor: accent.withValues(alpha: 0.08),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: <Color>[
+                accent.withValues(alpha: isDestructive ? 0.18 : 0.14),
+                const Color(0xBB07131E),
+              ],
+            ),
+            border: Border.all(color: accent.withValues(alpha: 0.45)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            child: Row(
+              children: <Widget>[
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: accent.withValues(alpha: 0.55)),
+                  ),
+                  child: Icon(icon, color: accent, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: isDestructive
+                              ? const Color(0xFFFFD7D7)
+                              : AppColors.premiumText,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        description,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.premiumMutedText,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right, color: accent, size: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

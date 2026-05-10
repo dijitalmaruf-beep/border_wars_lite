@@ -40,7 +40,7 @@ class _SetupScreenState extends State<SetupScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+                padding: const EdgeInsets.fromLTRB(22, 14, 22, 28),
                 child: SingleChildScrollView(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -53,9 +53,9 @@ class _SetupScreenState extends State<SetupScreen> {
                           color: AppColors.premiumText,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 18),
                       const _SetupHeader(),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 22),
                       PremiumPanel(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,7 +95,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       PremiumPanel(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,7 +113,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       PremiumPanel(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -132,7 +132,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       PremiumPanel(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,7 +203,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                       const PremiumPanel(
                         borderColor: Color(0xFFB9915A),
                         child: Row(
@@ -227,7 +227,7 @@ class _SetupScreenState extends State<SetupScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 28),
+                      const SizedBox(height: 22),
                       PremiumButton(
                         label: 'OYUNU BAŞLAT',
                         icon: Icons.flag,
@@ -423,7 +423,7 @@ class _SetupHeader extends StatelessWidget {
         ),
         SizedBox(height: 14),
         Text(
-          'Kimliğini seç ve imparatorluğuna liderlik et.',
+          'Rengini seç, ordunu kur ve dünyayı fethe başla.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AppColors.premiumMutedText, fontSize: 16),
         ),

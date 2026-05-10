@@ -36,83 +36,81 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       body: PremiumBackground(
         showGlobe: true,
-        child: SafeArea(
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(26, 34, 26, 28),
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: <Widget>[
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: IconButton(
-                          onPressed: () => showHowToPlayDialog(context),
-                          icon: const Icon(Icons.help_outline),
-                          color: AppColors.premiumText,
-                          tooltip: 'Nasıl oynanır',
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      const _HomeEmblem(),
-                      const SizedBox(height: 24),
-                      const _GameLogo(),
-                      const SizedBox(height: 18),
-                      const Text(
-                        'Tek Renk. Tüm Dünya.\nSon renk kalana kadar.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.premiumMutedText,
-                          fontSize: 17,
-                          height: 1.35,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 36),
-                      PremiumButton(
-                        label: 'YENİ OYUN',
-                        icon: Icons.sports_martial_arts,
-                        onPressed: _startNewGame,
-                      ),
-                      const SizedBox(height: 14),
-                      PremiumButton(
-                        label: 'ONLINE OYUN',
-                        icon: Icons.cloud,
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const OnlineSetupScreen(),
+        child: Stack(
+          children: <Widget>[
+            const Positioned.fill(child: _HomeAmbientDepth()),
+            SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 430),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(26, 30, 26, 28),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: <Widget>[
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: IconButton(
+                              onPressed: () => showHowToPlayDialog(context),
+                              icon: const Icon(Icons.help_outline),
+                              color: AppColors.premiumText,
+                              tooltip: 'Nasıl oynanır',
                             ),
-                          );
-                        },
-                        tone: PremiumButtonTone.teal,
-                        height: 56,
+                          ),
+                          const SizedBox(height: 8),
+                          const _HomeEmblem(),
+                          const SizedBox(height: 24),
+                          const _GameLogo(),
+                          const SizedBox(height: 18),
+                          const _HomeTagline(),
+                          const SizedBox(height: 34),
+                          PremiumButton(
+                            label: 'YENİ OYUN',
+                            icon: Icons.sports_martial_arts,
+                            onPressed: _startNewGame,
+                          ),
+                          const SizedBox(height: 14),
+                          PremiumButton(
+                            label: 'ONLINE OYUN',
+                            icon: Icons.cloud,
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const OnlineSetupScreen(),
+                                ),
+                              );
+                            },
+                            tone: PremiumButtonTone.teal,
+                            height: 56,
+                          ),
+                          const SizedBox(height: 14),
+                          PremiumButton(
+                            label: _isContinuing
+                                ? 'KAYIT YÜKLENİYOR'
+                                : 'DEVAM ET',
+                            icon: _hasSavedGame
+                                ? Icons.history
+                                : Icons.history_toggle_off,
+                            onPressed: _isContinuing ? null : _continueGame,
+                            tone: PremiumButtonTone.dark,
+                            height: 56,
+                          ),
+                          const SizedBox(height: 14),
+                          PremiumButton(
+                            label: 'AYARLAR',
+                            icon: Icons.settings,
+                            onPressed: _openSettings,
+                            tone: PremiumButtonTone.dark,
+                            height: 56,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 14),
-                      PremiumButton(
-                        label: _isContinuing ? 'KAYIT YÜKLENİYOR' : 'DEVAM ET',
-                        icon: _hasSavedGame
-                            ? Icons.history
-                            : Icons.history_toggle_off,
-                        onPressed: _isContinuing ? null : _continueGame,
-                        tone: PremiumButtonTone.dark,
-                        height: 56,
-                      ),
-                      const SizedBox(height: 14),
-                      PremiumButton(
-                        label: 'AYARLAR',
-                        icon: Icons.settings,
-                        onPressed: _openSettings,
-                        tone: PremiumButtonTone.dark,
-                        height: 56,
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -182,6 +180,92 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) {
       await _refreshSavedGameIndicator();
     }
+  }
+}
+
+class _HomeAmbientDepth extends StatelessWidget {
+  const _HomeAmbientDepth();
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          Positioned(
+            top: 76,
+            left: -100,
+            right: -100,
+            height: 260,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  colors: <Color>[
+                    AppColors.premiumBlue.withValues(alpha: 0.18),
+                    AppColors.premiumCyan.withValues(alpha: 0.08),
+                    Colors.transparent,
+                  ],
+                  stops: const <double>[0, 0.42, 1],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 34,
+            right: 34,
+            bottom: 92,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: AppColors.premiumGold.withValues(alpha: 0.18),
+                    blurRadius: 42,
+                    spreadRadius: 8,
+                  ),
+                ],
+              ),
+              child: const SizedBox(height: 1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeTagline extends StatelessWidget {
+  const _HomeTagline();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0x3A06121D),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: AppColors.premiumBorder.withValues(alpha: 0.38),
+        ),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: AppColors.premiumBlue.withValues(alpha: 0.10),
+            blurRadius: 18,
+          ),
+        ],
+      ),
+      child: const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        child: Text(
+          'Tek Renk. Tüm Dünya.\nSon renk kalana kadar.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.premiumMutedText,
+            fontSize: 17,
+            height: 1.35,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -36,6 +36,14 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
   bool _isBusy = false;
   String? _errorMessage;
 
+  bool get _hasJoinCode => _codeController.text.trim().isNotEmpty;
+
+  bool get _hasValidJoinCode {
+    return RegExp(r'^[A-Z0-9]{6}$').hasMatch(_normalizedRoomCode);
+  }
+
+  String get _normalizedRoomCode => _codeController.text.trim().toUpperCase();
+
   @override
   void dispose() {
     _waitingSubscription?.cancel();
@@ -46,6 +54,9 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canJoinRoom =
+        _canUseOnline && !_isBusy && _createdSession == null;
+
     return Scaffold(
       body: PremiumBackground(
         child: SafeArea(
@@ -53,8 +64,9 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 18, 22, 24),
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
                 child: SingleChildScrollView(
+                  padding: const EdgeInsets.only(bottom: 10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: <Widget>[
@@ -68,7 +80,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                           color: AppColors.premiumText,
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 18),
                       const Text(
                         'ONLINE SAVAŞ ODASI',
                         textAlign: TextAlign.center,
@@ -81,23 +93,23 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'Oda kodu oluştur veya bir komutana katıl.',
+                        'Oda kodu oluştur veya mevcut bir odaya katıl.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: AppColors.premiumMutedText,
                           fontSize: 15,
                         ),
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       if (!FirebaseService.isAvailable) ...<Widget>[
                         PremiumPanel(
                           borderColor: AppColors.premiumRed,
-                          child: Text(
-                            'Firebase is not configured for this build yet. '
-                            'Bu build için Firebase henüz yapılandırılmamış. '
-                            'Firebase Android/Web config dosyalarını ekleyince '
-                            'online oyun otomatik aktif olur.',
-                            style: const TextStyle(
+                          padding: const EdgeInsets.all(14),
+                          child: const Text(
+                            'Firebase bu build için yapılandırılmamış. '
+                            'Android/Web config dosyaları eklenince Online Oyun '
+                            'otomatik aktif olur.',
+                            style: TextStyle(
                               color: AppColors.premiumText,
                               height: 1.35,
                               fontSize: 14,
@@ -108,6 +120,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         const SizedBox(height: 18),
                       ],
                       PremiumPanel(
+                        padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
@@ -143,6 +156,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       ),
                       const SizedBox(height: 16),
                       PremiumPanel(
+                        padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: <Widget>[
@@ -284,6 +298,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                       ),
                       const SizedBox(height: 16),
                       PremiumPanel(
+                        padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: <Widget>[
@@ -294,6 +309,14 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               enabled: !_isBusy && _createdSession == null,
                               textCapitalization: TextCapitalization.characters,
                               maxLength: 6,
+                              onChanged: (_) {
+                                setState(() {
+                                  if (_errorMessage?.startsWith('Oda kodu') ??
+                                      false) {
+                                    _errorMessage = null;
+                                  }
+                                });
+                              },
                               style: const TextStyle(
                                 color: AppColors.premiumText,
                                 letterSpacing: 2,
@@ -308,13 +331,10 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                             PremiumButton(
                               label: 'ONLINE OYUNA KATIL',
                               icon: Icons.login,
-                              onPressed:
-                                  _canUseOnline &&
-                                      !_isBusy &&
-                                      _createdSession == null
-                                  ? _joinGame
-                                  : null,
-                              tone: PremiumButtonTone.teal,
+                              onPressed: canJoinRoom ? _joinGame : null,
+                              tone: _hasJoinCode
+                                  ? PremiumButtonTone.teal
+                                  : PremiumButtonTone.dark,
                               height: 52,
                             ),
                           ],
@@ -335,6 +355,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                         const SizedBox(height: 16),
                         PremiumPanel(
                           borderColor: AppColors.premiumGold,
+                          padding: const EdgeInsets.all(14),
                           child: Column(
                             children: <Widget>[
                               const Text(
@@ -390,7 +411,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                                   );
                                 },
                                 icon: const Icon(Icons.copy),
-                                label: const Text('Copy Code'),
+                                label: const Text('Kodu Kopyala'),
                               ),
                               const Text(
                                 'Bu kodu paylaş. Komutanlar hazır olunca ev sahibi oyunu başlatır.',
@@ -481,13 +502,23 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
   }
 
   Future<void> _joinGame() async {
+    final roomCode = _normalizedRoomCode;
+    if (!_hasValidJoinCode) {
+      setState(() {
+        _errorMessage = roomCode.isEmpty
+            ? 'Oda kodunu gir.'
+            : 'Oda kodu 6 harf veya rakam olmalı.';
+      });
+      return;
+    }
+
     setState(() {
       _isBusy = true;
       _errorMessage = null;
     });
     try {
       final session = await _repository.joinOnlineGame(
-        gameId: _codeController.text,
+        gameId: roomCode,
         playerName: _nameController.text,
         playerColorValue: _selectedColorValue,
       );
