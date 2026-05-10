@@ -107,6 +107,7 @@ workflows:
           fi
       - name: Set iOS deployment target
         script: |
+          perl -0pi -e 's/^\xEF\xBB\xBF//' ios/Runner.xcodeproj/project.pbxproj
           perl -0pi -e "s/# platform :ios, '13\.0'/platform :ios, '15.0'/" ios/Podfile
           perl -0pi -e "s/platform :ios, '13\.0'/platform :ios, '15.0'/" ios/Podfile
           perl -0pi -e "s/IPHONEOS_DEPLOYMENT_TARGET = 13\.0;/IPHONEOS_DEPLOYMENT_TARGET = 15.0;/g" ios/Runner.xcodeproj/project.pbxproj
