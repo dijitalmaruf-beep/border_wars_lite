@@ -193,7 +193,7 @@ class FirestoreGameRepository {
         throw StateError('This room is full.');
       }
 
-      final botCount = data['botCount'] as int? ?? 2;
+      final botCount = _botCountFromData(data);
       final colorValue = _distinctHumanColor(
         playerColorValue,
         participants.map((participant) => participant.colorValue).toSet(),
@@ -270,7 +270,7 @@ class FirestoreGameRepository {
         throw StateError('At least 2 human players are required.');
       }
 
-      final botCount = data['botCount'] as int? ?? 2;
+      final botCount = _botCountFromData(data);
       final activeState = _stateForRoom(
         gameId: normalizedGameId,
         participants: participants,
@@ -296,9 +296,7 @@ class FirestoreGameRepository {
     });
 
     unawaited(
-      FirestoreChatRepository(
-        firestore: _firestore,
-      )
+      FirestoreChatRepository(firestore: _firestore)
           .sendSystemMessage(gameId: normalizedGameId, text: 'Oyun başladı.')
           .catchError((Object _) {}),
     );
@@ -422,6 +420,14 @@ class FirestoreGameRepository {
     return _boundedMaxHumanPlayers(
       data['maxHumanPlayers'] as int? ?? GameConstants.maxOnlineHumanPlayers,
     );
+  }
+
+  int _botCountFromData(Map<String, dynamic> data) {
+    final raw = data['botCount'];
+    if (raw is int) {
+      return raw.clamp(0, GameConstants.maxBotPlayers).toInt();
+    }
+    return 0;
   }
 
   List<_OnlineRoomParticipant> _participantsFromData(

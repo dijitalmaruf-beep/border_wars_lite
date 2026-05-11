@@ -27,6 +27,7 @@ class MatchChatButton extends StatefulWidget {
 class _MatchChatButtonState extends State<MatchChatButton> {
   final ChatUnreadCounter _unreadCounter = ChatUnreadCounter();
   late Stream<List<ChatMessage>> _messagesStream;
+  List<ChatMessage> _latestMessages = const <ChatMessage>[];
 
   @override
   void initState() {
@@ -40,6 +41,7 @@ class _MatchChatButtonState extends State<MatchChatButton> {
     if (oldWidget.gameId != widget.gameId ||
         oldWidget.repository != widget.repository) {
       _messagesStream = widget.repository.watchMessages(widget.gameId);
+      _latestMessages = const <ChatMessage>[];
       _unreadCounter.reset();
     }
   }
@@ -49,7 +51,11 @@ class _MatchChatButtonState extends State<MatchChatButton> {
     return StreamBuilder<List<ChatMessage>>(
       stream: _messagesStream,
       builder: (context, snapshot) {
-        _unreadCounter.sync(snapshot.data ?? const <ChatMessage>[]);
+        final messages = snapshot.data ?? _latestMessages;
+        if (snapshot.hasData) {
+          _latestMessages = snapshot.data!;
+        }
+        _unreadCounter.sync(messages);
         final unreadCount = _unreadCounter.unreadCount;
         return SizedBox(
           width: 38,
@@ -123,6 +129,7 @@ class _MatchChatButtonState extends State<MatchChatButton> {
         localPlayer: widget.localPlayer,
         repository: widget.repository,
         messagesStream: _messagesStream,
+        initialMessages: _latestMessages,
       ),
     );
     if (mounted) {

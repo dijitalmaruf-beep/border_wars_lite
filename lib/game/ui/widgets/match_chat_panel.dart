@@ -15,6 +15,7 @@ class MatchChatPanel extends StatefulWidget {
     required this.localPlayer,
     required this.repository,
     required this.messagesStream,
+    this.initialMessages = const <ChatMessage>[],
     super.key,
   });
 
@@ -22,6 +23,7 @@ class MatchChatPanel extends StatefulWidget {
   final Player localPlayer;
   final FirestoreChatRepository repository;
   final Stream<List<ChatMessage>> messagesStream;
+  final List<ChatMessage> initialMessages;
 
   @override
   State<MatchChatPanel> createState() => _MatchChatPanelState();
@@ -96,9 +98,9 @@ class _MatchChatPanelState extends State<MatchChatPanel> {
                 Expanded(
                   child: StreamBuilder<List<ChatMessage>>(
                     stream: widget.messagesStream,
+                    initialData: widget.initialMessages,
                     builder: (context, snapshot) {
-                      final messages =
-                          snapshot.data ?? const <ChatMessage>[];
+                      final messages = snapshot.data ?? widget.initialMessages;
                       if (messages.isEmpty) {
                         return const Center(
                           child: Text(
@@ -128,8 +130,7 @@ class _MatchChatPanelState extends State<MatchChatPanel> {
                           return ChatMessageBubble(
                             message: message,
                             isLocalPlayer:
-                                message.senderPlayerId ==
-                                widget.localPlayer.id,
+                                message.senderPlayerId == widget.localPlayer.id,
                           );
                         },
                       );
@@ -140,31 +141,33 @@ class _MatchChatPanelState extends State<MatchChatPanel> {
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
-                    children: _quickMessages.map((message) {
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ActionChip(
-                          visualDensity: VisualDensity.compact,
-                          backgroundColor: const Color(0xCC071C2B),
-                          side: BorderSide(
-                            color: AppColors.premiumBorder.withValues(
-                              alpha: 0.70,
+                    children: _quickMessages
+                        .map((message) {
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ActionChip(
+                              visualDensity: VisualDensity.compact,
+                              backgroundColor: const Color(0xCC071C2B),
+                              side: BorderSide(
+                                color: AppColors.premiumBorder.withValues(
+                                  alpha: 0.70,
+                                ),
+                              ),
+                              label: Text(
+                                message,
+                                style: const TextStyle(
+                                  color: AppColors.premiumText,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              onPressed: _isSending
+                                  ? null
+                                  : () => _sendText(message),
                             ),
-                          ),
-                          label: Text(
-                            message,
-                            style: const TextStyle(
-                              color: AppColors.premiumText,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          onPressed: _isSending
-                              ? null
-                              : () => _sendText(message),
-                        ),
-                      );
-                    }).toList(growable: false),
+                          );
+                        })
+                        .toList(growable: false),
                   ),
                 ),
                 const SizedBox(height: 8),

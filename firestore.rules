@@ -68,6 +68,9 @@ service cloud.firestore {
           && request.auth.uid in request.resource.data.participantUids
           && request.resource.data.participants is list
           && request.resource.data.participants.size() == request.resource.data.participantUids.size()
+          && request.resource.data.botCount is int
+          && request.resource.data.botCount >= 0
+          && request.resource.data.botCount <= 9
           && request.resource.data.status == 'waiting'
           && request.resource.data.updatedByUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -160,8 +163,14 @@ service cloud.firestore {
           && request.resource.data.text is string
           && request.resource.data.text.size() > 0
           && request.resource.data.text.size() <= 120
-          && request.resource.data.createdAt == request.time
+          && isValidChatTimestamp()
           && request.resource.data.type in ['user', 'system'];
+        }
+
+        function isValidChatTimestamp() {
+          return request.resource.data.createdAt is timestamp
+            && request.resource.data.createdAt >= request.time - duration.value(10, 'm')
+            && request.resource.data.createdAt <= request.time + duration.value(1, 'm');
         }
 
         allow read: if isChatParticipant();

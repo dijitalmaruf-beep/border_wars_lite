@@ -25,7 +25,7 @@ class FirestoreChatRepository {
     return _messages(normalizedGameId)
         .orderBy('createdAt', descending: true)
         .limit(ChatMessage.messageLimit)
-        .snapshots()
+        .snapshots(includeMetadataChanges: true)
         .map((snapshot) {
           final messages = snapshot.docs
               .map((doc) => _messageFromDoc(normalizedGameId, doc))
@@ -64,7 +64,7 @@ class FirestoreChatRepository {
         'senderName': _cleanSenderName(senderName),
         'senderColor': senderColorValue,
         'text': normalizedText,
-        'createdAt': FieldValue.serverTimestamp(),
+        'createdAt': Timestamp.fromDate(sentAt),
         'type': ChatMessageType.user.name,
       });
     } catch (_) {
@@ -87,6 +87,7 @@ class FirestoreChatRepository {
       return;
     }
     final normalizedGameId = _normalizeGameId(gameId);
+    final sentAt = DateTime.now();
     await _messages(normalizedGameId).add(<String, dynamic>{
       'gameId': normalizedGameId,
       'senderPlayerId': 'system',
@@ -95,7 +96,7 @@ class FirestoreChatRepository {
       'text': normalizedText.length > ChatMessage.maxTextLength
           ? normalizedText.substring(0, ChatMessage.maxTextLength)
           : normalizedText,
-      'createdAt': FieldValue.serverTimestamp(),
+      'createdAt': Timestamp.fromDate(sentAt),
       'type': ChatMessageType.system.name,
     });
   }
@@ -111,8 +112,7 @@ class FirestoreChatRepository {
       gameId: data['gameId'] as String? ?? fallbackGameId,
       senderPlayerId: data['senderPlayerId'] as String? ?? 'unknown',
       senderName: data['senderName'] as String? ?? 'Komutan',
-      senderColorValue:
-          data['senderColor'] as int? ?? AppColors.humanBlueValue,
+      senderColorValue: data['senderColor'] as int? ?? AppColors.humanBlueValue,
       text: data['text'] as String? ?? '',
       createdAt: createdAt is Timestamp ? createdAt.toDate() : DateTime.now(),
       type: ChatMessage.typeFromName(data['type'] as String?),

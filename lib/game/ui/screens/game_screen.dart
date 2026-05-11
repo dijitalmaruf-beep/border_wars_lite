@@ -135,7 +135,9 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final canAct = _canLocalPlayerAct;
     final canAttack =
+        canAct &&
         _state.selectedSourceId != null &&
         _state.selectedTargetId != null &&
         _engine.canAttack(
@@ -143,14 +145,17 @@ class _GameScreenState extends State<GameScreen> {
           sourceId: _state.selectedSourceId!,
           targetId: _state.selectedTargetId!,
         );
-    final canTransfer = _canTransferSelection(_state);
+    final canTransfer = canAct && _canTransferSelection(_state);
     final winChance = canAttack ? _engine.winChanceForSelection(_state) : 0.0;
     final reinforcementBreakdown = _engine.reinforcementCalculator
         .breakdownForPlayer(_state, _state.currentPlayer.id);
     final controlledContinents = _controlledContinentsFor(_state);
-    final validSourceIds = _validSourceIdsFor(_state);
-    final validTargetIds = _validTargetIdsFor(_state);
-    final canAct = _canLocalPlayerAct;
+    final validSourceIds = canAct
+        ? _validSourceIdsFor(_state)
+        : const <String>{};
+    final validTargetIds = canAct
+        ? _validTargetIdsFor(_state)
+        : const <String>{};
     final localPlayer = _state.playerById(widget.localPlayerId);
 
     return Scaffold(
@@ -2725,6 +2730,9 @@ class _BattleCommandPanel extends StatelessWidget {
     final canUseCommands = state.phase == GamePhase.attack && canAct;
     final canUseTransfer = canUseCommands && !state.transferUsedThisTurn;
     final isReinforcePhase = state.phase == GamePhase.reinforce;
+    final showReinforceActive = isReinforcePhase && canAct;
+    final showAttackActive = canUseCommands && !isTransferMode;
+    final showTransferActive = canUseTransfer && isTransferMode;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2813,11 +2821,11 @@ class _BattleCommandPanel extends StatelessWidget {
                 label: 'TAKVİYE',
                 icon: Icons.shield,
                 onPressed: null,
-                tone: isReinforcePhase
+                tone: showReinforceActive
                     ? PremiumButtonTone.blue
                     : PremiumButtonTone.dark,
                 height: 46,
-                isSelected: isReinforcePhase,
+                isSelected: showReinforceActive,
               ),
             ),
             const SizedBox(width: 6),
@@ -2830,11 +2838,11 @@ class _BattleCommandPanel extends StatelessWidget {
                     : isTransferMode
                     ? onSelectAttackMode
                     : (canAttack ? onAttack : null),
-                tone: !isReinforcePhase && !isTransferMode
+                tone: showAttackActive
                     ? PremiumButtonTone.red
                     : PremiumButtonTone.dark,
                 height: 46,
-                isSelected: !isReinforcePhase && !isTransferMode,
+                isSelected: showAttackActive,
               ),
             ),
             const SizedBox(width: 6),
@@ -2849,11 +2857,11 @@ class _BattleCommandPanel extends StatelessWidget {
                     : isTransferMode
                     ? (canTransfer ? onTransfer : null)
                     : onSelectTransferMode,
-                tone: isTransferMode
+                tone: showTransferActive
                     ? PremiumButtonTone.teal
                     : PremiumButtonTone.dark,
                 height: 46,
-                isSelected: isTransferMode,
+                isSelected: showTransferActive,
               ),
             ),
           ],
