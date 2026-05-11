@@ -15,15 +15,42 @@ service cloud.firestore {
 
       function isCreateRoom() {
         return signedIn()
+          && request.resource.data.keys().hasOnly([
+            'gameId',
+            'status',
+            'hostPlayerId',
+            'hostUid',
+            'participantUids',
+            'participants',
+            'maxHumanPlayers',
+            'hostName',
+            'hostColorValue',
+            'botCount',
+            'state',
+            'updatedByUid',
+            'createdAt',
+            'updatedAt'
+          ])
           && request.resource.data.gameId == gameId
           && request.resource.data.status == 'waiting'
           && request.resource.data.hostUid == request.auth.uid
+          && request.resource.data.hostPlayerId is string
           && request.resource.data.participantUids is list
           && request.resource.data.participantUids.size() == 1
           && request.resource.data.participantUids[0] == request.auth.uid
           && request.resource.data.participants is list
           && request.resource.data.participants.size() == 1
-          && request.resource.data.maxHumanPlayers == 5
+          && request.resource.data.maxHumanPlayers is int
+          && request.resource.data.maxHumanPlayers >= 2
+          && request.resource.data.maxHumanPlayers <= 5
+          && request.resource.data.botCount is int
+          && request.resource.data.botCount >= 0
+          && request.resource.data.botCount <= 9
+          && request.resource.data.hostName is string
+          && request.resource.data.hostName.size() > 0
+          && request.resource.data.hostName.size() <= 18
+          && request.resource.data.hostColorValue is int
+          && request.resource.data.state is map
           && request.resource.data.updatedByUid == request.auth.uid;
       }
 
