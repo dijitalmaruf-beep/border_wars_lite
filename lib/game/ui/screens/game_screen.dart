@@ -98,7 +98,9 @@ class _GameScreenState extends State<GameScreen> {
   _MapCommandMode _commandMode = _MapCommandMode.attack;
   Timer? _botTimer;
   Timer? _turnTimer;
+  Timer? _presenceTimer;
   StreamSubscription<GameState?>? _onlineSubscription;
+  StreamSubscription<Map<String, OnlinePlayerPresence>>? _presenceSubscription;
   bool _isBotThinking = false;
   bool _navigatedToVictory = false;
   bool _isSavingOnline = false;
@@ -109,6 +111,8 @@ class _GameScreenState extends State<GameScreen> {
   _MapPulse? _mapPulse;
   _TurnBanner? _turnBanner;
   Set<String> _announcedControlledContinents = const <String>{};
+  Map<String, OnlinePlayerPresence> _presenceByPlayerId =
+      const <String, OnlinePlayerPresence>{};
 
   @override
   void initState() {
@@ -118,6 +122,9 @@ class _GameScreenState extends State<GameScreen> {
     _announcedControlledContinents = _controlledContinentsFor(_state);
     unawaited(_loadSettings());
     _subscribeToOnlineGame();
+    _subscribeToPresence();
+    _markLocalPresence(isOnline: true);
+    _startPresenceHeartbeat();
     _startTurnTimer();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showTurnBannerFor(_state);
@@ -129,7 +136,10 @@ class _GameScreenState extends State<GameScreen> {
   void dispose() {
     _botTimer?.cancel();
     _turnTimer?.cancel();
+    _presenceTimer?.cancel();
     _onlineSubscription?.cancel();
+    _presenceSubscription?.cancel();
+    _markLocalPresence(isOnline: false);
     super.dispose();
   }
 
@@ -200,6 +210,7 @@ class _GameScreenState extends State<GameScreen> {
                             _PlayerStrip(
                               state: _state,
                               glowSerial: _turnBannerSerial,
+                              presenceByPlayerId: _presenceByPlayerId,
                             ),
                             const SizedBox(height: 8),
                             Expanded(
@@ -1096,6 +1107,17 @@ class _GameScreenState extends State<GameScreen> {
       _remainingTurnSeconds = 0;
     });
     if (!_canLocalPlayerAct) {
+      if (_isOnline && _isPlayerDisconnected(_state.currentPlayer)) {
+        _setGameState(
+          _engine.endTurn(
+            _state.copyWith(
+              phase: GamePhase.end,
+              statusMessage:
+                  '${_state.currentPlayer.name} bağlantısı yok. Tur atlandı.',
+            ),
+          ),
+        );
+      }
       return;
     }
 
@@ -1304,6 +1326,59 @@ class _GameScreenState extends State<GameScreen> {
           }
           _afterStateChanged();
         }, onError: _handleOnlineStreamError);
+  }
+
+  void _subscribeToPresence() {
+    if (!_isOnline) {
+      return;
+    }
+
+    _presenceSubscription = widget.onlineRepository!
+        .watchPlayerPresence(_state.id)
+        .listen((presenceByPlayerId) {
+          if (!mounted) {
+            return;
+          }
+          setState(() {
+            _presenceByPlayerId = presenceByPlayerId;
+          });
+        });
+  }
+
+  void _startPresenceHeartbeat() {
+    if (!_isOnline) {
+      return;
+    }
+    _presenceTimer?.cancel();
+    _presenceTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      _markLocalPresence(isOnline: true);
+    });
+  }
+
+  void _markLocalPresence({required bool isOnline}) {
+    if (!_isOnline || widget.localPlayerId == null) {
+      return;
+    }
+    unawaited(
+      widget.onlineRepository!
+          .markPlayerPresence(
+            gameId: _state.id,
+            playerId: widget.localPlayerId!,
+            isOnline: isOnline,
+          )
+          .catchError((Object _) {}),
+    );
+  }
+
+  bool _isPlayerDisconnected(Player player) {
+    if (player.isBot || !_isOnline) {
+      return false;
+    }
+    final presence = _presenceByPlayerId[player.id];
+    if (presence == null || !presence.hasKnownStatus) {
+      return false;
+    }
+    return !presence.isConnected();
   }
 
   void _handleOnlineStreamError(Object error, StackTrace stackTrace) {
@@ -2147,10 +2222,15 @@ class _WorldHeader extends StatelessWidget {
 }
 
 class _PlayerStrip extends StatelessWidget {
-  const _PlayerStrip({required this.state, required this.glowSerial});
+  const _PlayerStrip({
+    required this.state,
+    required this.glowSerial,
+    required this.presenceByPlayerId,
+  });
 
   final GameState state;
   final int glowSerial;
+  final Map<String, OnlinePlayerPresence> presenceByPlayerId;
 
   @override
   Widget build(BuildContext context) {
@@ -2186,6 +2266,7 @@ class _PlayerStrip extends StatelessWidget {
                           isCurrent:
                               state.players[index].id == state.currentPlayer.id,
                           glowSerial: glowSerial,
+                          presence: presenceByPlayerId[state.players[index].id],
                           territoryCount: state.ownedTerritoryCount(
                             state.players[index].id,
                           ),
@@ -2210,6 +2291,7 @@ class _PlayerCard extends StatelessWidget {
     required this.player,
     required this.isCurrent,
     required this.glowSerial,
+    required this.presence,
     required this.territoryCount,
     required this.compact,
   });
@@ -2217,6 +2299,7 @@ class _PlayerCard extends StatelessWidget {
   final Player player;
   final bool isCurrent;
   final int glowSerial;
+  final OnlinePlayerPresence? presence;
   final int territoryCount;
   final bool compact;
 
@@ -2224,6 +2307,11 @@ class _PlayerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = Color(player.colorValue);
     final isEliminated = territoryCount == 0;
+    final isDisconnected =
+        !player.isBot &&
+        presence != null &&
+        presence!.hasKnownStatus &&
+        !presence!.isConnected();
     return TweenAnimationBuilder<double>(
       key: ValueKey<String>('${player.id}-$isCurrent-$glowSerial'),
       tween: Tween<double>(begin: isCurrent ? 1 : 0, end: 0),
@@ -2239,6 +2327,8 @@ class _PlayerCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: isEliminated
                 ? const Color(0x55111B25)
+                : isDisconnected
+                ? const Color(0x66401919)
                 : isCurrent
                 ? color.withValues(alpha: 0.20 + pulse * 0.10)
                 : const Color(0x66111B25),
@@ -2246,6 +2336,8 @@ class _PlayerCard extends StatelessWidget {
             border: Border.all(
               color: isEliminated
                   ? AppColors.premiumBorder.withValues(alpha: 0.25)
+                  : isDisconnected
+                  ? AppColors.premiumRed.withValues(alpha: 0.72)
                   : isCurrent
                   ? color.withValues(alpha: 0.95)
                   : AppColors.premiumBorder.withValues(alpha: 0.46),
@@ -2288,6 +2380,10 @@ class _PlayerCard extends StatelessWidget {
                   ),
                 ),
               ),
+              if (!player.isBot && presence != null) ...<Widget>[
+                const SizedBox(width: 4),
+                _PresenceDot(isConnected: !isDisconnected),
+              ],
             ],
           ),
           const SizedBox(height: 2),
@@ -2295,18 +2391,24 @@ class _PlayerCard extends StatelessWidget {
             children: <Widget>[
               Flexible(
                 child: Text(
-                  isEliminated ? 'OUT' : '$territoryCount',
+                  isDisconnected
+                      ? 'ÇIKTI'
+                      : isEliminated
+                      ? 'OUT'
+                      : '$territoryCount',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Color(0xFFFFD27A),
+                  style: TextStyle(
+                    color: isDisconnected
+                        ? AppColors.premiumRed
+                        : const Color(0xFFFFD27A),
                     fontSize: 10,
                     height: 1,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
-              if (!isEliminated) ...const <Widget>[
+              if (!isEliminated && !isDisconnected) ...const <Widget>[
                 SizedBox(width: 3),
                 Icon(Icons.star, color: Color(0xFFFFD27A), size: 10),
               ],
@@ -2322,6 +2424,27 @@ class _PlayerCard extends StatelessWidget {
       return 'Sen';
     }
     return name.replaceAll(' Bot', '');
+  }
+}
+
+class _PresenceDot extends StatelessWidget {
+  const _PresenceDot({required this.isConnected});
+
+  final bool isConnected;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isConnected ? const Color(0xFF58E06B) : AppColors.premiumRed;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        boxShadow: <BoxShadow>[
+          BoxShadow(color: color.withValues(alpha: 0.42), blurRadius: 7),
+        ],
+      ),
+      child: const SizedBox(width: 6, height: 6),
+    );
   }
 }
 

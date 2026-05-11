@@ -35,6 +35,35 @@ class OnlineGameSession {
       state.players.where((player) => !player.isBot).toList(growable: false);
 }
 
+class OnlinePlayerPresence {
+  const OnlinePlayerPresence({
+    required this.playerId,
+    required this.uid,
+    required this.isOnline,
+    this.lastSeenAt,
+  });
+
+  static const staleAfter = Duration(seconds: 75);
+
+  final String playerId;
+  final String uid;
+  final bool isOnline;
+  final DateTime? lastSeenAt;
+
+  bool get hasKnownStatus => lastSeenAt != null;
+
+  bool isConnected({DateTime? now}) {
+    if (!isOnline) {
+      return false;
+    }
+    final seenAt = lastSeenAt;
+    if (seenAt == null) {
+      return true;
+    }
+    return (now ?? DateTime.now()).difference(seenAt) <= staleAfter;
+  }
+}
+
 class FirestoreGameRepository {
   FirestoreGameRepository({FirebaseFirestore? firestore})
     : _firestore = firestore;
@@ -52,6 +81,10 @@ class FirestoreGameRepository {
 
   CollectionReference<Map<String, dynamic>> get _games =>
       _db.collection('games');
+
+  CollectionReference<Map<String, dynamic>> _presence(String gameId) {
+    return _games.doc(_normalizeGameId(gameId)).collection('presence');
+  }
 
   Future<void> saveGameState(GameState state) async {
     final uid = await FirebaseService.ensureSignedInAnonymously();
@@ -79,6 +112,29 @@ class FirestoreGameRepository {
         .doc(_normalizeGameId(gameId))
         .snapshots()
         .map((snapshot) => _stateFromDocument(snapshot.data()));
+  }
+
+  Stream<Map<String, OnlinePlayerPresence>> watchPlayerPresence(String gameId) {
+    return _presence(gameId).snapshots().map((snapshot) {
+      return <String, OnlinePlayerPresence>{
+        for (final doc in snapshot.docs)
+          doc.id: _presenceFromDoc(doc.id, doc.data()),
+      };
+    });
+  }
+
+  Future<void> markPlayerPresence({
+    required String gameId,
+    required String playerId,
+    required bool isOnline,
+  }) async {
+    final uid = await FirebaseService.ensureSignedInAnonymously();
+    await _presence(gameId).doc(playerId).set(<String, dynamic>{
+      'playerId': playerId,
+      'uid': uid,
+      'isOnline': isOnline,
+      'lastSeenAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Stream<OnlineGameSession?> watchOnlineGame({
@@ -146,6 +202,12 @@ class FirestoreGameRepository {
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
+    await markPlayerPresence(
+      gameId: gameId,
+      playerId: hostPlayerId,
+      isOnline: true,
+    );
+
     return OnlineGameSession(
       gameId: gameId,
       localPlayerId: hostPlayerId,
@@ -165,6 +227,7 @@ class FirestoreGameRepository {
     final normalizedGameId = _normalizeGameId(gameId);
     final doc = _games.doc(normalizedGameId);
     late final OnlineGameSession session;
+    String? systemMessage;
 
     await _db.runTransaction((transaction) async {
       final snapshot = await transaction.get(doc);
@@ -172,23 +235,43 @@ class FirestoreGameRepository {
       if (!snapshot.exists || data == null) {
         throw StateError('Game not found.');
       }
-      if ((data['status'] as String? ?? statusWaiting) != statusWaiting) {
-        throw StateError('This game has already started.');
-      }
 
       final hostUid = data['hostUid'] as String?;
       if (hostUid == null || hostUid.isEmpty) {
         throw StateError('This online game was created by an older build.');
       }
-      if (hostUid == uid) {
-        throw StateError('Use another device to join your own room.');
-      }
 
       final participants = _participantsFromData(data);
-      if (participants.any((participant) => participant.uid == uid)) {
-        throw StateError('You are already in this room.');
-      }
+      final existingParticipant = _participantForUid(participants, uid);
+      final status = data['status'] as String? ?? statusWaiting;
       final maxHumanPlayers = _maxHumanPlayersFromData(data);
+
+      if (existingParticipant != null) {
+        final state =
+            _stateFromDocument(data) ??
+            _stateForRoom(
+              gameId: normalizedGameId,
+              participants: participants,
+              botCount: _boundedOnlineBotCount(
+                _botCountFromData(data),
+                participants,
+              ),
+            );
+        session = OnlineGameSession(
+          gameId: normalizedGameId,
+          localPlayerId: existingParticipant.playerId,
+          state: state,
+          status: status,
+          isHost: hostUid == uid,
+          maxHumanPlayers: maxHumanPlayers,
+        );
+        systemMessage = '${existingParticipant.name} oyuna geri döndü.';
+        return;
+      }
+
+      if (status != statusWaiting) {
+        throw StateError('This game has already started.');
+      }
       if (participants.length >= maxHumanPlayers) {
         throw StateError('This room is full.');
       }
@@ -241,7 +324,22 @@ class FirestoreGameRepository {
         isHost: false,
         maxHumanPlayers: maxHumanPlayers,
       );
+      systemMessage = '${participant.name} oyuna katıldı.';
     });
+
+    await markPlayerPresence(
+      gameId: normalizedGameId,
+      playerId: session.localPlayerId,
+      isOnline: true,
+    );
+    final message = systemMessage;
+    if (message != null) {
+      unawaited(
+        FirestoreChatRepository(firestore: _firestore)
+            .sendSystemMessage(gameId: normalizedGameId, text: message)
+            .catchError((Object _) {}),
+      );
+    }
 
     return session;
   }
@@ -428,6 +526,31 @@ class FirestoreGameRepository {
       return raw.clamp(0, GameConstants.maxBotPlayers).toInt();
     }
     return 0;
+  }
+
+  _OnlineRoomParticipant? _participantForUid(
+    List<_OnlineRoomParticipant> participants,
+    String uid,
+  ) {
+    for (final participant in participants) {
+      if (participant.uid == uid) {
+        return participant;
+      }
+    }
+    return null;
+  }
+
+  OnlinePlayerPresence _presenceFromDoc(
+    String fallbackPlayerId,
+    Map<String, dynamic> data,
+  ) {
+    final lastSeenAt = data['lastSeenAt'];
+    return OnlinePlayerPresence(
+      playerId: data['playerId'] as String? ?? fallbackPlayerId,
+      uid: data['uid'] as String? ?? '',
+      isOnline: data['isOnline'] as bool? ?? false,
+      lastSeenAt: lastSeenAt is Timestamp ? lastSeenAt.toDate() : null,
+    );
   }
 
   List<_OnlineRoomParticipant> _participantsFromData(

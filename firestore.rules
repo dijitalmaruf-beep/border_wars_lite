@@ -129,6 +129,38 @@ service cloud.firestore {
       allow update: if isJoinRoom() || isHostStartGame() || isParticipantGameUpdate();
       allow delete: if false;
 
+      match /presence/{playerId} {
+        function gamePath() {
+          return /databases/$(database)/documents/games/$(gameId);
+        }
+
+        function isPresenceParticipant() {
+          return signedIn()
+            && exists(gamePath())
+            && get(gamePath()).data.participantUids is list
+            && request.auth.uid in get(gamePath()).data.participantUids;
+        }
+
+        function isValidPresence() {
+          return request.resource.data.keys().hasOnly([
+            'playerId',
+            'uid',
+            'isOnline',
+            'lastSeenAt'
+          ])
+          && request.resource.data.playerId == playerId
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.isOnline is bool
+          && request.resource.data.lastSeenAt is timestamp
+          && request.resource.data.lastSeenAt >= request.time - duration.value(10, 'm')
+          && request.resource.data.lastSeenAt <= request.time + duration.value(1, 'm');
+        }
+
+        allow read: if isPresenceParticipant();
+        allow create, update: if isPresenceParticipant() && isValidPresence();
+        allow delete: if false;
+      }
+
       match /chatMessages/{messageId} {
         // TODO: Before production, also verify senderPlayerId against the
         // participant record for request.auth.uid. This development rule keeps

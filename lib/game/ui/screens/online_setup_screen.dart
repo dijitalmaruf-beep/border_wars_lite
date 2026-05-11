@@ -54,8 +54,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canJoinRoom =
-        _canUseOnline && !_isBusy && _createdSession == null;
+    final canJoinRoom = _canUseOnline && !_isBusy && _createdSession == null;
 
     return Scaffold(
       body: PremiumBackground(
@@ -535,6 +534,10 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
         _createdSession = session;
         _isBusy = false;
       });
+      if (session.isActive) {
+        _openOnlineGame(session);
+        return;
+      }
       if (colorChanged) {
         _showColorReassignedNotice();
       }
