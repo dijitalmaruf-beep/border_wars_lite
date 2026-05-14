@@ -35,6 +35,11 @@ class ReinforcementCalculator {
     'Asia': 7,
     'Oceania': 2,
   };
+  static const Map<String, int> strategicTerritoryBonusValues = <String, int>{
+    'anatolia': 3,
+  };
+  static const Map<String, String> strategicTerritoryBonusNames =
+      <String, String>{'anatolia': 'Anatolia'};
 
   int calculateForOwnedTerritories(int ownedTerritoryCount) {
     return max(GameConstants.minReinforcements, ownedTerritoryCount ~/ 3);
@@ -89,6 +94,17 @@ class ReinforcementCalculator {
       if (totalInContinent > 0 &&
           ownedByContinent[entry.key] == totalInContinent) {
         bonuses.add(ContinentBonus(continent: entry.key, value: entry.value));
+      }
+    }
+    for (final entry in strategicTerritoryBonusValues.entries) {
+      final territory = state.territoryByIdOrNull(entry.key);
+      if (territory?.ownerId == playerId) {
+        bonuses.add(
+          ContinentBonus(
+            continent: strategicTerritoryBonusNames[entry.key] ?? entry.key,
+            value: entry.value,
+          ),
+        );
       }
     }
     return List<ContinentBonus>.unmodifiable(bonuses);

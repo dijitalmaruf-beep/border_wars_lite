@@ -98,6 +98,7 @@ class MapGenerator {
     int botCount = GameConstants.defaultBotPlayers,
     int? seed,
     MatchMode matchMode = MatchMode.standard,
+    GameDifficulty difficulty = GameDifficulty.normal,
   }) {
     final players = createPlayers(
       humanName: humanName,
@@ -110,6 +111,7 @@ class MapGenerator {
       firstPlayerId: GameConstants.humanPlayerId,
       seed: seed,
       matchMode: matchMode,
+      difficulty: difficulty,
     );
   }
 
@@ -119,6 +121,7 @@ class MapGenerator {
     required String firstPlayerId,
     int? seed,
     MatchMode matchMode = MatchMode.standard,
+    GameDifficulty difficulty = GameDifficulty.normal,
   }) {
     final random = seed == null ? Random() : Random(seed);
     final startingOwners = _startingTerritoryOwners(players, random);
@@ -148,6 +151,7 @@ class MapGenerator {
       turnNumber: 1,
       turnStartedAtMillis: DateTime.now().millisecondsSinceEpoch,
       matchMode: matchMode,
+      difficulty: difficulty,
       eventLog: const <String>['Game started.'],
       statusMessage: 'Takviye yapmak için bir bölge seç.',
     );

@@ -24,6 +24,7 @@ class _SetupScreenState extends State<SetupScreen> {
   int _selectedColorValue = AppColors.humanBlueValue;
   int _selectedBotCount = GameConstants.defaultBotPlayers;
   MatchMode _selectedMatchMode = MatchMode.standard;
+  GameDifficulty _selectedDifficulty = GameDifficulty.normal;
 
   @override
   void dispose() {
@@ -91,6 +92,24 @@ class _SetupScreenState extends State<SetupScreen> {
                                   ),
                                 ),
                               ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      PremiumPanel(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('ZORLUK SEVİYESİ'),
+                            const SizedBox(height: 14),
+                            _DifficultySelector(
+                              selectedDifficulty: _selectedDifficulty,
+                              onChanged: (difficulty) {
+                                setState(() {
+                                  _selectedDifficulty = difficulty;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -250,6 +269,7 @@ class _SetupScreenState extends State<SetupScreen> {
       humanColorValue: _selectedColorValue,
       botCount: _selectedBotCount,
       matchMode: _selectedMatchMode,
+      difficulty: _selectedDifficulty,
     );
 
     Navigator.of(context).pushReplacement(
@@ -265,6 +285,130 @@ class _SetupScreenState extends State<SetupScreen> {
           .clamp(GameConstants.minBotPlayers, GameConstants.maxBotPlayers)
           .toInt();
     });
+  }
+}
+
+class _DifficultySelector extends StatelessWidget {
+  const _DifficultySelector({
+    required this.selectedDifficulty,
+    required this.onChanged,
+  });
+
+  final GameDifficulty selectedDifficulty;
+  final ValueChanged<GameDifficulty> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: GameDifficulty.values
+          .map((difficulty) {
+            final isSelected = difficulty == selectedDifficulty;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: difficulty == GameDifficulty.hard ? 0 : 8,
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => onChanged(difficulty),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isSelected
+                            ? const <Color>[
+                                Color(0xFF0F9B8E),
+                                Color(0xFF064E58),
+                              ]
+                            : const <Color>[
+                                Color(0xFF12202D),
+                                Color(0xFF07111A),
+                              ],
+                      ),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.premiumCyan
+                            : AppColors.premiumBorder,
+                        width: isSelected ? 1.4 : 1,
+                      ),
+                      boxShadow: <BoxShadow>[
+                        if (isSelected)
+                          BoxShadow(
+                            color: AppColors.premiumCyan.withValues(
+                              alpha: 0.26,
+                            ),
+                            blurRadius: 18,
+                            offset: const Offset(0, 5),
+                          ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _difficultyTitle(difficulty),
+                            maxLines: 1,
+                            style: const TextStyle(
+                              color: AppColors.premiumText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _difficultySubtitle(difficulty),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected
+                                ? const Color(0xFFFFD66D)
+                                : AppColors.premiumMutedText,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+
+  String _difficultyTitle(GameDifficulty difficulty) {
+    switch (difficulty) {
+      case GameDifficulty.easy:
+        return 'KOLAY';
+      case GameDifficulty.normal:
+        return 'NORMAL';
+      case GameDifficulty.hard:
+        return 'ZOR';
+    }
+  }
+
+  String _difficultySubtitle(GameDifficulty difficulty) {
+    switch (difficulty) {
+      case GameDifficulty.easy:
+        return 'rahat';
+      case GameDifficulty.normal:
+        return 'dengeli';
+      case GameDifficulty.hard:
+        return 'sert';
+    }
   }
 }
 

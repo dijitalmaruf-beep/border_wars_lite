@@ -14,6 +14,7 @@ class WorldConquestMap extends StatefulWidget {
     required this.validSourceIds,
     required this.validTargetIds,
     required this.controlledContinents,
+    required this.isTransferMode,
     required this.onTerritoryTap,
     this.pulseTerritoryId,
     this.pulseLabel,
@@ -26,6 +27,7 @@ class WorldConquestMap extends StatefulWidget {
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
+  final bool isTransferMode;
   final ValueChanged<String> onTerritoryTap;
   final String? pulseTerritoryId;
   final String? pulseLabel;
@@ -173,6 +175,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                         validSourceIds: widget.validSourceIds,
                         validTargetIds: widget.validTargetIds,
                         controlledContinents: widget.controlledContinents,
+                        isTransferMode: widget.isTransferMode,
                         mapZoom: 1.0,
                         paintOwnership: true,
                       ),
@@ -195,6 +198,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                         validSourceIds: widget.validSourceIds,
                         validTargetIds: widget.validTargetIds,
                         controlledContinents: widget.controlledContinents,
+                        isTransferMode: widget.isTransferMode,
                         mapZoom: _mapZoom,
                         paintLabelsAndHighlights: true,
                       ),

@@ -157,6 +157,30 @@ void main() {
     expect(engine.movedArmiesOnWinForSelection(nextState), 2);
   });
 
+  test('Anatolia can attack Central Asia through the mapped land bridge', () {
+    final state = newState().copyWith(
+      phase: GamePhase.attack,
+      remainingReinforcements: 0,
+      territories: newState().territories.map((territory) {
+        if (territory.id == 'anatolia') {
+          return territory.copyWith(
+            ownerId: GameConstants.humanPlayerId,
+            armyCount: 6,
+          );
+        }
+        if (territory.id == 'central_asia') {
+          return territory.copyWith(ownerId: 'atlas_bot', armyCount: 2);
+        }
+        return territory.copyWith(ownerId: null);
+      }).toList(),
+    );
+
+    expect(
+      engine.canAttack(state, sourceId: 'anatolia', targetId: 'central_asia'),
+      isTrue,
+    );
+  });
+
   test('valid adjacent owned transfer succeeds', () {
     final state = transferState();
 
@@ -378,6 +402,13 @@ void main() {
     final restored = GameState.fromMap(state.toMap());
 
     expect(restored.matchMode, MatchMode.quick);
+  });
+
+  test('difficulty is stored in GameState serialization', () {
+    final state = newState().copyWith(difficulty: GameDifficulty.hard);
+    final restored = GameState.fromMap(state.toMap());
+
+    expect(restored.difficulty, GameDifficulty.hard);
   });
 
   test('event log keeps the last ten events', () {

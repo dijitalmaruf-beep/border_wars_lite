@@ -38,6 +38,11 @@ class MapLocalizations {
       'en': 'Oceania',
       'de': 'Ozeanien',
     },
+    'Anatolia': <String, String>{
+      'tr': 'Anadolu',
+      'en': 'Anatolia',
+      'de': 'Anatolien',
+    },
   };
 
   static const _territoryNames = <String, Map<String, String>>{

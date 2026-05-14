@@ -4086,6 +4086,7 @@ final worldMapTerritories = <Territory>[
       'italy_balkans',
       'middle_east',
       'persia',
+      'central_asia',
     ],
     boundaryGroups: const [
       [
@@ -4159,6 +4160,17 @@ final worldMapTerritories = <Territory>[
         MapPoint(0.5781, 0.2688),
         MapPoint(0.5805, 0.2706),
         MapPoint(0.5732, 0.2769),
+      ],
+      [
+        MapPoint(0.6249, 0.2708),
+        MapPoint(0.6379, 0.2642),
+        MapPoint(0.6491, 0.2681),
+        MapPoint(0.6557, 0.2796),
+        MapPoint(0.6516, 0.2914),
+        MapPoint(0.6422, 0.2963),
+        MapPoint(0.6335, 0.2892),
+        MapPoint(0.6282, 0.2848),
+        MapPoint(0.6244, 0.2794),
       ],
     ],
   ),
@@ -4461,6 +4473,7 @@ final worldMapTerritories = <Territory>[
     neighbors: const [
       'ural_russia',
       'siberia',
+      'anatolia',
       'persia',
       'china_north',
       'india',

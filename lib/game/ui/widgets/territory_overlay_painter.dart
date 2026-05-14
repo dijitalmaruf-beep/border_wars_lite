@@ -16,6 +16,7 @@ class TerritoryOverlayPainter extends CustomPainter {
     required this.validSourceIds,
     required this.validTargetIds,
     required this.controlledContinents,
+    required this.isTransferMode,
     this.mapZoom = 1.0,
     this.paintOwnership = false,
     this.paintLabelsAndHighlights = false,
@@ -28,6 +29,7 @@ class TerritoryOverlayPainter extends CustomPainter {
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
+  final bool isTransferMode;
   final double mapZoom;
   final bool paintOwnership;
   final bool paintLabelsAndHighlights;
@@ -40,6 +42,7 @@ class TerritoryOverlayPainter extends CustomPainter {
     }
     if (paintLabelsAndHighlights) {
       _paintHighlights(canvas, size);
+      _paintRouteCue(canvas, size);
       _paintArmyLabels(canvas, size);
     }
   }
@@ -193,9 +196,12 @@ class TerritoryOverlayPainter extends CustomPainter {
     _paintHighlight(
       canvas,
       state.selectedSourceId,
-      color: const Color(0xFF2A91FF),
-      glowColor: const Color(0xFF00A8FF),
+      color: isTransferMode ? const Color(0xFF27E0CF) : const Color(0xFF2A91FF),
+      glowColor: isTransferMode
+          ? const Color(0xFF00F5D4)
+          : const Color(0xFF00A8FF),
       size: size,
+      isSource: true,
     );
     _paintHighlight(
       canvas,
@@ -220,6 +226,7 @@ class TerritoryOverlayPainter extends CustomPainter {
     required Color color,
     required Color glowColor,
     required Size size,
+    bool isSource = false,
   }) {
     if (territoryId == null) {
       return;
@@ -239,6 +246,11 @@ class TerritoryOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = _scaledStroke(size, 2.3)
       ..color = color;
+    final dashPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _scaledStroke(size, 1.2)
+      ..color = color.withValues(alpha: 0.78)
+      ..strokeCap = StrokeCap.round;
     final innerPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 0.8 / _effectiveZoom
@@ -247,6 +259,202 @@ class TerritoryOverlayPainter extends CustomPainter {
     canvas.drawPath(path, glowPaint);
     canvas.drawPath(path, strokePaint);
     canvas.drawPath(path, innerPaint);
+    if (isSource && isTransferMode) {
+      _drawDashedPath(canvas, path, dashPaint, dash: 7, gap: 5);
+    }
+  }
+
+  void _paintRouteCue(Canvas canvas, Size size) {
+    final sourceId = state.selectedSourceId;
+    final targetId = state.selectedTargetId;
+    if (sourceId == null || targetId == null) {
+      return;
+    }
+    final source = state.territoryByIdOrNull(sourceId);
+    final target = state.territoryByIdOrNull(targetId);
+    final start = territoryLabelAnchors[sourceId];
+    final end = territoryLabelAnchors[targetId];
+    if (source == null || target == null || start == null || end == null) {
+      return;
+    }
+    final isTransferRoute =
+        isTransferMode && target.ownerId == state.currentPlayer.id;
+    final color = isTransferRoute
+        ? AppColors.premiumCyan
+        : const Color(0xFFFF4E5E);
+    final glowColor = isTransferRoute
+        ? const Color(0xFF19F0D0)
+        : const Color(0xFFFF9C4A);
+    final route = _curvedRoute(start, end);
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _scaledStroke(size, 7.0)
+      ..strokeCap = StrokeCap.round
+      ..color = glowColor.withValues(alpha: 0.30)
+      ..maskFilter = ui.MaskFilter.blur(
+        ui.BlurStyle.normal,
+        5 / _effectiveZoom,
+      );
+    final routePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _scaledStroke(size, 2.2)
+      ..strokeCap = StrokeCap.round
+      ..shader = ui.Gradient.linear(start, end, <Color>[
+        color.withValues(alpha: 0.15),
+        color.withValues(alpha: 0.95),
+      ]);
+    final dashPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = _scaledStroke(size, 1.25)
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.58);
+
+    canvas.drawPath(route, glowPaint);
+    canvas.drawPath(route, routePaint);
+    _drawDashedPath(canvas, route, dashPaint, dash: 10, gap: 7);
+    _drawArrowHead(canvas, start, end, color);
+    _drawRouteBadge(canvas, (start + end) / 2, color, isTransferRoute);
+  }
+
+  Path _curvedRoute(Offset start, Offset end) {
+    final delta = end - start;
+    final normal = Offset(-delta.dy, delta.dx);
+    final bendDistance = (delta.distance * 0.18).clamp(10.0, 30.0);
+    final control =
+        (start + end) / 2 +
+        (normal.distance == 0
+            ? Offset.zero
+            : normal / normal.distance * bendDistance);
+    return Path()
+      ..moveTo(start.dx, start.dy)
+      ..quadraticBezierTo(control.dx, control.dy, end.dx, end.dy);
+  }
+
+  void _drawArrowHead(Canvas canvas, Offset start, Offset end, Color color) {
+    final direction = end - start;
+    if (direction.distance < 4) {
+      return;
+    }
+    final unit = direction / direction.distance;
+    final perpendicular = Offset(-unit.dy, unit.dx);
+    final tip = end - unit * (14 / _effectiveZoom);
+    final back = tip - unit * (11 / _effectiveZoom);
+    final arrowPath = Path()
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(
+        (back + perpendicular * (6 / _effectiveZoom)).dx,
+        (back + perpendicular * (6 / _effectiveZoom)).dy,
+      )
+      ..moveTo(tip.dx, tip.dy)
+      ..lineTo(
+        (back - perpendicular * (6 / _effectiveZoom)).dx,
+        (back - perpendicular * (6 / _effectiveZoom)).dy,
+      );
+    canvas.drawPath(
+      arrowPath,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.1 / _effectiveZoom
+        ..strokeCap = StrokeCap.round
+        ..color = color.withValues(alpha: 0.95),
+    );
+  }
+
+  void _drawRouteBadge(
+    Canvas canvas,
+    Offset center,
+    Color color,
+    bool isTransferRoute,
+  ) {
+    final radius = 11 / _effectiveZoom;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = RadialGradient(
+          colors: <Color>[
+            color.withValues(alpha: 0.36),
+            const Color(0xF005111A),
+          ],
+        ).createShader(rect),
+    );
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1 / _effectiveZoom
+        ..color = color.withValues(alpha: 0.95),
+    );
+
+    if (isTransferRoute) {
+      _drawTransferIcon(canvas, center, color);
+    } else {
+      _drawSwordIcon(canvas, center, color);
+    }
+  }
+
+  void _drawTransferIcon(Canvas canvas, Offset center, Color color) {
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 / _effectiveZoom
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..color = Colors.white.withValues(alpha: 0.92);
+    final scale = 1 / _effectiveZoom;
+    final left = center + Offset(-6 * scale, -2.5 * scale);
+    final right = center + Offset(6 * scale, -2.5 * scale);
+    canvas.drawLine(left, right, paint);
+    canvas.drawLine(right, right + Offset(-3.8 * scale, -3.2 * scale), paint);
+    canvas.drawLine(right, right + Offset(-3.8 * scale, 3.2 * scale), paint);
+
+    final lowerLeft = center + Offset(-6 * scale, 3.5 * scale);
+    final lowerRight = center + Offset(6 * scale, 3.5 * scale);
+    canvas.drawLine(lowerRight, lowerLeft, paint);
+    canvas.drawLine(
+      lowerLeft,
+      lowerLeft + Offset(3.8 * scale, -3.2 * scale),
+      paint,
+    );
+    canvas.drawLine(
+      lowerLeft,
+      lowerLeft + Offset(3.8 * scale, 3.2 * scale),
+      paint,
+    );
+    canvas.drawCircle(
+      center,
+      2.1 * scale,
+      Paint()..color = color.withValues(alpha: 0.75),
+    );
+  }
+
+  void _drawSwordIcon(Canvas canvas, Offset center, Color color) {
+    final scale = 1 / _effectiveZoom;
+    final bladePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 * scale
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: 0.95);
+    final accentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4 * scale
+      ..strokeCap = StrokeCap.round
+      ..color = color.withValues(alpha: 0.95);
+    final start = center + Offset(-5.5 * scale, 5.5 * scale);
+    final end = center + Offset(5.5 * scale, -5.5 * scale);
+    canvas.drawLine(start, end, bladePaint);
+    final guardCenter = center + Offset(-2.4 * scale, 2.4 * scale);
+    canvas.drawLine(
+      guardCenter + Offset(-3.2 * scale, -1.1 * scale),
+      guardCenter + Offset(1.1 * scale, 3.2 * scale),
+      accentPaint,
+    );
+    canvas.drawLine(
+      center + Offset(-6.4 * scale, 6.4 * scale),
+      center + Offset(-3.9 * scale, 3.9 * scale),
+      accentPaint,
+    );
   }
 
   void _paintArmyLabels(Canvas canvas, Size size) {
@@ -372,6 +580,7 @@ class TerritoryOverlayPainter extends CustomPainter {
         !setEquals(oldDelegate.validSourceIds, validSourceIds) ||
         !setEquals(oldDelegate.validTargetIds, validTargetIds) ||
         !setEquals(oldDelegate.controlledContinents, controlledContinents) ||
+        oldDelegate.isTransferMode != isTransferMode ||
         oldDelegate.mapZoom != mapZoom ||
         oldDelegate.paintOwnership != paintOwnership ||
         oldDelegate.paintLabelsAndHighlights != paintLabelsAndHighlights;
@@ -427,6 +636,25 @@ class TerritoryOverlayPainter extends CustomPainter {
       return true;
     }
     return paths.any((path) => path.contains(point));
+  }
+
+  void _drawDashedPath(
+    Canvas canvas,
+    Path path,
+    Paint paint, {
+    required double dash,
+    required double gap,
+  }) {
+    final scaledDash = dash / _effectiveZoom;
+    final scaledGap = gap / _effectiveZoom;
+    for (final metric in path.computeMetrics()) {
+      var distance = 0.0;
+      while (distance < metric.length) {
+        final end = math.min(distance + scaledDash, metric.length);
+        canvas.drawPath(metric.extractPath(distance, end), paint);
+        distance = end + scaledGap;
+      }
+    }
   }
 
   Path _combinedPath(List<Path> paths) {

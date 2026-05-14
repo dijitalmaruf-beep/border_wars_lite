@@ -7,6 +7,32 @@ enum GamePhase { reinforce, attack, end }
 
 enum MatchMode { quick, standard, conquest }
 
+enum GameDifficulty { easy, normal, hard }
+
+extension GameDifficultyInfo on GameDifficulty {
+  double get attackThresholdAdjustment {
+    switch (this) {
+      case GameDifficulty.easy:
+        return 0.14;
+      case GameDifficulty.normal:
+        return 0.0;
+      case GameDifficulty.hard:
+        return -0.10;
+    }
+  }
+
+  int get maxBotAttacks {
+    switch (this) {
+      case GameDifficulty.easy:
+        return 1;
+      case GameDifficulty.normal:
+        return 2;
+      case GameDifficulty.hard:
+        return 3;
+    }
+  }
+}
+
 extension MatchModeInfo on MatchMode {
   double? get territoryRatio {
     switch (this) {
@@ -39,6 +65,7 @@ class GameState {
     required this.turnNumber,
     required this.turnStartedAtMillis,
     this.matchMode = MatchMode.standard,
+    this.difficulty = GameDifficulty.normal,
     this.transferUsedThisTurn = false,
     this.selectedSourceId,
     this.selectedTargetId,
@@ -58,6 +85,7 @@ class GameState {
   final int turnNumber;
   final int turnStartedAtMillis;
   final MatchMode matchMode;
+  final GameDifficulty difficulty;
   final bool transferUsedThisTurn;
   final String? selectedSourceId;
   final String? selectedTargetId;
@@ -117,6 +145,7 @@ class GameState {
     int? turnNumber,
     int? turnStartedAtMillis,
     MatchMode? matchMode,
+    GameDifficulty? difficulty,
     bool? transferUsedThisTurn,
     Object? selectedSourceId = _gameStateSentinel,
     Object? selectedTargetId = _gameStateSentinel,
@@ -135,6 +164,7 @@ class GameState {
       turnNumber: turnNumber ?? this.turnNumber,
       turnStartedAtMillis: turnStartedAtMillis ?? this.turnStartedAtMillis,
       matchMode: matchMode ?? this.matchMode,
+      difficulty: difficulty ?? this.difficulty,
       transferUsedThisTurn: transferUsedThisTurn ?? this.transferUsedThisTurn,
       selectedSourceId: identical(selectedSourceId, _gameStateSentinel)
           ? this.selectedSourceId
@@ -173,6 +203,7 @@ class GameState {
       'turnNumber': turnNumber,
       'turnStartedAtMillis': turnStartedAtMillis,
       'matchMode': matchMode.name,
+      'difficulty': difficulty.name,
       'transferUsedThisTurn': transferUsedThisTurn,
       'selectedSourceId': selectedSourceId,
       'selectedTargetId': selectedTargetId,
@@ -211,6 +242,10 @@ class GameState {
       matchMode: MatchMode.values.firstWhere(
         (mode) => mode.name == (map['matchMode'] as String?),
         orElse: () => MatchMode.standard,
+      ),
+      difficulty: GameDifficulty.values.firstWhere(
+        (difficulty) => difficulty.name == (map['difficulty'] as String?),
+        orElse: () => GameDifficulty.normal,
       ),
       transferUsedThisTurn: map['transferUsedThisTurn'] as bool? ?? false,
       selectedSourceId: map['selectedSourceId'] as String?,

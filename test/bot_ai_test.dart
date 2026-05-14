@@ -53,4 +53,45 @@ void main() {
       isTrue,
     );
   });
+
+  test(
+    'hard difficulty lets bots take riskier attacks than easy difficulty',
+    () {
+      final baseState = generator.createInitialState(
+        humanName: 'Alex',
+        humanColorValue: AppColors.humanBlueValue,
+        seed: 7,
+      );
+      final combatState = baseState.copyWith(
+        currentPlayerIndex: 1,
+        phase: GamePhase.attack,
+        remainingReinforcements: 0,
+        territories: baseState.territories.map((territory) {
+          if (territory.id == 'western_us') {
+            return territory.copyWith(ownerId: 'atlas_bot', armyCount: 3);
+          }
+          if (territory.id == 'central_us') {
+            return territory.copyWith(ownerId: 'human', armyCount: 3);
+          }
+          return territory.copyWith(ownerId: null);
+        }).toList(),
+      );
+      final atlasBot = combatState.currentPlayer;
+
+      expect(
+        botAI.chooseBestAttack(
+          combatState.copyWith(difficulty: GameDifficulty.easy),
+          atlasBot,
+        ),
+        isNull,
+      );
+      expect(
+        botAI.chooseBestAttack(
+          combatState.copyWith(difficulty: GameDifficulty.hard),
+          atlasBot,
+        ),
+        isNotNull,
+      );
+    },
+  );
 }

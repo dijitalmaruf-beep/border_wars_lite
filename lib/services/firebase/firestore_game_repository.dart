@@ -163,6 +163,7 @@ class FirestoreGameRepository {
     required int hostColorValue,
     int botCount = 2,
     int maxHumanPlayers = GameConstants.maxOnlineHumanPlayers,
+    GameDifficulty difficulty = GameDifficulty.normal,
   }) async {
     final uid = await FirebaseService.ensureSignedInAnonymously();
     final gameId = _newGameCode();
@@ -181,6 +182,7 @@ class FirestoreGameRepository {
       gameId: gameId,
       participants: participants,
       botCount: boundedBotCount,
+      difficulty: difficulty,
     );
 
     await doc.set(<String, dynamic>{
@@ -196,6 +198,7 @@ class FirestoreGameRepository {
       'hostName': host.name,
       'hostColorValue': host.colorValue,
       'botCount': boundedBotCount,
+      'difficulty': difficulty.name,
       'state': _stateToFirestoreMap(waitingState),
       'updatedByUid': uid,
       'createdAt': FieldValue.serverTimestamp(),
@@ -256,6 +259,7 @@ class FirestoreGameRepository {
                 _botCountFromData(data),
                 participants,
               ),
+              difficulty: _difficultyFromData(data),
             );
         session = OnlineGameSession(
           gameId: normalizedGameId,
@@ -277,6 +281,7 @@ class FirestoreGameRepository {
       }
 
       final botCount = _botCountFromData(data);
+      final difficulty = _difficultyFromData(data);
       final colorValue = _distinctHumanColor(
         playerColorValue,
         participants.map((participant) => participant.colorValue).toSet(),
@@ -299,6 +304,7 @@ class FirestoreGameRepository {
         gameId: normalizedGameId,
         participants: updatedParticipants,
         botCount: boundedBotCount,
+        difficulty: difficulty,
       );
 
       transaction.set(doc, <String, dynamic>{
@@ -369,10 +375,12 @@ class FirestoreGameRepository {
       }
 
       final botCount = _botCountFromData(data);
+      final difficulty = _difficultyFromData(data);
       final activeState = _stateForRoom(
         gameId: normalizedGameId,
         participants: participants,
         botCount: _boundedOnlineBotCount(botCount, participants),
+        difficulty: difficulty,
       );
 
       transaction.set(doc, <String, dynamic>{
@@ -470,6 +478,7 @@ class FirestoreGameRepository {
     required String gameId,
     required List<_OnlineRoomParticipant> participants,
     required int botCount,
+    GameDifficulty difficulty = GameDifficulty.normal,
   }) {
     final reservedColors = participants
         .map((participant) => participant.colorValue)
@@ -494,6 +503,7 @@ class FirestoreGameRepository {
       players: players,
       gameId: gameId,
       firstPlayerId: hostPlayerId,
+      difficulty: difficulty,
     );
   }
 
@@ -526,6 +536,13 @@ class FirestoreGameRepository {
       return raw.clamp(0, GameConstants.maxBotPlayers).toInt();
     }
     return 0;
+  }
+
+  GameDifficulty _difficultyFromData(Map<String, dynamic> data) {
+    return GameDifficulty.values.firstWhere(
+      (difficulty) => difficulty.name == (data['difficulty'] as String?),
+      orElse: () => GameDifficulty.normal,
+    );
   }
 
   _OnlineRoomParticipant? _participantForUid(

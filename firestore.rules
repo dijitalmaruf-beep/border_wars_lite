@@ -26,6 +26,7 @@ service cloud.firestore {
             'hostName',
             'hostColorValue',
             'botCount',
+            'difficulty',
             'state',
             'updatedByUid',
             'createdAt',
@@ -46,6 +47,7 @@ service cloud.firestore {
           && request.resource.data.botCount is int
           && request.resource.data.botCount >= 0
           && request.resource.data.botCount <= 9
+          && request.resource.data.difficulty in ['easy', 'normal', 'hard']
           && request.resource.data.hostName is string
           && request.resource.data.hostName.size() > 0
           && request.resource.data.hostName.size() <= 18

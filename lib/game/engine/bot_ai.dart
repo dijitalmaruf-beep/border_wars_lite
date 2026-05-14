@@ -50,10 +50,16 @@ class BotAI {
   BotAttackPlan? chooseBestAttack(GameState state, Player botPlayer) {
     final personality =
         botPlayer.botPersonality ?? BotPersonality.opportunistic;
+    final threshold =
+        (personality.attackThreshold +
+                state.difficulty.attackThresholdAdjustment)
+            .clamp(0.25, 0.90)
+            .toDouble();
     final plans =
-        findValidAttackPlans(state, botPlayer)
-            .where((plan) => plan.winChance >= personality.attackThreshold)
-            .toList()
+        findValidAttackPlans(
+            state,
+            botPlayer,
+          ).where((plan) => plan.winChance >= threshold).toList()
           ..sort((left, right) => right.score.compareTo(left.score));
 
     if (plans.isEmpty) {

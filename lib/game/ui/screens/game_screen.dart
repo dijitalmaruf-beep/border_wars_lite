@@ -64,6 +64,13 @@ String _localizedStatusForContext(
       MapLocalizations.continentName(context, continent),
     );
   }
+  for (final bonusName
+      in ReinforcementCalculator.strategicTerritoryBonusNames.values) {
+    localizedMessage = localizedMessage.replaceAll(
+      bonusName,
+      MapLocalizations.continentName(context, bonusName),
+    );
+  }
   return localizedMessage;
 }
 
@@ -219,6 +226,8 @@ class _GameScreenState extends State<GameScreen> {
                                 validSourceIds: validSourceIds,
                                 validTargetIds: validTargetIds,
                                 controlledContinents: controlledContinents,
+                                isTransferMode:
+                                    _commandMode == _MapCommandMode.transfer,
                                 pulse: _mapPulse,
                                 pulseSerial: _mapPulseSerial,
                                 onTerritoryTap: _handleTerritoryTap,
@@ -366,6 +375,11 @@ class _GameScreenState extends State<GameScreen> {
         ),
         eventMessage:
             '${_territoryName(capturedTarget)} fethedildi. $selectedAmount asker ilerledi.',
+        mapPulse: _MapPulse(
+          territoryId: capturedTarget.id,
+          label: 'FETHEDİLDİ',
+          color: AppColors.premiumGold,
+        ),
       );
     }
   }
@@ -2454,6 +2468,7 @@ class _MapStage extends StatelessWidget {
     required this.validSourceIds,
     required this.validTargetIds,
     required this.controlledContinents,
+    required this.isTransferMode,
     required this.pulse,
     required this.pulseSerial,
     required this.onTerritoryTap,
@@ -2463,6 +2478,7 @@ class _MapStage extends StatelessWidget {
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
+  final bool isTransferMode;
   final _MapPulse? pulse;
   final int pulseSerial;
   final ValueChanged<String> onTerritoryTap;
@@ -2497,6 +2513,7 @@ class _MapStage extends StatelessWidget {
                     validSourceIds: validSourceIds,
                     validTargetIds: validTargetIds,
                     controlledContinents: controlledContinents,
+                    isTransferMode: isTransferMode,
                     pulseTerritoryId: pulse?.territoryId,
                     pulseLabel: pulse?.label,
                     pulseColor: pulse?.color,

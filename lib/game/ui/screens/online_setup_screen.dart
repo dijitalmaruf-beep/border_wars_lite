@@ -7,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/game_constants.dart';
 import '../../../services/firebase/firebase_service.dart';
 import '../../../services/firebase/firestore_game_repository.dart';
+import '../../models/game_state.dart';
 import '../../models/player.dart';
 import '../widgets/commander_banner_picker.dart';
 import '../widgets/premium_background.dart';
@@ -33,6 +34,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
   int _selectedColorValue = AppColors.humanBlueValue;
   int _selectedMaxHumanPlayers = GameConstants.maxOnlineHumanPlayers;
   int _selectedBotCount = 2;
+  GameDifficulty _selectedDifficulty = GameDifficulty.normal;
   bool _isBusy = false;
   String? _errorMessage;
 
@@ -147,6 +149,26 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
                               onSelected: (colorValue) {
                                 setState(() {
                                   _selectedColorValue = colorValue;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      PremiumPanel(
+                        padding: const EdgeInsets.all(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _PanelLabel('ZORLUK SEVİYESİ'),
+                            const SizedBox(height: 14),
+                            _DifficultySelector(
+                              selectedDifficulty: _selectedDifficulty,
+                              enabled: !_isBusy && _createdSession == null,
+                              onChanged: (difficulty) {
+                                setState(() {
+                                  _selectedDifficulty = difficulty;
                                 });
                               },
                             ),
@@ -482,6 +504,7 @@ class _OnlineSetupScreenState extends State<OnlineSetupScreen> {
         hostColorValue: _selectedColorValue,
         botCount: _selectedBotCount,
         maxHumanPlayers: _selectedMaxHumanPlayers,
+        difficulty: _selectedDifficulty,
       );
       if (!mounted) {
         return;
@@ -707,6 +730,124 @@ class _LobbyPlayerList extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+class _DifficultySelector extends StatelessWidget {
+  const _DifficultySelector({
+    required this.selectedDifficulty,
+    required this.onChanged,
+    required this.enabled,
+  });
+
+  final GameDifficulty selectedDifficulty;
+  final ValueChanged<GameDifficulty> onChanged;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: GameDifficulty.values
+          .map((difficulty) {
+            final isSelected = difficulty == selectedDifficulty;
+            return Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  right: difficulty == GameDifficulty.hard ? 0 : 8,
+                ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: enabled ? () => onChanged(difficulty) : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 11,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(8),
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isSelected
+                            ? const <Color>[
+                                Color(0xFF0F9B8E),
+                                Color(0xFF064E58),
+                              ]
+                            : const <Color>[
+                                Color(0xFF12202D),
+                                Color(0xFF07111A),
+                              ],
+                      ),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.premiumCyan
+                            : AppColors.premiumBorder,
+                        width: isSelected ? 1.4 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _difficultyTitle(difficulty),
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: enabled
+                                  ? AppColors.premiumText
+                                  : AppColors.premiumMutedText,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _difficultySubtitle(difficulty),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: isSelected
+                                ? const Color(0xFFFFD66D)
+                                : AppColors.premiumMutedText,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          })
+          .toList(growable: false),
+    );
+  }
+
+  String _difficultyTitle(GameDifficulty difficulty) {
+    switch (difficulty) {
+      case GameDifficulty.easy:
+        return 'KOLAY';
+      case GameDifficulty.normal:
+        return 'NORMAL';
+      case GameDifficulty.hard:
+        return 'ZOR';
+    }
+  }
+
+  String _difficultySubtitle(GameDifficulty difficulty) {
+    switch (difficulty) {
+      case GameDifficulty.easy:
+        return 'rahat';
+      case GameDifficulty.normal:
+        return 'dengeli';
+      case GameDifficulty.hard:
+        return 'sert';
+    }
   }
 }
 

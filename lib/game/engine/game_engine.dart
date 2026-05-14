@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import '../../core/constants/game_constants.dart';
 import '../models/attack_result.dart';
 import '../models/game_state.dart';
 import '../models/territory.dart';
@@ -409,7 +408,7 @@ class GameEngine {
 
     for (
       var attackNumber = 0;
-      attackNumber < GameConstants.maxBotAttacksPerTurn;
+      attackNumber < state.difficulty.maxBotAttacks;
       attackNumber += 1
     ) {
       final plan = botAI.chooseBestAttack(nextState, bot);

@@ -9,6 +9,7 @@ class TerritoryMap extends StatelessWidget {
     required this.validSourceIds,
     required this.validTargetIds,
     required this.controlledContinents,
+    required this.isTransferMode,
     required this.onTerritoryTap,
     this.pulseTerritoryId,
     this.pulseLabel,
@@ -21,6 +22,7 @@ class TerritoryMap extends StatelessWidget {
   final Set<String> validSourceIds;
   final Set<String> validTargetIds;
   final Set<String> controlledContinents;
+  final bool isTransferMode;
   final ValueChanged<String> onTerritoryTap;
   final String? pulseTerritoryId;
   final String? pulseLabel;
@@ -34,6 +36,7 @@ class TerritoryMap extends StatelessWidget {
       validSourceIds: validSourceIds,
       validTargetIds: validTargetIds,
       controlledContinents: controlledContinents,
+      isTransferMode: isTransferMode,
       onTerritoryTap: onTerritoryTap,
       pulseTerritoryId: pulseTerritoryId,
       pulseLabel: pulseLabel,

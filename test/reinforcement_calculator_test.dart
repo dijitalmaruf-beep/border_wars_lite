@@ -115,11 +115,37 @@ void main() {
     );
   });
 
+  test('owning Anatolia adds strategic bonus', () {
+    final state = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      seed: 9,
+    );
+    final anatoliaState = state.copyWith(
+      territories: state.territories.map((territory) {
+        if (territory.id == 'anatolia') {
+          return territory.copyWith(ownerId: GameConstants.humanPlayerId);
+        }
+        return territory.copyWith(ownerId: null);
+      }).toList(),
+    );
+    final breakdown = calculator.breakdownForPlayer(
+      anatoliaState,
+      GameConstants.humanPlayerId,
+    );
+
+    expect(breakdown.continentBonus, 3);
+    expect(
+      breakdown.controlledContinents.map((bonus) => bonus.continent),
+      contains('Anatolia'),
+    );
+  });
+
   test('bots use same reinforcement formula', () {
     final state = stateWithContinentsOwned(const <String>['Asia'], 'atlas_bot');
     final breakdown = calculator.breakdownForPlayer(state, 'atlas_bot');
 
-    expect(breakdown.continentBonus, 7);
+    expect(breakdown.continentBonus, 10);
     expect(calculator.calculateForPlayer(state, 'atlas_bot'), breakdown.total);
   });
 }
