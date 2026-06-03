@@ -34,8 +34,11 @@ class CombatResolver {
     required String attackerId,
     Random? random,
     double? rollOverride,
+    double? winChanceOverride,
   }) {
-    final winChance = calculateWinChance(source, target);
+    final winChance =
+        winChanceOverride?.clamp(0.0, 1.0).toDouble() ??
+        calculateWinChance(source, target);
     final roll = rollOverride ?? (random ?? Random()).nextDouble();
     final attackerPower = max(0, source.armyCount - 1);
     final didWin = roll < winChance;

@@ -191,7 +191,7 @@ class GameEngine {
     if (source == null || target == null) {
       return 0;
     }
-    return combatResolver.calculateWinChance(source, target);
+    return _difficultyAdjustedWinChance(state, source, target);
   }
 
   int movedArmiesOnWinForSelection(GameState state) {
@@ -249,7 +249,29 @@ class GameEngine {
       target: target,
       attackerId: state.currentPlayer.id,
       random: random,
+      winChanceOverride: _difficultyAdjustedWinChance(state, source, target),
     );
+  }
+
+  double _difficultyAdjustedWinChance(
+    GameState state,
+    Territory source,
+    Territory target,
+  ) {
+    final baseChance = combatResolver.calculateWinChance(source, target);
+    final attacker = state.currentPlayer;
+    final defender = state.playerById(target.ownerId);
+    if (attacker.isBot) {
+      return (baseChance * state.difficulty.botAttackWinChanceMultiplier)
+          .clamp(0.02, 0.96)
+          .toDouble();
+    }
+    if (defender != null && defender.isBot) {
+      return (baseChance * state.difficulty.humanVsBotAttackWinChanceMultiplier)
+          .clamp(0.02, 0.96)
+          .toDouble();
+    }
+    return baseChance.clamp(0.0, 1.0).toDouble();
   }
 
   GameState attackSelected(GameState state, {Random? random}) {

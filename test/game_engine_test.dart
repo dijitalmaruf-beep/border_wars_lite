@@ -63,7 +63,10 @@ void main() {
       expect(owned, hasLength(GameConstants.startingTerritoriesPerPlayer));
       expect(
         owned.map((territory) => territory.armyCount),
-        everyElement(GameConstants.startingArmies),
+        everyElement(
+          GameConstants.startingArmies +
+              (player.isBot ? state.difficulty.botStartingArmyBonus : 0),
+        ),
       );
     }
 
@@ -409,6 +412,20 @@ void main() {
     final restored = GameState.fromMap(state.toMap());
 
     expect(restored.difficulty, GameDifficulty.hard);
+  });
+
+  test('hard difficulty lowers human attack chance against bots', () {
+    final easy = transferState(
+      targetOwnerId: 'atlas_bot',
+      sourceArmies: 6,
+      targetArmies: 4,
+    ).copyWith(difficulty: GameDifficulty.easy);
+    final hard = easy.copyWith(difficulty: GameDifficulty.hard);
+
+    expect(
+      engine.winChanceForSelection(hard),
+      lessThan(engine.winChanceForSelection(easy)),
+    );
   });
 
   test('event log keeps the last ten events', () {

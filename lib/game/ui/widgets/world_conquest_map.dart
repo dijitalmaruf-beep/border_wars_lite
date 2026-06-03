@@ -93,6 +93,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   Size? _lastMapSize;
   Size? _lastViewportSize;
   double _mapZoom = 1.0;
+  double _globeRotation = 0.0;
   Map<String, List<Path>> _cachedPaths = const <String, List<Path>>{};
   Map<String, Path> _cachedHighlightPaths = const <String, Path>{};
   Map<String, Offset> _cachedLabelAnchors = const <String, Offset>{};
@@ -112,14 +113,20 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
 
   void _handleTransformChanged() {
     final nextZoom = _quantizedZoom(_currentMapZoom());
-    if ((nextZoom - _mapZoom).abs() < 0.01) {
+    final nextRotation = _currentGlobeRotation();
+    if ((nextZoom - _mapZoom).abs() < 0.01 &&
+        (nextRotation - _globeRotation).abs() < 0.018) {
       return;
     }
     if (!mounted) {
       _mapZoom = nextZoom;
+      _globeRotation = nextRotation;
       return;
     }
-    setState(() => _mapZoom = nextZoom);
+    setState(() {
+      _mapZoom = nextZoom;
+      _globeRotation = nextRotation;
+    });
   }
 
   @override
@@ -133,97 +140,138 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         final labelAnchors = _labelAnchorsFor(mapSize, paths);
         _syncInitialView(viewportSize, mapSize);
 
-        return InteractiveViewer(
-          transformationController: _transformationController,
-          minScale: 0.75,
-          maxScale: 4,
-          constrained: false,
-          clipBehavior: Clip.hardEdge,
-          boundaryMargin: const EdgeInsets.all(24),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (details) {
-              final territoryId = _territoryAt(details.localPosition, paths);
-              if (territoryId != null) {
-                widget.onTerritoryTap(territoryId);
-              }
-            },
-            child: SizedBox(
-              width: mapSize.width,
-              height: mapSize.height,
-              child: Stack(
-                fit: StackFit.expand,
-                children: <Widget>[
-                  RepaintBoundary(
-                    child: Image.asset(_baseMapAsset, fit: BoxFit.fill),
-                  ),
-                  const RepaintBoundary(
-                    child: CustomPaint(painter: _MapDepthPainter()),
-                  ),
-                  RepaintBoundary(
-                    child: CustomPaint(
-                      painter: _MapReliefPainter(territoryPaths: paths),
-                    ),
-                  ),
-                  RepaintBoundary(
-                    child: CustomPaint(
-                      painter: TerritoryOverlayPainter(
-                        state: widget.state,
-                        territoryPaths: paths,
-                        territoryHighlightPaths: highlightPaths,
-                        territoryLabelAnchors: labelAnchors,
-                        validSourceIds: widget.validSourceIds,
-                        validTargetIds: widget.validTargetIds,
-                        controlledContinents: widget.controlledContinents,
-                        isTransferMode: widget.isTransferMode,
-                        mapZoom: 1.0,
-                        paintOwnership: true,
-                      ),
-                    ),
-                  ),
-                  RepaintBoundary(
-                    child: SvgPicture.asset(
-                      _borderMapAsset,
-                      fit: BoxFit.fill,
-                      allowDrawingOutsideViewBox: false,
-                    ),
-                  ),
-                  RepaintBoundary(
-                    child: CustomPaint(
-                      painter: TerritoryOverlayPainter(
-                        state: widget.state,
-                        territoryPaths: paths,
-                        territoryHighlightPaths: highlightPaths,
-                        territoryLabelAnchors: labelAnchors,
-                        validSourceIds: widget.validSourceIds,
-                        validTargetIds: widget.validTargetIds,
-                        controlledContinents: widget.controlledContinents,
-                        isTransferMode: widget.isTransferMode,
-                        mapZoom: _mapZoom,
-                        paintLabelsAndHighlights: true,
-                      ),
-                    ),
-                  ),
-                  if (widget.pulseTerritoryId != null &&
-                      widget.pulseLabel != null &&
-                      widget.pulseColor != null &&
-                      labelAnchors.containsKey(widget.pulseTerritoryId))
-                    Positioned(
-                      key: ValueKey<int>(widget.pulseSerial),
-                      left: labelAnchors[widget.pulseTerritoryId]!.dx,
-                      top: labelAnchors[widget.pulseTerritoryId]!.dy,
-                      child: IgnorePointer(
-                        child: _MapPulseOverlay(
-                          label: widget.pulseLabel!,
-                          color: widget.pulseColor!,
-                          inverseScale: 1 / _mapZoom.clamp(0.75, 4.0),
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            const RepaintBoundary(
+              child: CustomPaint(painter: _GlobeBackdropPainter()),
+            ),
+            Positioned.fill(
+              child: ClipPath(
+                clipper: const _GlobeViewportClipper(),
+                clipBehavior: Clip.antiAlias,
+                child: Transform(
+                  alignment: Alignment.center,
+                  transform: _globePerspectiveTransform(),
+                  child: InteractiveViewer(
+                    transformationController: _transformationController,
+                    minScale: 0.75,
+                    maxScale: 4,
+                    constrained: false,
+                    clipBehavior: Clip.none,
+                    boundaryMargin: const EdgeInsets.all(24),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: (details) {
+                        final territoryId = _territoryAt(
+                          details.localPosition,
+                          paths,
+                        );
+                        if (territoryId != null) {
+                          widget.onTerritoryTap(territoryId);
+                        }
+                      },
+                      child: SizedBox(
+                        width: mapSize.width,
+                        height: mapSize.height,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: <Widget>[
+                            RepaintBoundary(
+                              child: Image.asset(
+                                _baseMapAsset,
+                                fit: BoxFit.fill,
+                              ),
+                            ),
+                            const RepaintBoundary(
+                              child: CustomPaint(painter: _MapDepthPainter()),
+                            ),
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                painter: _MapReliefPainter(
+                                  territoryPaths: paths,
+                                ),
+                              ),
+                            ),
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                painter: TerritoryOverlayPainter(
+                                  state: widget.state,
+                                  territoryPaths: paths,
+                                  territoryHighlightPaths: highlightPaths,
+                                  territoryLabelAnchors: labelAnchors,
+                                  validSourceIds: widget.validSourceIds,
+                                  validTargetIds: widget.validTargetIds,
+                                  controlledContinents:
+                                      widget.controlledContinents,
+                                  isTransferMode: widget.isTransferMode,
+                                  mapZoom: 1.0,
+                                  paintOwnership: true,
+                                ),
+                              ),
+                            ),
+                            RepaintBoundary(
+                              child: SvgPicture.asset(
+                                _borderMapAsset,
+                                fit: BoxFit.fill,
+                                allowDrawingOutsideViewBox: false,
+                              ),
+                            ),
+                            RepaintBoundary(
+                              child: CustomPaint(
+                                painter: TerritoryOverlayPainter(
+                                  state: widget.state,
+                                  territoryPaths: paths,
+                                  territoryHighlightPaths: highlightPaths,
+                                  territoryLabelAnchors: labelAnchors,
+                                  validSourceIds: widget.validSourceIds,
+                                  validTargetIds: widget.validTargetIds,
+                                  controlledContinents:
+                                      widget.controlledContinents,
+                                  isTransferMode: widget.isTransferMode,
+                                  mapZoom: _mapZoom,
+                                  paintLabelsAndHighlights: true,
+                                ),
+                              ),
+                            ),
+                            if (widget.pulseTerritoryId != null &&
+                                widget.pulseLabel != null &&
+                                widget.pulseColor != null &&
+                                labelAnchors.containsKey(
+                                  widget.pulseTerritoryId,
+                                ))
+                              Positioned(
+                                key: ValueKey<int>(widget.pulseSerial),
+                                left: labelAnchors[widget.pulseTerritoryId]!.dx,
+                                top: labelAnchors[widget.pulseTerritoryId]!.dy,
+                                child: IgnorePointer(
+                                  child: _MapPulseOverlay(
+                                    label: widget.pulseLabel!,
+                                    color: widget.pulseColor!,
+                                    inverseScale: 1 / _mapZoom.clamp(0.75, 4.0),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
-          ),
+            Positioned.fill(
+              child: IgnorePointer(
+                child: RepaintBoundary(
+                  child: CustomPaint(
+                    painter: _GlobeViewportFramePainter(
+                      rotation: _globeRotation,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -437,6 +485,30 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         .toDouble();
   }
 
+  double _currentGlobeRotation() {
+    final viewportSize = _lastViewportSize;
+    final mapSize = _lastMapSize;
+    if (viewportSize == null || mapSize == null || mapSize.width <= 0) {
+      return _globeRotation;
+    }
+    final matrix = _transformationController.value;
+    final scale = matrix.getMaxScaleOnAxis().clamp(0.75, 4.0).toDouble();
+    final translation = matrix.getTranslation();
+    final centerX = (viewportSize.width / 2 - translation.x) / scale;
+    final normalizedCenterX = (centerX / mapSize.width).clamp(0.0, 1.0);
+    return normalizedCenterX * math.pi * 2;
+  }
+
+  Matrix4 _globePerspectiveTransform() {
+    final yaw = math.sin(_globeRotation) * 0.105;
+    final lift = math.cos(_globeRotation) * 0.012;
+    return Matrix4.identity()
+      ..setEntry(3, 2, 0.00075)
+      ..rotateY(yaw)
+      ..rotateX(lift)
+      ..scaleByDouble(1.015, 1.01, 1, 1);
+  }
+
   double _quantizedZoom(double zoom) {
     final clamped = zoom.clamp(0.75, 4.0).toDouble();
     return (clamped / _zoomPaintStep).round() * _zoomPaintStep;
@@ -477,6 +549,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
           1,
         )
         ..scaleByDouble(scale, scale, scale, 1);
+      _globeRotation = _currentGlobeRotation();
       return;
     }
 
@@ -493,6 +566,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         : math.min(0.0, rawDy);
     _mapZoom = 1.0;
     _transformationController.value = Matrix4.translationValues(dx, dy, 0);
+    _globeRotation = _currentGlobeRotation();
   }
 
   Path _combinedPath(List<Path> paths) {
@@ -590,6 +664,215 @@ class _MapPulseOverlay extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _GlobeViewportClipper extends CustomClipper<Path> {
+  const _GlobeViewportClipper();
+
+  @override
+  Path getClip(Size size) {
+    final rect = Rect.fromLTWH(
+      -size.width * 0.035,
+      -size.height * 0.105,
+      size.width * 1.07,
+      size.height * 1.22,
+    );
+    return Path()..addOval(rect);
+  }
+
+  @override
+  bool shouldReclip(covariant _GlobeViewportClipper oldClipper) => false;
+}
+
+class _GlobeBackdropPainter extends CustomPainter {
+  const _GlobeBackdropPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[
+            Color(0xFF031521),
+            Color(0xFF020812),
+            Color(0xFF000309),
+          ],
+        ).createShader(rect),
+    );
+
+    final glowRect = Rect.fromCenter(
+      center: Offset(size.width * 0.50, size.height * 0.48),
+      width: size.width * 1.12,
+      height: size.height * 1.18,
+    );
+    canvas.drawOval(
+      glowRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(20, size.width * 0.045)
+        ..color = const Color(0xFF0B9FD2).withValues(alpha: 0.13)
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 28),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlobeBackdropPainter oldDelegate) => false;
+}
+
+class _GlobeViewportFramePainter extends CustomPainter {
+  const _GlobeViewportFramePainter({required this.rotation});
+
+  final double rotation;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final globeRect = Rect.fromLTWH(
+      -size.width * 0.035,
+      -size.height * 0.105,
+      size.width * 1.07,
+      size.height * 1.22,
+    );
+    final globePath = Path()..addOval(globeRect);
+    final outsidePath = Path.combine(
+      ui.PathOperation.difference,
+      Path()..addRect(rect),
+      globePath,
+    );
+
+    canvas.drawPath(
+      outsidePath,
+      Paint()
+        ..shader = RadialGradient(
+          center: Alignment.center,
+          radius: 0.86,
+          colors: <Color>[
+            const Color(0xFF020B14).withValues(alpha: 0.34),
+            const Color(0xFF00040A).withValues(alpha: 0.92),
+          ],
+        ).createShader(rect),
+    );
+
+    canvas.save();
+    canvas.clipPath(globePath);
+    _paintRotatingMeridians(canvas, size, globeRect);
+    _paintHemisphereShade(canvas, size);
+    canvas.restore();
+
+    canvas.drawOval(
+      globeRect.inflate(size.width * 0.006),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(7, size.width * 0.010)
+        ..color = const Color(0xFF31D9FF).withValues(alpha: 0.18)
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 10),
+    );
+    canvas.drawOval(
+      globeRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(1.1, size.width * 0.0015)
+        ..color = const Color(0xFFC8F7FF).withValues(alpha: 0.42),
+    );
+    canvas.drawOval(
+      globeRect.deflate(size.width * 0.010),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(0.7, size.width * 0.0009)
+        ..color = Colors.white.withValues(alpha: 0.14),
+    );
+  }
+
+  void _paintRotatingMeridians(Canvas canvas, Size size, Rect globeRect) {
+    final center = globeRect.center;
+    final meridianPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.45, size.width * 0.00055)
+      ..color = const Color(0xFFC7F8FF).withValues(alpha: 0.105);
+    final brightMeridianPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.75, size.width * 0.00080)
+      ..color = const Color(0xFF71EDFF).withValues(alpha: 0.16);
+
+    final phase = (rotation / (math.pi * 2)) % 1.0;
+    for (var index = -4; index <= 4; index += 1) {
+      var shifted = ((index / 4) + phase + 1.5) % 2.0 - 1.0;
+      shifted = shifted.clamp(-0.98, 0.98).toDouble();
+      final proximity = 1 - shifted.abs();
+      final width = globeRect.width * (0.10 + proximity * 0.42);
+      final meridianRect = Rect.fromCenter(
+        center: Offset(center.dx + shifted * globeRect.width * 0.36, center.dy),
+        width: width,
+        height: globeRect.height * 1.01,
+      );
+      canvas.drawOval(
+        meridianRect,
+        proximity > 0.82 ? brightMeridianPaint : meridianPaint,
+      );
+    }
+
+    final latitudePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(0.45, size.width * 0.00052)
+      ..color = const Color(0xFFB8F5FF).withValues(alpha: 0.075);
+    for (final offset in const <double>[-0.34, -0.18, 0.0, 0.18, 0.34]) {
+      final y = center.dy + globeRect.height * offset;
+      final latitudeRect = Rect.fromCenter(
+        center: Offset(center.dx, y),
+        width: globeRect.width * (0.88 - offset.abs() * 0.76),
+        height: globeRect.height * 0.12,
+      );
+      canvas.drawOval(latitudeRect, latitudePaint);
+    }
+  }
+
+  void _paintHemisphereShade(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.36, -0.36),
+          radius: 0.74,
+          colors: <Color>[const Color(0x2E9CF8FF), Colors.transparent],
+          stops: const <double>[0.0, 1.0],
+        ).createShader(rect)
+        ..blendMode = BlendMode.screen,
+    );
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(0.84, 0.78),
+          radius: 0.92,
+          colors: <Color>[Colors.transparent, const Color(0xB9000207)],
+          stops: const <double>[0.38, 1.0],
+        ).createShader(rect),
+    );
+    canvas.drawRect(
+      rect,
+      Paint()
+        ..shader = const LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: <Color>[
+            Color(0x7A00040A),
+            Color(0x0000040A),
+            Color(0x6300040A),
+          ],
+          stops: <double>[0.0, 0.48, 1.0],
+        ).createShader(rect),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlobeViewportFramePainter oldDelegate) {
+    return (oldDelegate.rotation - rotation).abs() > 0.001;
   }
 }
 

@@ -842,11 +842,11 @@ class _DifficultySelector extends StatelessWidget {
   String _difficultySubtitle(GameDifficulty difficulty) {
     switch (difficulty) {
       case GameDifficulty.easy:
-        return 'rahat';
+        return 'rekabetçi';
       case GameDifficulty.normal:
-        return 'dengeli';
+        return 'zorlu';
       case GameDifficulty.hard:
-        return 'sert';
+        return 'acımasız';
     }
   }
 }

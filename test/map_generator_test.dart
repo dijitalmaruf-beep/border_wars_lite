@@ -64,6 +64,32 @@ void main() {
     }
   });
 
+  test('hard difficulty gives bot commanders stronger starting armies', () {
+    final state = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      seed: 21,
+      difficulty: GameDifficulty.hard,
+    );
+    final humanArmies = state
+        .territoriesOwnedBy(GameConstants.humanPlayerId)
+        .map((territory) => territory.armyCount);
+    final botArmies = state.territories
+        .where((territory) {
+          final owner = state.playerById(territory.ownerId);
+          return owner != null && owner.isBot;
+        })
+        .map((territory) => territory.armyCount);
+
+    expect(humanArmies, everyElement(GameConstants.startingArmies));
+    expect(
+      botArmies,
+      everyElement(
+        GameConstants.startingArmies + GameDifficulty.hard.botStartingArmyBonus,
+      ),
+    );
+  });
+
   test('starting territories are unique playable territories', () {
     final state = newState(31);
     final assignedTerritoryIds = startingAssignment(state).keys.toList();

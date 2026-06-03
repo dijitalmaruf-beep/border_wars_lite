@@ -79,7 +79,11 @@ class BotAI {
         if (target.ownerId == botPlayer.id) {
           continue;
         }
-        final winChance = combatResolver.calculateWinChance(source, target);
+        final winChance =
+            (combatResolver.calculateWinChance(source, target) *
+                    state.difficulty.botAttackWinChanceMultiplier)
+                .clamp(0.02, 0.96)
+                .toDouble();
         plans.add(
           BotAttackPlan(
             sourceId: source.id,
