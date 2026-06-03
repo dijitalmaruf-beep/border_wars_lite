@@ -598,50 +598,100 @@ class _MapDepthPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
     final oceanWash = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: <Color>[
-          const Color(0x0018D3F0),
-          const Color(0x22001C32),
-          const Color(0x33000410),
+          const Color(0x220FD9FF),
+          const Color(0x08001222),
+          const Color(0x3A00040E),
         ],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, oceanWash);
+        stops: const <double>[0.0, 0.48, 1.0],
+      ).createShader(rect);
+    canvas.drawRect(rect, oceanWash);
 
-    final warmCommandLight = Paint()
+    final specularLight = Paint()
       ..shader = RadialGradient(
-        center: const Alignment(-0.42, -0.44),
-        radius: 0.78,
+        center: const Alignment(-0.35, -0.34),
+        radius: 0.58,
         colors: <Color>[
-          const Color(0x33F6D28B),
-          const Color(0x1018D3F0),
+          const Color(0x4A9EF7FF),
+          const Color(0x1CF3D18A),
           Colors.transparent,
         ],
-        stops: const <double>[0.0, 0.44, 1.0],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, warmCommandLight);
+        stops: const <double>[0.0, 0.42, 1.0],
+      ).createShader(rect)
+      ..blendMode = BlendMode.screen;
+    canvas.drawRect(rect, specularLight);
 
     final gridPaint = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 0.55
-      ..color = Colors.white.withValues(alpha: 0.045);
-    const gridStep = 72.0;
-    for (var x = 0.0; x <= size.width; x += gridStep) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+      ..strokeWidth = math.max(0.42, size.width * 0.00022)
+      ..color = Colors.white.withValues(alpha: 0.040);
+    const divisions = 10;
+    for (var i = 1; i < divisions; i++) {
+      final t = i / divisions;
+      final x = size.width * t;
+      final bend = (t - 0.5) * size.height * 0.10;
+      final path = Path()
+        ..moveTo(x, 0)
+        ..cubicTo(
+          x - bend,
+          size.height * 0.28,
+          x + bend,
+          size.height * 0.72,
+          x,
+          size.height,
+        );
+      canvas.drawPath(path, gridPaint);
     }
-    for (var y = 0.0; y <= size.height; y += gridStep) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    for (var i = 1; i < 5; i++) {
+      final t = i / 5;
+      final y = size.height * t;
+      final curve = (t - 0.5) * size.height * 0.11;
+      final path = Path()
+        ..moveTo(0, y)
+        ..quadraticBezierTo(size.width * 0.5, y + curve, size.width, y);
+      canvas.drawPath(path, gridPaint);
     }
 
-    final vignette = Paint()
+    final rimRect = Rect.fromLTWH(
+      -size.width * 0.075,
+      -size.height * 0.335,
+      size.width * 1.15,
+      size.height * 1.62,
+    );
+    final rimGlow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(8, size.width * 0.006)
+      ..color = const Color(0xFF45D9FF).withValues(alpha: 0.12)
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 10);
+    final rimLine = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = math.max(1.0, size.width * 0.00072)
+      ..color = const Color(0xFFB4F4FF).withValues(alpha: 0.30);
+    canvas.drawOval(rimRect, rimGlow);
+    canvas.drawOval(rimRect, rimLine);
+
+    final terminator = Paint()
       ..shader = RadialGradient(
-        radius: 0.78,
-        colors: <Color>[Colors.transparent, const Color(0xAA010611)],
+        center: const Alignment(0.72, 0.76),
+        radius: 0.95,
+        colors: <Color>[Colors.transparent, const Color(0xB8000308)],
+        stops: const <double>[0.48, 1.0],
+      ).createShader(rect);
+    canvas.drawRect(rect, terminator);
+
+    final edgeVignette = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.10, -0.08),
+        radius: 0.94,
+        colors: <Color>[Colors.transparent, const Color(0x8A000612)],
         stops: const <double>[0.64, 1.0],
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, vignette);
+      ).createShader(rect);
+    canvas.drawRect(rect, edgeVignette);
   }
 
   @override
