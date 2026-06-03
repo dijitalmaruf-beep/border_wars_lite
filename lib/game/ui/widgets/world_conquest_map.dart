@@ -886,7 +886,6 @@ class _GlobeViewportFramePainter extends CustomPainter {
     canvas.save();
     canvas.clipPath(globePath);
     _paintRotatingMeridians(canvas, size, globeRect);
-    _paintHemisphereShade(canvas, size);
     canvas.restore();
 
     canvas.drawOval(
@@ -918,11 +917,11 @@ class _GlobeViewportFramePainter extends CustomPainter {
     final meridianPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.45, size.width * 0.00055)
-      ..color = const Color(0xFFC7F8FF).withValues(alpha: 0.105);
+      ..color = const Color(0xFFC7F8FF).withValues(alpha: 0.070);
     final brightMeridianPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.75, size.width * 0.00080)
-      ..color = const Color(0xFF71EDFF).withValues(alpha: 0.16);
+      ..color = const Color(0xFF71EDFF).withValues(alpha: 0.105);
 
     final phase = (rotation / (math.pi * 2)) % 1.0;
     for (var index = -4; index <= 4; index += 1) {
@@ -944,7 +943,7 @@ class _GlobeViewportFramePainter extends CustomPainter {
     final latitudePaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.45, size.width * 0.00052)
-      ..color = const Color(0xFFB8F5FF).withValues(alpha: 0.075);
+      ..color = const Color(0xFFB8F5FF).withValues(alpha: 0.052);
     for (final offset in const <double>[-0.34, -0.18, 0.0, 0.18, 0.34]) {
       final y = center.dy + globeRect.height * offset;
       final latitudeRect = Rect.fromCenter(
@@ -954,45 +953,6 @@ class _GlobeViewportFramePainter extends CustomPainter {
       );
       canvas.drawOval(latitudeRect, latitudePaint);
     }
-  }
-
-  void _paintHemisphereShade(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(-0.36, -0.36),
-          radius: 0.74,
-          colors: <Color>[const Color(0x5CA9FAFF), Colors.transparent],
-          stops: const <double>[0.0, 1.0],
-        ).createShader(rect)
-        ..blendMode = BlendMode.screen,
-    );
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = RadialGradient(
-          center: const Alignment(0.84, 0.78),
-          radius: 0.92,
-          colors: <Color>[Colors.transparent, const Color(0x3E000207)],
-          stops: const <double>[0.64, 1.0],
-        ).createShader(rect),
-    );
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = const LinearGradient(
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
-          colors: <Color>[
-            Color(0x2400040A),
-            Color(0x0000040A),
-            Color(0x2200040A),
-          ],
-          stops: <double>[0.0, 0.48, 1.0],
-        ).createShader(rect),
-    );
   }
 
   @override
@@ -1012,9 +972,9 @@ class _MapDepthPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: <Color>[
-          const Color(0x3A20D5FF),
-          const Color(0x2A149FC5),
-          const Color(0x1800040E),
+          const Color(0x260E8FB0),
+          const Color(0x18095672),
+          const Color(0x2600030A),
         ],
         stops: const <double>[0.0, 0.48, 1.0],
       ).createShader(rect);
@@ -1025,8 +985,8 @@ class _MapDepthPainter extends CustomPainter {
         center: const Alignment(-0.12, 0.08),
         radius: 0.82,
         colors: <Color>[
-          const Color(0x4A32D8F6),
-          const Color(0x24127498),
+          const Color(0x2818B8D4),
+          const Color(0x100D617C),
           Colors.transparent,
         ],
         stops: const <double>[0.0, 0.48, 1.0],
@@ -1041,8 +1001,8 @@ class _MapDepthPainter extends CustomPainter {
         center: const Alignment(-0.35, -0.34),
         radius: 0.58,
         colors: <Color>[
-          const Color(0x68B9FBFF),
-          const Color(0x32F3D18A),
+          const Color(0x328DEBFF),
+          const Color(0x14E6C878),
           Colors.transparent,
         ],
         stops: const <double>[0.0, 0.42, 1.0],
@@ -1053,7 +1013,7 @@ class _MapDepthPainter extends CustomPainter {
     final gridPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.42, size.width * 0.00022)
-      ..color = Colors.white.withValues(alpha: 0.058);
+      ..color = Colors.white.withValues(alpha: 0.045);
     const divisions = 10;
     for (var i = 1; i < divisions; i++) {
       final t = i / divisions;
@@ -1103,7 +1063,7 @@ class _MapDepthPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(0.72, 0.76),
         radius: 0.95,
-        colors: <Color>[Colors.transparent, const Color(0x36000308)],
+        colors: <Color>[Colors.transparent, const Color(0x42000308)],
         stops: const <double>[0.68, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, terminator);
@@ -1112,7 +1072,7 @@ class _MapDepthPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(-0.10, -0.08),
         radius: 0.94,
-        colors: <Color>[Colors.transparent, const Color(0x30000612)],
+        colors: <Color>[Colors.transparent, const Color(0x3A000612)],
         stops: const <double>[0.76, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, edgeVignette);
@@ -1123,13 +1083,13 @@ class _MapDepthPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = math.max(0.65, size.width * 0.00042)
-      ..color = const Color(0xFFA6F3FF).withValues(alpha: 0.045)
+      ..color = const Color(0xFFA6F3FF).withValues(alpha: 0.055)
       ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.6);
     final warmCurrentPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = math.max(0.5, size.width * 0.00032)
-      ..color = const Color(0xFFFFD98B).withValues(alpha: 0.032)
+      ..color = const Color(0xFFFFD98B).withValues(alpha: 0.038)
       ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.2);
 
     for (var row = 0; row < 9; row += 1) {
@@ -1166,15 +1126,15 @@ class _MapReliefPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final shadowPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.black.withValues(alpha: 0.04);
+      ..color = Colors.black.withValues(alpha: 0.06);
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.55, size.width * 0.00035)
-      ..color = Colors.white.withValues(alpha: 0.16);
+      ..color = Colors.white.withValues(alpha: 0.20);
     final lowRimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.7, size.width * 0.00042)
-      ..color = const Color(0xFF001622).withValues(alpha: 0.07);
+      ..color = const Color(0xFF001622).withValues(alpha: 0.10);
 
     final paths = territoryPaths.values.expand((paths) => paths);
     canvas.save();
