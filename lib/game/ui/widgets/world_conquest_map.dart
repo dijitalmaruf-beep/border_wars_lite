@@ -123,9 +123,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   }
 
   void _handleTransformChanged() {
-    if (_normalizeHorizontalWrap()) {
-      return;
-    }
+    _normalizeHorizontalWrap();
     final nextZoom = _quantizedZoom(_currentMapZoom());
     final nextRotation = _currentGlobeRotation();
     if ((nextZoom - _mapZoom).abs() < 0.01 &&
@@ -153,6 +151,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         final highlightPaths = _highlightPathsFor(mapSize);
         final labelAnchors = _labelAnchorsFor(mapSize, paths);
         _syncInitialView(viewportSize, mapSize);
+        final paintZoom = _quantizedZoom(_currentMapZoom());
 
         return Stack(
           fit: StackFit.expand,
@@ -211,7 +210,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                                 controlledContinents:
                                     widget.controlledContinents,
                                 isTransferMode: widget.isTransferMode,
-                                mapZoom: _mapZoom,
+                                mapZoom: paintZoom,
                                 pulseTerritoryId: widget.pulseTerritoryId,
                                 pulseLabel: widget.pulseLabel,
                                 pulseColor: widget.pulseColor,
@@ -829,9 +828,9 @@ class _GlobeBackdropPainter extends CustomPainter {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
-            Color(0xFF031521),
-            Color(0xFF020812),
-            Color(0xFF000309),
+            Color(0xFF082334),
+            Color(0xFF061927),
+            Color(0xFF020D17),
           ],
         ).createShader(rect),
     );
@@ -846,7 +845,7 @@ class _GlobeBackdropPainter extends CustomPainter {
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = math.max(20, size.width * 0.045)
-        ..color = const Color(0xFF0B9FD2).withValues(alpha: 0.13)
+        ..color = const Color(0xFF24C7F2).withValues(alpha: 0.20)
         ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 28),
     );
   }
@@ -878,8 +877,8 @@ class _GlobeViewportFramePainter extends CustomPainter {
           center: Alignment.center,
           radius: 0.86,
           colors: <Color>[
-            const Color(0xFF041320).withValues(alpha: 0.20),
-            const Color(0xFF00040A).withValues(alpha: 0.72),
+            const Color(0xFF0B2636).withValues(alpha: 0.10),
+            const Color(0xFF00040A).withValues(alpha: 0.48),
           ],
         ).createShader(rect),
     );
@@ -965,7 +964,7 @@ class _GlobeViewportFramePainter extends CustomPainter {
         ..shader = RadialGradient(
           center: const Alignment(-0.36, -0.36),
           radius: 0.74,
-          colors: <Color>[const Color(0x449CF8FF), Colors.transparent],
+          colors: <Color>[const Color(0x5CA9FAFF), Colors.transparent],
           stops: const <double>[0.0, 1.0],
         ).createShader(rect)
         ..blendMode = BlendMode.screen,
@@ -976,8 +975,8 @@ class _GlobeViewportFramePainter extends CustomPainter {
         ..shader = RadialGradient(
           center: const Alignment(0.84, 0.78),
           radius: 0.92,
-          colors: <Color>[Colors.transparent, const Color(0x73000207)],
-          stops: const <double>[0.52, 1.0],
+          colors: <Color>[Colors.transparent, const Color(0x3E000207)],
+          stops: const <double>[0.64, 1.0],
         ).createShader(rect),
     );
     canvas.drawRect(
@@ -987,9 +986,9 @@ class _GlobeViewportFramePainter extends CustomPainter {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: <Color>[
-            Color(0x4C00040A),
+            Color(0x2400040A),
             Color(0x0000040A),
-            Color(0x4200040A),
+            Color(0x2200040A),
           ],
           stops: <double>[0.0, 0.48, 1.0],
         ).createShader(rect),
@@ -1014,8 +1013,8 @@ class _MapDepthPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: <Color>[
           const Color(0x3A20D5FF),
-          const Color(0x160C6E91),
-          const Color(0x3000040E),
+          const Color(0x2A149FC5),
+          const Color(0x1800040E),
         ],
         stops: const <double>[0.0, 0.48, 1.0],
       ).createShader(rect);
@@ -1026,8 +1025,8 @@ class _MapDepthPainter extends CustomPainter {
         center: const Alignment(-0.12, 0.08),
         radius: 0.82,
         colors: <Color>[
-          const Color(0x3317B6D7),
-          const Color(0x1207405C),
+          const Color(0x4A32D8F6),
+          const Color(0x24127498),
           Colors.transparent,
         ],
         stops: const <double>[0.0, 0.48, 1.0],
@@ -1042,8 +1041,8 @@ class _MapDepthPainter extends CustomPainter {
         center: const Alignment(-0.35, -0.34),
         radius: 0.58,
         colors: <Color>[
-          const Color(0x4A9EF7FF),
-          const Color(0x24F3D18A),
+          const Color(0x68B9FBFF),
+          const Color(0x32F3D18A),
           Colors.transparent,
         ],
         stops: const <double>[0.0, 0.42, 1.0],
@@ -1054,7 +1053,7 @@ class _MapDepthPainter extends CustomPainter {
     final gridPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.42, size.width * 0.00022)
-      ..color = Colors.white.withValues(alpha: 0.040);
+      ..color = Colors.white.withValues(alpha: 0.058);
     const divisions = 10;
     for (var i = 1; i < divisions; i++) {
       final t = i / divisions;
@@ -1091,12 +1090,12 @@ class _MapDepthPainter extends CustomPainter {
     final rimGlow = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(8, size.width * 0.006)
-      ..color = const Color(0xFF45D9FF).withValues(alpha: 0.12)
+      ..color = const Color(0xFF45D9FF).withValues(alpha: 0.18)
       ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 10);
     final rimLine = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(1.0, size.width * 0.00072)
-      ..color = const Color(0xFFB4F4FF).withValues(alpha: 0.30);
+      ..color = const Color(0xFFB4F4FF).withValues(alpha: 0.40);
     canvas.drawOval(rimRect, rimGlow);
     canvas.drawOval(rimRect, rimLine);
 
@@ -1104,8 +1103,8 @@ class _MapDepthPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(0.72, 0.76),
         radius: 0.95,
-        colors: <Color>[Colors.transparent, const Color(0x72000308)],
-        stops: const <double>[0.58, 1.0],
+        colors: <Color>[Colors.transparent, const Color(0x36000308)],
+        stops: const <double>[0.68, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, terminator);
 
@@ -1113,8 +1112,8 @@ class _MapDepthPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(-0.10, -0.08),
         radius: 0.94,
-        colors: <Color>[Colors.transparent, const Color(0x58000612)],
-        stops: const <double>[0.70, 1.0],
+        colors: <Color>[Colors.transparent, const Color(0x30000612)],
+        stops: const <double>[0.76, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, edgeVignette);
   }
@@ -1167,15 +1166,15 @@ class _MapReliefPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final shadowPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.black.withValues(alpha: 0.08);
+      ..color = Colors.black.withValues(alpha: 0.04);
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.55, size.width * 0.00035)
-      ..color = Colors.white.withValues(alpha: 0.10);
+      ..color = Colors.white.withValues(alpha: 0.16);
     final lowRimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.7, size.width * 0.00042)
-      ..color = const Color(0xFF001622).withValues(alpha: 0.14);
+      ..color = const Color(0xFF001622).withValues(alpha: 0.07);
 
     final paths = territoryPaths.values.expand((paths) => paths);
     canvas.save();
