@@ -120,7 +120,7 @@ class TerritoryOverlayPainter extends CustomPainter {
           ..color = Colors.black.withValues(alpha: 0.13);
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = ownerColor.withValues(alpha: 0.66);
+          ..color = ownerColor.withValues(alpha: 0.72);
         final bevelPaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 0.58)
@@ -148,11 +148,11 @@ class TerritoryOverlayPainter extends CustomPainter {
       } else {
         final fillPaint = Paint()
           ..style = PaintingStyle.fill
-          ..color = const Color(0xFF6B7480).withValues(alpha: 0.11);
+          ..color = const Color(0xFF8996A2).withValues(alpha: 0.17);
         final edgePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = _scaledStroke(size, 0.7)
-          ..color = Colors.white.withValues(alpha: 0.11);
+          ..color = Colors.white.withValues(alpha: 0.17);
         for (final path in paths) {
           canvas.drawPath(path, fillPaint);
           canvas.drawPath(path, edgePaint);
@@ -487,11 +487,28 @@ class TerritoryOverlayPainter extends CustomPainter {
           ? Colors.white.withValues(alpha: 0.52)
           : Color(owner.colorValue);
       final isStrongArmy = territory.armyCount >= 8 && !isNeutral;
+      final labelColor = isNeutral
+          ? Colors.white.withValues(alpha: 0.82 * neutralAlpha)
+          : Colors.white;
+      final textStrokePainter = TextPainter(
+        text: TextSpan(
+          text: territory.armyCount.toString(),
+          style: TextStyle(
+            foreground: Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.4 / zoom
+              ..color = const Color(0xFF020711).withValues(alpha: 0.92),
+            fontSize: fontSize,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
       final textPainter = TextPainter(
         text: TextSpan(
           text: territory.armyCount.toString(),
           style: TextStyle(
-            color: Colors.white.withValues(alpha: neutralAlpha),
+            color: labelColor,
             fontSize: fontSize,
             fontWeight: FontWeight.w900,
             shadows: const <Shadow>[Shadow(color: Colors.black, blurRadius: 5)],
@@ -522,10 +539,22 @@ class TerritoryOverlayPainter extends CustomPainter {
       placedRects.add(rect.inflate(1.5 / zoom));
 
       canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          rect.shift(Offset(0, 1.4 / zoom)),
+          Radius.circular(5.4 / zoom),
+        ),
+        Paint()
+          ..color = Colors.black.withValues(alpha: 0.36 * neutralAlpha)
+          ..maskFilter = ui.MaskFilter.blur(
+            ui.BlurStyle.normal,
+            3.5 / zoom,
+          ),
+      );
+      canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
         Paint()
           ..color = ownerColor.withValues(
-            alpha: isStrongArmy ? 0.26 * neutralAlpha : 0.14 * neutralAlpha,
+            alpha: isStrongArmy ? 0.34 * neutralAlpha : 0.21 * neutralAlpha,
           ),
       );
       canvas.drawRRect(
@@ -536,8 +565,8 @@ class TerritoryOverlayPainter extends CustomPainter {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: <Color>[
-              const Color(0xF2071522).withValues(alpha: neutralAlpha),
-              const Color(0xE602080F).withValues(alpha: neutralAlpha),
+              const Color(0xF20C2132).withValues(alpha: neutralAlpha),
+              const Color(0xEB06131F).withValues(alpha: neutralAlpha),
             ],
           ).createShader(rect),
       );
@@ -549,7 +578,7 @@ class TerritoryOverlayPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 0.45 / zoom
-          ..color = Colors.white.withValues(alpha: isNeutral ? 0.10 : 0.18),
+          ..color = Colors.white.withValues(alpha: isNeutral ? 0.20 : 0.30),
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(rect, radius),
@@ -557,10 +586,17 @@ class TerritoryOverlayPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = (isStrongArmy ? 1.05 : 0.78) / zoom
           ..color = ownerColor.withValues(
-            alpha: isNeutral ? 0.35 : (isStrongArmy ? 0.95 : 0.78),
+            alpha: isNeutral ? 0.48 : (isStrongArmy ? 1.0 : 0.90),
           ),
       );
 
+      textStrokePainter.paint(
+        canvas,
+        Offset(
+          center.dx - textStrokePainter.width / 2,
+          center.dy - textStrokePainter.height / 2,
+        ),
+      );
       textPainter.paint(
         canvas,
         Offset(

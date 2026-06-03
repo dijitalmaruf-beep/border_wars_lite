@@ -8,6 +8,14 @@ import '../../models/game_state.dart';
 import '../../models/territory.dart';
 import 'territory_overlay_painter.dart';
 
+Rect _globeViewportRect(Size size) {
+  final diameter = math.min(size.width * 1.08, size.height * 0.985);
+  return Rect.fromCircle(
+    center: Offset(size.width * 0.50, size.height * 0.50),
+    radius: diameter / 2,
+  );
+}
+
 class WorldConquestMap extends StatefulWidget {
   const WorldConquestMap({
     required this.state,
@@ -43,8 +51,10 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   static const _baseMapAsset = 'assets/maps/world_base.png';
   static const _borderMapAsset = 'assets/maps/world_borders.svg';
   static const _portraitOpeningCenterX = 0.54;
-  static const _portraitOpeningCenterY = 0.40;
-  static const _portraitMapZoom = 1.16;
+  static const _portraitOpeningCenterY = 0.46;
+  static const _portraitMapZoom = 1.02;
+  static const _loopedMapCopies = 3;
+  static const _middleMapCopy = 1;
   static const _zoomPaintStep = 0.20;
   static const _labelAnchorOverrides = <String, Offset>{
     'western_canada': Offset(0.173, 0.176),
@@ -94,6 +104,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   Size? _lastViewportSize;
   double _mapZoom = 1.0;
   double _globeRotation = 0.0;
+  bool _isRecenteringMap = false;
   Map<String, List<Path>> _cachedPaths = const <String, List<Path>>{};
   Map<String, Path> _cachedHighlightPaths = const <String, Path>{};
   Map<String, Offset> _cachedLabelAnchors = const <String, Offset>{};
@@ -112,6 +123,9 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   }
 
   void _handleTransformChanged() {
+    if (_normalizeHorizontalWrap()) {
+      return;
+    }
     final nextZoom = _quantizedZoom(_currentMapZoom());
     final nextRotation = _currentGlobeRotation();
     if ((nextZoom - _mapZoom).abs() < 0.01 &&
@@ -164,7 +178,10 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) {
                         final territoryId = _territoryAt(
-                          details.localPosition,
+                          _wrappedLocalPosition(
+                            details.localPosition,
+                            mapSize,
+                          ),
                           paths,
                         );
                         if (territoryId != null) {
@@ -172,85 +189,33 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                         }
                       },
                       child: SizedBox(
-                        width: mapSize.width,
+                        width: mapSize.width * _loopedMapCopies,
                         height: mapSize.height,
                         child: Stack(
-                          fit: StackFit.expand,
+                          clipBehavior: Clip.none,
                           children: <Widget>[
-                            RepaintBoundary(
-                              child: Image.asset(
-                                _baseMapAsset,
-                                fit: BoxFit.fill,
-                              ),
-                            ),
-                            const RepaintBoundary(
-                              child: CustomPaint(painter: _MapDepthPainter()),
-                            ),
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                painter: _MapReliefPainter(
-                                  territoryPaths: paths,
-                                ),
-                              ),
-                            ),
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                painter: TerritoryOverlayPainter(
-                                  state: widget.state,
-                                  territoryPaths: paths,
-                                  territoryHighlightPaths: highlightPaths,
-                                  territoryLabelAnchors: labelAnchors,
-                                  validSourceIds: widget.validSourceIds,
-                                  validTargetIds: widget.validTargetIds,
-                                  controlledContinents:
-                                      widget.controlledContinents,
-                                  isTransferMode: widget.isTransferMode,
-                                  mapZoom: 1.0,
-                                  paintOwnership: true,
-                                ),
-                              ),
-                            ),
-                            RepaintBoundary(
-                              child: SvgPicture.asset(
-                                _borderMapAsset,
-                                fit: BoxFit.fill,
-                                allowDrawingOutsideViewBox: false,
-                              ),
-                            ),
-                            RepaintBoundary(
-                              child: CustomPaint(
-                                painter: TerritoryOverlayPainter(
-                                  state: widget.state,
-                                  territoryPaths: paths,
-                                  territoryHighlightPaths: highlightPaths,
-                                  territoryLabelAnchors: labelAnchors,
-                                  validSourceIds: widget.validSourceIds,
-                                  validTargetIds: widget.validTargetIds,
-                                  controlledContinents:
-                                      widget.controlledContinents,
-                                  isTransferMode: widget.isTransferMode,
-                                  mapZoom: _mapZoom,
-                                  paintLabelsAndHighlights: true,
-                                ),
-                              ),
-                            ),
-                            if (widget.pulseTerritoryId != null &&
-                                widget.pulseLabel != null &&
-                                widget.pulseColor != null &&
-                                labelAnchors.containsKey(
-                                  widget.pulseTerritoryId,
-                                ))
-                              Positioned(
-                                key: ValueKey<int>(widget.pulseSerial),
-                                left: labelAnchors[widget.pulseTerritoryId]!.dx,
-                                top: labelAnchors[widget.pulseTerritoryId]!.dy,
-                                child: IgnorePointer(
-                                  child: _MapPulseOverlay(
-                                    label: widget.pulseLabel!,
-                                    color: widget.pulseColor!,
-                                    inverseScale: 1 / _mapZoom.clamp(0.75, 4.0),
-                                  ),
-                                ),
+                            for (var copyIndex = 0;
+                                copyIndex < _loopedMapCopies;
+                                copyIndex += 1)
+                              _MapCopy(
+                                left: mapSize.width * copyIndex,
+                                size: mapSize,
+                                baseMapAsset: _baseMapAsset,
+                                borderMapAsset: _borderMapAsset,
+                                state: widget.state,
+                                paths: paths,
+                                highlightPaths: highlightPaths,
+                                labelAnchors: labelAnchors,
+                                validSourceIds: widget.validSourceIds,
+                                validTargetIds: widget.validTargetIds,
+                                controlledContinents:
+                                    widget.controlledContinents,
+                                isTransferMode: widget.isTransferMode,
+                                mapZoom: _mapZoom,
+                                pulseTerritoryId: widget.pulseTerritoryId,
+                                pulseLabel: widget.pulseLabel,
+                                pulseColor: widget.pulseColor,
+                                pulseSerial: widget.pulseSerial,
                               ),
                           ],
                         ),
@@ -383,6 +348,13 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     return null;
   }
 
+  Offset _wrappedLocalPosition(Offset position, Size mapSize) {
+    if (mapSize.width <= 0) {
+      return position;
+    }
+    return Offset(position.dx % mapSize.width, position.dy);
+  }
+
   Offset _labelAnchorForTerritory(
     Territory territory,
     List<Path> paths,
@@ -495,7 +467,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     final scale = matrix.getMaxScaleOnAxis().clamp(0.75, 4.0).toDouble();
     final translation = matrix.getTranslation();
     final centerX = (viewportSize.width / 2 - translation.x) / scale;
-    final normalizedCenterX = (centerX / mapSize.width).clamp(0.0, 1.0);
+    final normalizedCenterX = _wrapUnit(centerX / mapSize.width);
     return normalizedCenterX * math.pi * 2;
   }
 
@@ -530,11 +502,11 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
         (previousViewportSize.height / 2 - translation.y) / scale,
       );
       final normalizedCenter = Offset(
-        (previousCenter.dx / previousMapSize.width).clamp(0.0, 1.0),
+        _wrapUnit(previousCenter.dx / previousMapSize.width),
         (previousCenter.dy / previousMapSize.height).clamp(0.0, 1.0),
       );
       final nextCenter = Offset(
-        normalizedCenter.dx * mapSize.width,
+        (_middleMapCopy + normalizedCenter.dx) * mapSize.width,
         normalizedCenter.dy * mapSize.height,
       );
 
@@ -555,9 +527,12 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
 
     _lastViewportSize = viewportSize;
     _lastMapSize = mapSize;
-    final dx = mapSize.width <= viewportSize.width + 0.5
-        ? (viewportSize.width - mapSize.width) / 2
-        : viewportSize.width / 2 - mapSize.width * _portraitOpeningCenterX;
+    final openingCenterX = mapSize.width <= viewportSize.width + 0.5
+        ? 0.50
+        : _portraitOpeningCenterX;
+    final dx =
+        viewportSize.width / 2 -
+        mapSize.width * (_middleMapCopy + openingCenterX);
     final rawDy = mapSize.height <= viewportSize.height + 0.5
         ? (viewportSize.height - mapSize.height) / 2
         : viewportSize.height / 2 - mapSize.height * _portraitOpeningCenterY;
@@ -567,6 +542,47 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
     _mapZoom = 1.0;
     _transformationController.value = Matrix4.translationValues(dx, dy, 0);
     _globeRotation = _currentGlobeRotation();
+  }
+
+  bool _normalizeHorizontalWrap() {
+    if (_isRecenteringMap) {
+      return false;
+    }
+    final viewportSize = _lastViewportSize;
+    final mapSize = _lastMapSize;
+    if (viewportSize == null || mapSize == null || mapSize.width <= 0) {
+      return false;
+    }
+
+    final matrix = _transformationController.value;
+    final scale = matrix.getMaxScaleOnAxis().clamp(0.75, 4.0).toDouble();
+    final translation = matrix.getTranslation();
+    final centerX = (viewportSize.width / 2 - translation.x) / scale;
+    final minCenterX = mapSize.width * _middleMapCopy;
+    final maxCenterX = mapSize.width * (_middleMapCopy + 1);
+
+    var wrappedCenterX = centerX;
+    while (wrappedCenterX < minCenterX) {
+      wrappedCenterX += mapSize.width;
+    }
+    while (wrappedCenterX >= maxCenterX) {
+      wrappedCenterX -= mapSize.width;
+    }
+    if ((wrappedCenterX - centerX).abs() < 0.5) {
+      return false;
+    }
+
+    final nextMatrix = Matrix4.copy(matrix);
+    nextMatrix.storage[12] = viewportSize.width / 2 - wrappedCenterX * scale;
+    _isRecenteringMap = true;
+    _transformationController.value = nextMatrix;
+    _isRecenteringMap = false;
+    return true;
+  }
+
+  double _wrapUnit(double value) {
+    final wrapped = value % 1.0;
+    return wrapped < 0 ? wrapped + 1.0 : wrapped;
   }
 
   Path _combinedPath(List<Path> paths) {
@@ -591,6 +607,127 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
       return 0;
     }
     return bounds.width * bounds.height;
+  }
+}
+
+class _MapCopy extends StatelessWidget {
+  const _MapCopy({
+    required this.left,
+    required this.size,
+    required this.baseMapAsset,
+    required this.borderMapAsset,
+    required this.state,
+    required this.paths,
+    required this.highlightPaths,
+    required this.labelAnchors,
+    required this.validSourceIds,
+    required this.validTargetIds,
+    required this.controlledContinents,
+    required this.isTransferMode,
+    required this.mapZoom,
+    required this.pulseTerritoryId,
+    required this.pulseLabel,
+    required this.pulseColor,
+    required this.pulseSerial,
+  });
+
+  final double left;
+  final Size size;
+  final String baseMapAsset;
+  final String borderMapAsset;
+  final GameState state;
+  final Map<String, List<Path>> paths;
+  final Map<String, Path> highlightPaths;
+  final Map<String, Offset> labelAnchors;
+  final Set<String> validSourceIds;
+  final Set<String> validTargetIds;
+  final Set<String> controlledContinents;
+  final bool isTransferMode;
+  final double mapZoom;
+  final String? pulseTerritoryId;
+  final String? pulseLabel;
+  final Color? pulseColor;
+  final int pulseSerial;
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: left,
+      top: 0,
+      width: size.width,
+      height: size.height,
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          RepaintBoundary(
+            child: Image.asset(baseMapAsset, fit: BoxFit.fill),
+          ),
+          const RepaintBoundary(
+            child: CustomPaint(painter: _MapDepthPainter()),
+          ),
+          RepaintBoundary(
+            child: CustomPaint(
+              painter: _MapReliefPainter(territoryPaths: paths),
+            ),
+          ),
+          RepaintBoundary(
+            child: CustomPaint(
+              painter: TerritoryOverlayPainter(
+                state: state,
+                territoryPaths: paths,
+                territoryHighlightPaths: highlightPaths,
+                territoryLabelAnchors: labelAnchors,
+                validSourceIds: validSourceIds,
+                validTargetIds: validTargetIds,
+                controlledContinents: controlledContinents,
+                isTransferMode: isTransferMode,
+                mapZoom: 1.0,
+                paintOwnership: true,
+              ),
+            ),
+          ),
+          RepaintBoundary(
+            child: SvgPicture.asset(
+              borderMapAsset,
+              fit: BoxFit.fill,
+              allowDrawingOutsideViewBox: false,
+            ),
+          ),
+          RepaintBoundary(
+            child: CustomPaint(
+              painter: TerritoryOverlayPainter(
+                state: state,
+                territoryPaths: paths,
+                territoryHighlightPaths: highlightPaths,
+                territoryLabelAnchors: labelAnchors,
+                validSourceIds: validSourceIds,
+                validTargetIds: validTargetIds,
+                controlledContinents: controlledContinents,
+                isTransferMode: isTransferMode,
+                mapZoom: mapZoom,
+                paintLabelsAndHighlights: true,
+              ),
+            ),
+          ),
+          if (pulseTerritoryId != null &&
+              pulseLabel != null &&
+              pulseColor != null &&
+              labelAnchors.containsKey(pulseTerritoryId))
+            Positioned(
+              key: ValueKey<int>(pulseSerial),
+              left: labelAnchors[pulseTerritoryId]!.dx,
+              top: labelAnchors[pulseTerritoryId]!.dy,
+              child: IgnorePointer(
+                child: _MapPulseOverlay(
+                  label: pulseLabel!,
+                  color: pulseColor!,
+                  inverseScale: 1 / mapZoom.clamp(0.75, 4.0),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -672,13 +809,7 @@ class _GlobeViewportClipper extends CustomClipper<Path> {
 
   @override
   Path getClip(Size size) {
-    final rect = Rect.fromLTWH(
-      -size.width * 0.035,
-      -size.height * 0.105,
-      size.width * 1.07,
-      size.height * 1.22,
-    );
-    return Path()..addOval(rect);
+    return Path()..addOval(_globeViewportRect(size));
   }
 
   @override
@@ -732,12 +863,7 @@ class _GlobeViewportFramePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
-    final globeRect = Rect.fromLTWH(
-      -size.width * 0.035,
-      -size.height * 0.105,
-      size.width * 1.07,
-      size.height * 1.22,
-    );
+    final globeRect = _globeViewportRect(size);
     final globePath = Path()..addOval(globeRect);
     final outsidePath = Path.combine(
       ui.PathOperation.difference,
@@ -752,8 +878,8 @@ class _GlobeViewportFramePainter extends CustomPainter {
           center: Alignment.center,
           radius: 0.86,
           colors: <Color>[
-            const Color(0xFF020B14).withValues(alpha: 0.34),
-            const Color(0xFF00040A).withValues(alpha: 0.92),
+            const Color(0xFF041320).withValues(alpha: 0.20),
+            const Color(0xFF00040A).withValues(alpha: 0.72),
           ],
         ).createShader(rect),
     );
@@ -839,7 +965,7 @@ class _GlobeViewportFramePainter extends CustomPainter {
         ..shader = RadialGradient(
           center: const Alignment(-0.36, -0.36),
           radius: 0.74,
-          colors: <Color>[const Color(0x2E9CF8FF), Colors.transparent],
+          colors: <Color>[const Color(0x449CF8FF), Colors.transparent],
           stops: const <double>[0.0, 1.0],
         ).createShader(rect)
         ..blendMode = BlendMode.screen,
@@ -850,8 +976,8 @@ class _GlobeViewportFramePainter extends CustomPainter {
         ..shader = RadialGradient(
           center: const Alignment(0.84, 0.78),
           radius: 0.92,
-          colors: <Color>[Colors.transparent, const Color(0xB9000207)],
-          stops: const <double>[0.38, 1.0],
+          colors: <Color>[Colors.transparent, const Color(0x73000207)],
+          stops: const <double>[0.52, 1.0],
         ).createShader(rect),
     );
     canvas.drawRect(
@@ -861,9 +987,9 @@ class _GlobeViewportFramePainter extends CustomPainter {
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
           colors: <Color>[
-            Color(0x7A00040A),
+            Color(0x4C00040A),
             Color(0x0000040A),
-            Color(0x6300040A),
+            Color(0x4200040A),
           ],
           stops: <double>[0.0, 0.48, 1.0],
         ).createShader(rect),
@@ -887,13 +1013,29 @@ class _MapDepthPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: <Color>[
-          const Color(0x220FD9FF),
-          const Color(0x08001222),
-          const Color(0x3A00040E),
+          const Color(0x3A20D5FF),
+          const Color(0x160C6E91),
+          const Color(0x3000040E),
         ],
         stops: const <double>[0.0, 0.48, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, oceanWash);
+
+    final deepWater = Paint()
+      ..shader = RadialGradient(
+        center: const Alignment(-0.12, 0.08),
+        radius: 0.82,
+        colors: <Color>[
+          const Color(0x3317B6D7),
+          const Color(0x1207405C),
+          Colors.transparent,
+        ],
+        stops: const <double>[0.0, 0.48, 1.0],
+      ).createShader(rect)
+      ..blendMode = BlendMode.screen;
+    canvas.drawRect(rect, deepWater);
+
+    _paintOceanCurrents(canvas, size);
 
     final specularLight = Paint()
       ..shader = RadialGradient(
@@ -901,7 +1043,7 @@ class _MapDepthPainter extends CustomPainter {
         radius: 0.58,
         colors: <Color>[
           const Color(0x4A9EF7FF),
-          const Color(0x1CF3D18A),
+          const Color(0x24F3D18A),
           Colors.transparent,
         ],
         stops: const <double>[0.0, 0.42, 1.0],
@@ -962,8 +1104,8 @@ class _MapDepthPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(0.72, 0.76),
         radius: 0.95,
-        colors: <Color>[Colors.transparent, const Color(0xB8000308)],
-        stops: const <double>[0.48, 1.0],
+        colors: <Color>[Colors.transparent, const Color(0x72000308)],
+        stops: const <double>[0.58, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, terminator);
 
@@ -971,10 +1113,45 @@ class _MapDepthPainter extends CustomPainter {
       ..shader = RadialGradient(
         center: const Alignment(-0.10, -0.08),
         radius: 0.94,
-        colors: <Color>[Colors.transparent, const Color(0x8A000612)],
-        stops: const <double>[0.64, 1.0],
+        colors: <Color>[Colors.transparent, const Color(0x58000612)],
+        stops: const <double>[0.70, 1.0],
       ).createShader(rect);
     canvas.drawRect(rect, edgeVignette);
+  }
+
+  void _paintOceanCurrents(Canvas canvas, Size size) {
+    final currentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = math.max(0.65, size.width * 0.00042)
+      ..color = const Color(0xFFA6F3FF).withValues(alpha: 0.045)
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.6);
+    final warmCurrentPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = math.max(0.5, size.width * 0.00032)
+      ..color = const Color(0xFFFFD98B).withValues(alpha: 0.032)
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 1.2);
+
+    for (var row = 0; row < 9; row += 1) {
+      final y = size.height * (0.16 + row * 0.085);
+      final wave = size.height * (0.010 + (row % 3) * 0.004);
+      final path = Path()..moveTo(-size.width * 0.08, y);
+      for (var segment = 0; segment < 5; segment += 1) {
+        final startX = size.width * (segment / 4.5 - 0.08);
+        final endX = size.width * ((segment + 1) / 4.5 - 0.08);
+        final direction = segment.isEven ? 1.0 : -1.0;
+        path.cubicTo(
+          startX + size.width * 0.10,
+          y + wave * direction,
+          endX - size.width * 0.10,
+          y - wave * direction,
+          endX,
+          y,
+        );
+      }
+      canvas.drawPath(path, row.isEven ? currentPaint : warmCurrentPaint);
+    }
   }
 
   @override
@@ -990,7 +1167,7 @@ class _MapReliefPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final shadowPaint = Paint()
       ..style = PaintingStyle.fill
-      ..color = Colors.black.withValues(alpha: 0.13);
+      ..color = Colors.black.withValues(alpha: 0.08);
     final rimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.55, size.width * 0.00035)
@@ -998,7 +1175,7 @@ class _MapReliefPainter extends CustomPainter {
     final lowRimPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = math.max(0.7, size.width * 0.00042)
-      ..color = const Color(0xFF001622).withValues(alpha: 0.22);
+      ..color = const Color(0xFF001622).withValues(alpha: 0.14);
 
     final paths = territoryPaths.values.expand((paths) => paths);
     canvas.save();
