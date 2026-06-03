@@ -127,17 +127,11 @@ class MapGenerator {
     final startingOwners = _startingTerritoryOwners(players, random);
     final territories = sampleWorldTerritories.map((territory) {
       final ownerId = startingOwners[territory.id];
-      final owner = ownerId == null
-          ? null
-          : players.firstWhere((player) => player.id == ownerId);
-      final botStartingBonus = owner != null && owner.isBot
-          ? difficulty.botStartingArmyBonus
-          : 0;
       return territory.copyWith(
         ownerId: ownerId,
         armyCount: ownerId == null
             ? GameConstants.neutralArmies
-            : GameConstants.startingArmies + botStartingBonus,
+            : GameConstants.startingArmies,
       );
     }).toList();
     final firstPlayerIndex = players.indexWhere(

@@ -31,6 +31,24 @@ void main() {
     expect(chance, closeTo(9 / (9 + 4 * 1.15), 0.0001));
   });
 
+  test('overwhelming attacks are guaranteed to conquer', () {
+    final overwhelmingSource = source.copyWith(armyCount: 40);
+    final reinforcedTarget = target.copyWith(armyCount: 8);
+
+    final result = resolver.resolve(
+      source: overwhelmingSource,
+      target: reinforcedTarget,
+      attackerId: 'attacker',
+      rollOverride: 0.999,
+    );
+
+    expect(
+      resolver.calculateWinChance(overwhelmingSource, reinforcedTarget),
+      1,
+    );
+    expect(result.didWin, isTrue);
+  });
+
   test('calculates moved armies on conquest before attack resolves', () {
     expect(resolver.calculateMovedArmiesOnWin(source), 4);
   });

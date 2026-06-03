@@ -60,6 +60,8 @@ workflows:
       flutter: stable
       xcode: latest
     scripts:
+      - name: Disable Flutter Swift Package Manager
+        script: flutter config --no-enable-swift-package-manager
       - name: Generate Flutter iOS platform wrapper
         script: |
           if [ ! -d ios/Runner.xcodeproj ]; then
@@ -104,6 +106,8 @@ workflows:
         XCODE_PROJECT: ios/Runner.xcodeproj
         EXPORT_OPTIONS_PLIST: /Users/builder/export_options.plist
     scripts:
+      - name: Disable Flutter Swift Package Manager
+        script: flutter config --no-enable-swift-package-manager
       - name: Verify Flutter iOS platform wrapper
         script: |
           if [ ! -d ios/Runner.xcodeproj ]; then

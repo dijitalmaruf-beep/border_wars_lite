@@ -6,12 +6,18 @@ import '../models/territory.dart';
 class CombatResolver {
   const CombatResolver();
 
+  static const double _defenderPowerWeight = 1.15;
+  static const double _overwhelmingPowerRatio = 4;
+
   double calculateWinChance(Territory source, Territory target) {
     final attackerPower = max(0, source.armyCount - 1);
-    final defenderPower = target.armyCount * 1.15;
+    final defenderPower = target.armyCount * _defenderPowerWeight;
     final totalPower = attackerPower + defenderPower;
     if (attackerPower <= 0 || totalPower <= 0) {
       return 0;
+    }
+    if (attackerPower >= defenderPower * _overwhelmingPowerRatio) {
+      return 1;
     }
     return attackerPower / totalPower;
   }

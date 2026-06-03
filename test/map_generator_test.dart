@@ -64,7 +64,7 @@ void main() {
     }
   });
 
-  test('hard difficulty gives bot commanders stronger starting armies', () {
+  test('difficulty does not change starting army counts', () {
     final state = generator.createInitialState(
       humanName: 'Alex',
       humanColorValue: AppColors.humanBlueValue,
@@ -82,12 +82,7 @@ void main() {
         .map((territory) => territory.armyCount);
 
     expect(humanArmies, everyElement(GameConstants.startingArmies));
-    expect(
-      botArmies,
-      everyElement(
-        GameConstants.startingArmies + GameDifficulty.hard.botStartingArmyBonus,
-      ),
-    );
+    expect(botArmies, everyElement(GameConstants.startingArmies));
   });
 
   test('starting territories are unique playable territories', () {

@@ -15,15 +15,13 @@ class ReinforcementBreakdown {
     required this.base,
     required this.continentBonus,
     required this.controlledContinents,
-    this.difficultyBonus = 0,
   });
 
   final int base;
   final int continentBonus;
-  final int difficultyBonus;
   final List<ContinentBonus> controlledContinents;
 
-  int get total => base + continentBonus + difficultyBonus;
+  int get total => base + continentBonus;
 }
 
 class ReinforcementCalculator {
@@ -60,20 +58,9 @@ class ReinforcementCalculator {
       0,
       (total, bonus) => total + bonus.value,
     );
-    final rawTotal = base + continentBonus;
-    final player = state.playerById(playerId);
-    final difficultyBonus = player != null && player.isBot
-        ? max(
-            0,
-            (rawTotal * (state.difficulty.botReinforcementMultiplier - 1))
-                .round(),
-          )
-        : 0;
-
     return ReinforcementBreakdown(
       base: base,
       continentBonus: continentBonus,
-      difficultyBonus: difficultyBonus,
       controlledContinents: controlledContinents,
     );
   }

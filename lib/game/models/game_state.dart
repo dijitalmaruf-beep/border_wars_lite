@@ -31,50 +31,6 @@ extension GameDifficultyInfo on GameDifficulty {
         return 5;
     }
   }
-
-  int get botStartingArmyBonus {
-    switch (this) {
-      case GameDifficulty.easy:
-        return 0;
-      case GameDifficulty.normal:
-        return 1;
-      case GameDifficulty.hard:
-        return 3;
-    }
-  }
-
-  double get botReinforcementMultiplier {
-    switch (this) {
-      case GameDifficulty.easy:
-        return 1.12;
-      case GameDifficulty.normal:
-        return 1.28;
-      case GameDifficulty.hard:
-        return 1.70;
-    }
-  }
-
-  double get botAttackWinChanceMultiplier {
-    switch (this) {
-      case GameDifficulty.easy:
-        return 1.06;
-      case GameDifficulty.normal:
-        return 1.14;
-      case GameDifficulty.hard:
-        return 1.28;
-    }
-  }
-
-  double get humanVsBotAttackWinChanceMultiplier {
-    switch (this) {
-      case GameDifficulty.easy:
-        return 0.96;
-      case GameDifficulty.normal:
-        return 0.88;
-      case GameDifficulty.hard:
-        return 0.70;
-    }
-  }
 }
 
 extension MatchModeInfo on MatchMode {

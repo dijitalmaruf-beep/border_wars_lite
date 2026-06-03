@@ -141,26 +141,24 @@ void main() {
     );
   });
 
-  test('bots use difficulty-adjusted reinforcement formula', () {
+  test('bots use the same reinforcement formula as players', () {
     final state = stateWithContinentsOwned(const <String>['Asia'], 'atlas_bot');
     final breakdown = calculator.breakdownForPlayer(state, 'atlas_bot');
 
     expect(breakdown.continentBonus, 10);
-    expect(breakdown.difficultyBonus, greaterThan(0));
+    expect(breakdown.total, breakdown.base + breakdown.continentBonus);
     expect(calculator.calculateForPlayer(state, 'atlas_bot'), breakdown.total);
   });
 
-  test('hard difficulty gives bots a larger reinforcement bonus', () {
+  test('difficulty does not change bot reinforcement totals', () {
     final normal = stateWithContinentsOwned(const <String>[
       'Asia',
     ], 'atlas_bot');
     final hard = normal.copyWith(difficulty: GameDifficulty.hard);
 
     expect(
-      calculator.breakdownForPlayer(hard, 'atlas_bot').difficultyBonus,
-      greaterThan(
-        calculator.breakdownForPlayer(normal, 'atlas_bot').difficultyBonus,
-      ),
+      calculator.calculateForPlayer(hard, 'atlas_bot'),
+      calculator.calculateForPlayer(normal, 'atlas_bot'),
     );
   });
 }
