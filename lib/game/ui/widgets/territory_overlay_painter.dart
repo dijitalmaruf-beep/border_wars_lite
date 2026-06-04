@@ -504,8 +504,8 @@ class TerritoryOverlayPainter extends CustomPainter {
 
   void _paintArmyLabels(Canvas canvas, Size size) {
     final zoom = _effectiveZoom;
-    final visualFontSize = (10.8 - (zoom - 1) * 1.18).clamp(7.8, 11.0);
-    final digitHeight = (visualFontSize + 1.2) / zoom;
+    final visualFontSize = (10.0 - (zoom - 1) * 1.08).clamp(7.1, 10.2);
+    final digitHeight = (visualFontSize + 0.6) / zoom;
     final paddingX = (6.8 / zoom).clamp(2.1, 7.2);
     final paddingY = (3.9 / zoom).clamp(1.2, 4.2);
     final minChipWidth = 19.5 / zoom;
@@ -636,8 +636,8 @@ class TerritoryOverlayPainter extends CustomPainter {
   }
 
   Size _armyNumberSize(String label, double digitHeight) {
-    final digitWidth = digitHeight * 0.58;
-    final gap = digitHeight * 0.20;
+    final digitWidth = digitHeight * 0.56;
+    final gap = digitHeight * 0.18;
     final width =
         label.length * digitWidth + math.max(0, label.length - 1) * gap;
     return Size(width, digitHeight);
@@ -651,16 +651,16 @@ class TerritoryOverlayPainter extends CustomPainter {
     double zoom,
   ) {
     final numberSize = _armyNumberSize(label, digitHeight);
-    final digitWidth = digitHeight * 0.58;
-    final gap = digitHeight * 0.20;
-    final strokeWidth = (2.05 / zoom).clamp(0.80, 2.20).toDouble();
+    final digitWidth = digitHeight * 0.56;
+    final gap = digitHeight * 0.18;
+    final strokeWidth = (1.78 / zoom).clamp(0.72, 1.95).toDouble();
     final startX = center.dx - numberSize.width / 2;
     final top = center.dy - numberSize.height / 2;
     final shadowPaint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = strokeWidth + 1.15 / zoom
+      ..strokeWidth = strokeWidth + 0.95 / zoom
       ..color = const Color(0xE6000208);
     final numberPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -672,7 +672,7 @@ class TerritoryOverlayPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round
-      ..strokeWidth = strokeWidth + 0.85 / zoom
+      ..strokeWidth = strokeWidth + 0.70 / zoom
       ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.18)
       ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 1.0 / zoom);
 

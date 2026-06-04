@@ -1512,9 +1512,9 @@ class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3400),
+      duration: const Duration(milliseconds: 6800),
     )..forward();
-    _finishTimer = Timer(const Duration(milliseconds: 3800), _openVictory);
+    _finishTimer = Timer(const Duration(milliseconds: 7600), _openVictory);
   }
 
   @override

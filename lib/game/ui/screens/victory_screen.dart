@@ -8,6 +8,7 @@ import '../../models/player.dart';
 import '../widgets/premium_background.dart';
 import '../widgets/premium_button.dart';
 import '../widgets/premium_panel.dart';
+import '../widgets/territory_map.dart';
 import 'setup_screen.dart';
 
 class VictoryScreen extends StatelessWidget {
@@ -119,6 +120,26 @@ class VictoryScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 24),
                       PremiumButton(
+                        label: 'SON HARİTA',
+                        icon: Icons.public,
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => _FinalMapScreen(
+                                state: state,
+                                winner: winner,
+                                controlledContinents: controlledRegions
+                                    .map((region) => region.continent)
+                                    .toSet(),
+                              ),
+                            ),
+                          );
+                        },
+                        tone: PremiumButtonTone.gold,
+                        height: 54,
+                      ),
+                      const SizedBox(height: 10),
+                      PremiumButton(
                         label: 'YENİ OYUN',
                         icon: Icons.refresh,
                         onPressed: () {
@@ -175,6 +196,120 @@ class VictoryScreen extends StatelessWidget {
       case MatchMode.conquest:
         return 'Tam fetih hedefi: rakipleri ele veya tüm haritayı kontrol et.';
     }
+  }
+}
+
+class _FinalMapScreen extends StatelessWidget {
+  const _FinalMapScreen({
+    required this.state,
+    required this.winner,
+    required this.controlledContinents,
+  });
+
+  final GameState state;
+  final Player winner;
+  final Set<String> controlledContinents;
+
+  @override
+  Widget build(BuildContext context) {
+    final winnerColor = Color(winner.colorValue);
+    return Scaffold(
+      body: PremiumBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Row(
+                  children: <Widget>[
+                    SizedBox(
+                      width: 46,
+                      height: 46,
+                      child: IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back),
+                        color: AppColors.premiumText,
+                      ),
+                    ),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          const Text(
+                            'SON HARİTA',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: AppColors.premiumText,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                            ),
+                          ),
+                          Text(
+                            winner.name,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: winnerColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 46),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: winnerColor.withValues(alpha: 0.70),
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: winnerColor.withValues(alpha: 0.22),
+                          blurRadius: 24,
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.44),
+                          blurRadius: 22,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: TerritoryMap(
+                        state: state,
+                        validSourceIds: const <String>{},
+                        validTargetIds: const <String>{},
+                        controlledContinents: controlledContinents,
+                        isTransferMode: false,
+                        victoryOwnerId: winner.id,
+                        victoryPulse: 1,
+                        onTerritoryTap: (_) {},
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                PremiumButton(
+                  label: 'GERİ DÖN',
+                  icon: Icons.arrow_back,
+                  onPressed: () => Navigator.of(context).pop(),
+                  tone: PremiumButtonTone.dark,
+                  height: 50,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

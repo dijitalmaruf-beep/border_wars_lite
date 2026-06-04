@@ -123,7 +123,7 @@ class _WorldConquestMapState extends State<WorldConquestMap>
     _autoSpinController =
         AnimationController(
             vsync: this,
-            duration: const Duration(milliseconds: 6200),
+            duration: const Duration(milliseconds: 11000),
           )
           ..addListener(_handleAutoSpinTick);
     _transformationController.addListener(_handleTransformChanged);
