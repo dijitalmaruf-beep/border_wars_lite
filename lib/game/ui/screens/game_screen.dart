@@ -1469,18 +1469,216 @@ class _GameScreenState extends State<GameScreen> {
       if (!mounted) {
         return;
       }
+      final didLocalPlayerWin = _isOnline
+          ? winner.id == widget.localPlayerId
+          : !winner.isBot;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(
-          builder: (_) => VictoryScreen(
+          builder: (_) => _VictoryRevealScreen(
             state: _state,
             winner: winner,
-            didLocalPlayerWin: _isOnline
-                ? winner.id == widget.localPlayerId
-                : !winner.isBot,
+            didLocalPlayerWin: didLocalPlayerWin,
           ),
         ),
       );
     });
+  }
+}
+
+class _VictoryRevealScreen extends StatefulWidget {
+  const _VictoryRevealScreen({
+    required this.state,
+    required this.winner,
+    required this.didLocalPlayerWin,
+  });
+
+  final GameState state;
+  final Player winner;
+  final bool didLocalPlayerWin;
+
+  @override
+  State<_VictoryRevealScreen> createState() => _VictoryRevealScreenState();
+}
+
+class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
+    with SingleTickerProviderStateMixin {
+  static const _engine = GameEngine();
+
+  late final AnimationController _controller;
+  Timer? _finishTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3400),
+    )..forward();
+    _finishTimer = Timer(const Duration(milliseconds: 3800), _openVictory);
+  }
+
+  @override
+  void dispose() {
+    _finishTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _openVictory() {
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => VictoryScreen(
+          state: widget.state,
+          winner: widget.winner,
+          didLocalPlayerWin: widget.didLocalPlayerWin,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final winnerColor = Color(widget.winner.colorValue);
+    final controlledContinents = _engine.reinforcementCalculator
+        .controlledContinentBonuses(widget.state, widget.winner.id)
+        .map((bonus) => bonus.continent)
+        .toSet();
+
+    return Scaffold(
+      body: PremiumBackground(
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 18, 14, 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    final glow = Curves.easeOut.transform(_controller.value);
+                    return Column(
+                      children: <Widget>[
+                        Text(
+                          'FETİH TAMAMLANDI',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AppColors.premiumText,
+                            fontSize: 25,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                            shadows: <Shadow>[
+                              Shadow(
+                                color: winnerColor.withValues(
+                                  alpha: 0.35 + glow * 0.30,
+                                ),
+                                blurRadius: 18 + glow * 12,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          widget.winner.name,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: winnerColor,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: winnerColor.withValues(alpha: 0.70),
+                      ),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: winnerColor.withValues(alpha: 0.24),
+                          blurRadius: 28,
+                        ),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.42),
+                          blurRadius: 22,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, _) {
+                          final pulse = Curves.easeInOutCubic.transform(
+                            _controller.value,
+                          );
+                          final scale =
+                              1 + sin(_controller.value * pi) * 0.018;
+                          return Transform.scale(
+                            scale: scale,
+                            child: TerritoryMap(
+                              state: widget.state,
+                              validSourceIds: const <String>{},
+                              validTargetIds: const <String>{},
+                              controlledContinents: controlledContinents,
+                              isTransferMode: false,
+                              autoSpin: true,
+                              victoryOwnerId: widget.winner.id,
+                              victoryPulse: pulse,
+                              onTerritoryTap: (_) {},
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, _) {
+                    final progress = _controller.value;
+                    return Column(
+                      children: <Widget>[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(999),
+                          child: LinearProgressIndicator(
+                            minHeight: 5,
+                            value: progress,
+                            color: winnerColor,
+                            backgroundColor: AppColors.premiumBorder
+                                .withValues(alpha: 0.34),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Kazanan bölgeler vurgulanıyor...',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.premiumMutedText,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

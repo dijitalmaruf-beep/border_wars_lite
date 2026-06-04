@@ -3,6 +3,7 @@ import '../models/game_state.dart';
 import '../models/player.dart';
 import '../models/territory.dart';
 import 'combat_resolver.dart';
+import 'reinforcement_calculator.dart';
 
 class BotAttackPlan {
   const BotAttackPlan({
@@ -35,14 +36,15 @@ class BotAI {
       ),
     );
 
+    final botPlayer = state.playerById(botPlayerId);
     final candidates = borderTerritories.isEmpty ? owned : borderTerritories;
     final sorted = candidates.toList()
       ..sort(
-        (left, right) => _enemyPressure(
+        (left, right) => _reinforcementScore(
           state,
           right,
-          botPlayerId,
-        ).compareTo(_enemyPressure(state, left, botPlayerId)),
+          botPlayer,
+        ).compareTo(_reinforcementScore(state, left, botPlayer)),
       );
     return sorted.first;
   }
@@ -85,7 +87,7 @@ class BotAI {
             sourceId: source.id,
             targetId: target.id,
             winChance: winChance,
-            score: _attackScore(winChance, source, target),
+            score: _attackScore(state, botPlayer.id, winChance, source, target),
           ),
         );
       }
@@ -104,10 +106,203 @@ class BotAI {
     return pressure;
   }
 
-  double _attackScore(double winChance, Territory source, Territory target) {
-    final neutralBonus = target.ownerId == null ? 0.08 : 0;
-    final expansionValue = target.neighbors.length / 20;
-    final sourceSafety = source.armyCount / 100;
-    return winChance + neutralBonus + expansionValue + sourceSafety;
+  double _reinforcementScore(
+    GameState state,
+    Territory territory,
+    Player? botPlayer,
+  ) {
+    final botPlayerId = botPlayer?.id ?? territory.ownerId;
+    if (botPlayerId == null) {
+      return 0;
+    }
+
+    final attackTargets = territory.neighbors
+        .map(state.territoryById)
+        .where((neighbor) => neighbor.ownerId != botPlayerId)
+        .toList(growable: false);
+    final enemyPressure = _enemyPressure(state, territory, botPlayerId);
+    final weakestTargetArmies = attackTargets.isEmpty
+        ? 0
+        : attackTargets
+              .map((target) => target.armyCount)
+              .reduce((left, right) => left < right ? left : right);
+    final projectedSource = territory.copyWith(
+      armyCount: territory.armyCount + state.remainingReinforcements,
+    );
+    final bestProjectedAttack = attackTargets.fold<double>(0, (best, target) {
+      final chance = combatResolver.calculateWinChance(projectedSource, target);
+      final score = _attackScore(
+        state,
+        botPlayerId,
+        chance,
+        projectedSource,
+        target,
+      );
+      return score > best ? score : best;
+    });
+    final continentProgress = _continentProgress(
+      state,
+      botPlayerId,
+      territory.continent,
+    );
+    final strategicBonus =
+        ReinforcementCalculator.strategicTerritoryBonusValues
+            .containsKey(territory.id)
+        ? 0.65
+        : 0.0;
+    final difficultyFocus = switch (state.difficulty) {
+      GameDifficulty.easy => 0.72,
+      GameDifficulty.normal => 1.00,
+      GameDifficulty.hard => 1.42,
+    };
+
+    return enemyPressure * 0.12 +
+        (attackTargets.length * 0.14 + (6 - weakestTargetArmies).clamp(0, 6) * 0.05) *
+            difficultyFocus +
+        bestProjectedAttack * (0.42 + difficultyFocus * 0.22) +
+        continentProgress * (0.26 + difficultyFocus * 0.18) +
+        strategicBonus * difficultyFocus +
+        territory.armyCount * 0.02;
+  }
+
+  double _attackScore(
+    GameState state,
+    String botPlayerId,
+    double winChance,
+    Territory source,
+    Territory target,
+  ) {
+    final neutralBonus = target.ownerId == null ? 0.04 : 0.16;
+    final expansionValue = target.neighbors.length / 24;
+    final sourceSafety = source.armyCount / 120;
+    final targetArmyValue = target.ownerId == null
+        ? target.armyCount * 0.012
+        : target.armyCount * 0.026;
+    final completionBonus = _continentCaptureBonus(state, botPlayerId, target);
+    final denialBonus = _opponentContinentDenialBonus(state, target);
+    final eliminationBonus =
+        target.ownerId != null && state.ownedTerritoryCount(target.ownerId!) == 1
+        ? 0.62
+        : 0.0;
+    final strategicBonus =
+        ReinforcementCalculator.strategicTerritoryBonusValues
+            .containsKey(target.id)
+        ? 0.40
+        : 0.0;
+    final frontierBonus = _frontierValue(state, botPlayerId, target);
+    final sourceRiskPenalty = _sourceRiskPenalty(state, botPlayerId, source);
+    final difficultyFocus = switch (state.difficulty) {
+      GameDifficulty.easy => 0.72,
+      GameDifficulty.normal => 1.00,
+      GameDifficulty.hard => 1.38,
+    };
+
+    return winChance * (1.0 + difficultyFocus * 0.08) +
+        neutralBonus +
+        expansionValue +
+        sourceSafety +
+        targetArmyValue +
+        (completionBonus + denialBonus + eliminationBonus + strategicBonus) *
+            difficultyFocus +
+        frontierBonus * (0.85 + difficultyFocus * 0.18) -
+        sourceRiskPenalty;
+  }
+
+  double _continentProgress(
+    GameState state,
+    String playerId,
+    String continent,
+  ) {
+    var total = 0;
+    var owned = 0;
+    for (final territory in state.territories) {
+      if (territory.continent != continent) {
+        continue;
+      }
+      total += 1;
+      if (territory.ownerId == playerId) {
+        owned += 1;
+      }
+    }
+    if (total == 0) {
+      return 0;
+    }
+    return owned / total;
+  }
+
+  double _continentCaptureBonus(
+    GameState state,
+    String playerId,
+    Territory target,
+  ) {
+    final continentValue =
+        ReinforcementCalculator.continentBonusValues[target.continent] ?? 0;
+    if (continentValue == 0) {
+      return 0;
+    }
+
+    var missing = 0;
+    for (final territory in state.territories) {
+      if (territory.continent == target.continent &&
+          territory.ownerId != playerId) {
+        missing += 1;
+      }
+    }
+    if (missing == 1) {
+      return 0.34 + continentValue * 0.055;
+    }
+    if (missing == 2) {
+      return 0.16 + continentValue * 0.030;
+    }
+    return _continentProgress(state, playerId, target.continent) * 0.08;
+  }
+
+  double _opponentContinentDenialBonus(GameState state, Territory target) {
+    final targetOwnerId = target.ownerId;
+    if (targetOwnerId == null) {
+      return 0;
+    }
+    final continentValue =
+        ReinforcementCalculator.continentBonusValues[target.continent] ?? 0;
+    if (continentValue == 0) {
+      return 0;
+    }
+    final opponentControlsContinent = state.territories
+        .where((territory) => territory.continent == target.continent)
+        .every((territory) => territory.ownerId == targetOwnerId);
+    return opponentControlsContinent ? 0.22 + continentValue * 0.030 : 0;
+  }
+
+  double _frontierValue(
+    GameState state,
+    String botPlayerId,
+    Territory target,
+  ) {
+    var friendlyNeighbors = 0;
+    var enemyNeighbors = 0;
+    for (final neighborId in target.neighbors) {
+      final neighbor = state.territoryById(neighborId);
+      if (neighbor.ownerId == botPlayerId) {
+        friendlyNeighbors += 1;
+      } else {
+        enemyNeighbors += 1;
+      }
+    }
+    return friendlyNeighbors * 0.045 + enemyNeighbors * 0.020;
+  }
+
+  double _sourceRiskPenalty(
+    GameState state,
+    String botPlayerId,
+    Territory source,
+  ) {
+    final hostilePressure = source.neighbors
+        .map(state.territoryById)
+        .where((neighbor) => neighbor.ownerId != botPlayerId)
+        .fold<int>(0, (total, neighbor) => total + neighbor.armyCount);
+    if (hostilePressure <= source.armyCount) {
+      return 0;
+    }
+    return ((hostilePressure - source.armyCount) / 30).clamp(0.0, 0.18);
   }
 }

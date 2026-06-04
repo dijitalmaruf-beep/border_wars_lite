@@ -28,6 +28,9 @@ class WorldConquestMap extends StatefulWidget {
     this.pulseLabel,
     this.pulseColor,
     this.pulseSerial = 0,
+    this.autoSpin = false,
+    this.victoryOwnerId,
+    this.victoryPulse = 0,
     super.key,
   });
 
@@ -41,12 +44,16 @@ class WorldConquestMap extends StatefulWidget {
   final String? pulseLabel;
   final Color? pulseColor;
   final int pulseSerial;
+  final bool autoSpin;
+  final String? victoryOwnerId;
+  final double victoryPulse;
 
   @override
   State<WorldConquestMap> createState() => _WorldConquestMapState();
 }
 
-class _WorldConquestMapState extends State<WorldConquestMap> {
+class _WorldConquestMapState extends State<WorldConquestMap>
+    with SingleTickerProviderStateMixin {
   static const _mapAspectRatio = 2.0;
   static const _baseMapAsset = 'assets/maps/world_base.png';
   static const _borderMapAsset = 'assets/maps/world_borders.svg';
@@ -98,6 +105,7 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
 
   final TransformationController _transformationController =
       TransformationController();
+  late final AnimationController _autoSpinController;
 
   Size? _cachedSize;
   Size? _lastMapSize;
@@ -112,14 +120,68 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
   @override
   void initState() {
     super.initState();
+    _autoSpinController =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 6200),
+          )
+          ..addListener(_handleAutoSpinTick);
     _transformationController.addListener(_handleTransformChanged);
+    if (widget.autoSpin) {
+      _autoSpinController.repeat();
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant WorldConquestMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.autoSpin && !oldWidget.autoSpin) {
+      _autoSpinController.repeat();
+      _handleAutoSpinTick();
+    } else if (!widget.autoSpin && oldWidget.autoSpin) {
+      _autoSpinController.stop();
+    }
   }
 
   @override
   void dispose() {
+    _autoSpinController.removeListener(_handleAutoSpinTick);
+    _autoSpinController.dispose();
     _transformationController.removeListener(_handleTransformChanged);
     _transformationController.dispose();
     super.dispose();
+  }
+
+  void _handleAutoSpinTick() {
+    if (!widget.autoSpin) {
+      return;
+    }
+    final viewportSize = _lastViewportSize;
+    final mapSize = _lastMapSize;
+    if (viewportSize == null || mapSize == null || mapSize.width <= 0) {
+      return;
+    }
+
+    final scale = _transformationController.value
+        .getMaxScaleOnAxis()
+        .clamp(0.92, 1.18)
+        .toDouble();
+    final normalizedCenterX =
+        (_portraitOpeningCenterX + _autoSpinController.value * 0.88) % 1.0;
+    final center = Offset(
+      mapSize.width * (_middleMapCopy + normalizedCenterX),
+      mapSize.height * _portraitOpeningCenterY,
+    );
+    _isRecenteringMap = true;
+    _transformationController.value = Matrix4.identity()
+      ..translateByDouble(
+        viewportSize.width / 2 - center.dx * scale,
+        viewportSize.height / 2 - center.dy * scale,
+        0,
+        1,
+      )
+      ..scaleByDouble(scale, scale, scale, 1);
+    _isRecenteringMap = false;
   }
 
   void _handleTransformChanged() {
@@ -170,6 +232,8 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                     transformationController: _transformationController,
                     minScale: 0.75,
                     maxScale: 4,
+                    panEnabled: !widget.autoSpin,
+                    scaleEnabled: !widget.autoSpin,
                     constrained: false,
                     clipBehavior: Clip.none,
                     boundaryMargin: const EdgeInsets.all(24),
@@ -215,6 +279,8 @@ class _WorldConquestMapState extends State<WorldConquestMap> {
                                 pulseLabel: widget.pulseLabel,
                                 pulseColor: widget.pulseColor,
                                 pulseSerial: widget.pulseSerial,
+                                victoryOwnerId: widget.victoryOwnerId,
+                                victoryPulse: widget.victoryPulse,
                               ),
                           ],
                         ),
@@ -628,6 +694,8 @@ class _MapCopy extends StatelessWidget {
     required this.pulseLabel,
     required this.pulseColor,
     required this.pulseSerial,
+    required this.victoryOwnerId,
+    required this.victoryPulse,
   });
 
   final double left;
@@ -647,6 +715,8 @@ class _MapCopy extends StatelessWidget {
   final String? pulseLabel;
   final Color? pulseColor;
   final int pulseSerial;
+  final String? victoryOwnerId;
+  final double victoryPulse;
 
   @override
   Widget build(BuildContext context) {
@@ -681,6 +751,8 @@ class _MapCopy extends StatelessWidget {
                 controlledContinents: controlledContinents,
                 isTransferMode: isTransferMode,
                 mapZoom: 1.0,
+                victoryOwnerId: victoryOwnerId,
+                victoryPulse: victoryPulse,
                 paintOwnership: true,
               ),
             ),
@@ -704,6 +776,8 @@ class _MapCopy extends StatelessWidget {
                 controlledContinents: controlledContinents,
                 isTransferMode: isTransferMode,
                 mapZoom: mapZoom,
+                victoryOwnerId: victoryOwnerId,
+                victoryPulse: victoryPulse,
                 paintLabelsAndHighlights: true,
               ),
             ),

@@ -15,6 +15,9 @@ class TerritoryMap extends StatelessWidget {
     this.pulseLabel,
     this.pulseColor,
     this.pulseSerial = 0,
+    this.autoSpin = false,
+    this.victoryOwnerId,
+    this.victoryPulse = 0,
     super.key,
   });
 
@@ -28,6 +31,9 @@ class TerritoryMap extends StatelessWidget {
   final String? pulseLabel;
   final Color? pulseColor;
   final int pulseSerial;
+  final bool autoSpin;
+  final String? victoryOwnerId;
+  final double victoryPulse;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +48,9 @@ class TerritoryMap extends StatelessWidget {
       pulseLabel: pulseLabel,
       pulseColor: pulseColor,
       pulseSerial: pulseSerial,
+      autoSpin: autoSpin,
+      victoryOwnerId: victoryOwnerId,
+      victoryPulse: victoryPulse,
     );
   }
 }

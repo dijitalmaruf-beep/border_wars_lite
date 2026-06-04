@@ -18,6 +18,8 @@ class TerritoryOverlayPainter extends CustomPainter {
     required this.controlledContinents,
     required this.isTransferMode,
     this.mapZoom = 1.0,
+    this.victoryOwnerId,
+    this.victoryPulse = 0,
     this.paintOwnership = false,
     this.paintLabelsAndHighlights = false,
   });
@@ -31,6 +33,8 @@ class TerritoryOverlayPainter extends CustomPainter {
   final Set<String> controlledContinents;
   final bool isTransferMode;
   final double mapZoom;
+  final String? victoryOwnerId;
+  final double victoryPulse;
   final bool paintOwnership;
   final bool paintLabelsAndHighlights;
 
@@ -144,6 +148,7 @@ class TerritoryOverlayPainter extends CustomPainter {
           canvas.drawPath(path, bevelPaint);
           canvas.drawPath(path, glowPaint);
           canvas.drawPath(path, edgePaint);
+          _paintVictoryLift(canvas, path, ownerColor, territory.ownerId);
         }
       } else {
         final fillPaint = Paint()
@@ -190,6 +195,46 @@ class TerritoryOverlayPainter extends CustomPainter {
         }
       }
     }
+  }
+
+  void _paintVictoryLift(
+    Canvas canvas,
+    Path path,
+    Color ownerColor,
+    String? ownerId,
+  ) {
+    if (victoryOwnerId == null || ownerId != victoryOwnerId) {
+      return;
+    }
+    final progress = victoryPulse.clamp(0.0, 1.0).toDouble();
+    final wave = 0.5 + math.sin(progress * math.pi * 5) * 0.5;
+    final glowAlpha = 0.16 + wave * 0.24;
+    final liftAlpha = 0.08 + progress * 0.10;
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = ownerColor.withValues(alpha: liftAlpha)
+        ..blendMode = BlendMode.screen,
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.4 / _effectiveZoom
+        ..color = ownerColor.withValues(alpha: glowAlpha)
+        ..maskFilter = ui.MaskFilter.blur(
+          ui.BlurStyle.outer,
+          (5.5 + wave * 3.5) / _effectiveZoom,
+        ),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.95 / _effectiveZoom
+        ..color = Colors.white.withValues(alpha: 0.30 + wave * 0.24),
+    );
   }
 
   void _paintHighlights(Canvas canvas, Size size) {
@@ -460,9 +505,9 @@ class TerritoryOverlayPainter extends CustomPainter {
   void _paintArmyLabels(Canvas canvas, Size size) {
     final zoom = _effectiveZoom;
     final visualFontSize = (10.8 - (zoom - 1) * 1.18).clamp(7.8, 11.0);
-    final fontSize = visualFontSize / zoom;
+    final digitHeight = (visualFontSize + 1.2) / zoom;
     final paddingX = (6.8 / zoom).clamp(2.1, 7.2);
-    final paddingY = (3.5 / zoom).clamp(1.2, 4.0);
+    final paddingY = (3.9 / zoom).clamp(1.2, 4.2);
     final minChipWidth = 19.5 / zoom;
     final minChipHeight = 15.5 / zoom;
     final radius = Radius.circular(5.6 / zoom);
@@ -479,33 +524,16 @@ class TerritoryOverlayPainter extends CustomPainter {
           ? const Color(0xFFD7E8F4)
           : Color(owner.colorValue);
       final isStrongArmy = territory.armyCount >= 8 && !isNeutral;
-      const labelColor = Color(0xFFFFFFFF);
-      final textPainter = TextPainter(
-        text: TextSpan(
-          text: territory.armyCount.toString(),
-          style: TextStyle(
-            color: labelColor,
-            fontSize: fontSize,
-            fontWeight: FontWeight.w900,
-            shadows: const <Shadow>[
-              Shadow(
-                color: Color(0xCC00050A),
-                blurRadius: 1.0,
-                offset: Offset(0, 0.7),
-              ),
-            ],
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout();
+      final label = territory.armyCount.toString();
+      final numberSize = _armyNumberSize(label, digitHeight);
 
       final chipWidth = math.max(
         minChipWidth,
-        textPainter.width + paddingX * 2,
+        numberSize.width + paddingX * 2,
       );
       final chipHeight = math.max(
         minChipHeight,
-        textPainter.height + paddingY * 2,
+        numberSize.height + paddingY * 2,
       );
       final center = _labelCenterAvoidingCollisions(
         territory.id,
@@ -597,13 +625,146 @@ class TerritoryOverlayPainter extends CustomPainter {
           ),
       );
 
-      textPainter.paint(
+      _paintArmyNumber(
         canvas,
-        Offset(
-          center.dx - textPainter.width / 2,
-          center.dy - textPainter.height / 2,
-        ),
+        center,
+        label,
+        digitHeight,
+        zoom,
       );
+    }
+  }
+
+  Size _armyNumberSize(String label, double digitHeight) {
+    final digitWidth = digitHeight * 0.58;
+    final gap = digitHeight * 0.20;
+    final width =
+        label.length * digitWidth + math.max(0, label.length - 1) * gap;
+    return Size(width, digitHeight);
+  }
+
+  void _paintArmyNumber(
+    Canvas canvas,
+    Offset center,
+    String label,
+    double digitHeight,
+    double zoom,
+  ) {
+    final numberSize = _armyNumberSize(label, digitHeight);
+    final digitWidth = digitHeight * 0.58;
+    final gap = digitHeight * 0.20;
+    final strokeWidth = (2.05 / zoom).clamp(0.80, 2.20).toDouble();
+    final startX = center.dx - numberSize.width / 2;
+    final top = center.dy - numberSize.height / 2;
+    final shadowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = strokeWidth + 1.15 / zoom
+      ..color = const Color(0xE6000208);
+    final numberPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = strokeWidth
+      ..color = const Color(0xFFFFFFFF);
+    final glowPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = strokeWidth + 0.85 / zoom
+      ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.18)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, 1.0 / zoom);
+
+    for (var index = 0; index < label.length; index += 1) {
+      final char = label[index];
+      final left = startX + index * (digitWidth + gap);
+      final digitRect = Rect.fromLTWH(left, top, digitWidth, digitHeight);
+      _paintSegmentDigit(
+        canvas,
+        digitRect.shift(Offset(0, 0.55 / zoom)),
+        char,
+        shadowPaint,
+      );
+      _paintSegmentDigit(canvas, digitRect, char, glowPaint);
+      _paintSegmentDigit(canvas, digitRect, char, numberPaint);
+    }
+  }
+
+  void _paintSegmentDigit(
+    Canvas canvas,
+    Rect rect,
+    String digit,
+    Paint paint,
+  ) {
+    final segments = _digitSegments(digit);
+    if (segments.isEmpty) {
+      return;
+    }
+    final insetX = rect.width * 0.11;
+    final insetY = rect.height * 0.09;
+    final left = rect.left + insetX;
+    final right = rect.right - insetX;
+    final top = rect.top + insetY;
+    final middle = rect.center.dy;
+    final bottom = rect.bottom - insetY;
+    final upperY = rect.top + rect.height * 0.30;
+    final lowerY = rect.top + rect.height * 0.70;
+
+    void line(Offset a, Offset b) {
+      canvas.drawLine(a, b, paint);
+    }
+
+    if (segments.contains('a')) {
+      line(Offset(left, top), Offset(right, top));
+    }
+    if (segments.contains('b')) {
+      line(Offset(right, top), Offset(right, middle));
+    }
+    if (segments.contains('c')) {
+      line(Offset(right, middle), Offset(right, bottom));
+    }
+    if (segments.contains('d')) {
+      line(Offset(left, bottom), Offset(right, bottom));
+    }
+    if (segments.contains('e')) {
+      line(Offset(left, middle), Offset(left, bottom));
+    }
+    if (segments.contains('f')) {
+      line(Offset(left, top), Offset(left, middle));
+    }
+    if (segments.contains('g')) {
+      line(Offset(left, middle), Offset(right, middle));
+    }
+    if (segments.contains('h')) {
+      line(Offset(left, upperY), Offset(right, lowerY));
+    }
+  }
+
+  Set<String> _digitSegments(String digit) {
+    switch (digit) {
+      case '0':
+        return const <String>{'a', 'b', 'c', 'd', 'e', 'f'};
+      case '1':
+        return const <String>{'b', 'c'};
+      case '2':
+        return const <String>{'a', 'b', 'g', 'e', 'd'};
+      case '3':
+        return const <String>{'a', 'b', 'g', 'c', 'd'};
+      case '4':
+        return const <String>{'f', 'g', 'b', 'c'};
+      case '5':
+        return const <String>{'a', 'f', 'g', 'c', 'd'};
+      case '6':
+        return const <String>{'a', 'f', 'g', 'e', 'c', 'd'};
+      case '7':
+        return const <String>{'a', 'b', 'c'};
+      case '8':
+        return const <String>{'a', 'b', 'c', 'd', 'e', 'f', 'g'};
+      case '9':
+        return const <String>{'a', 'b', 'c', 'd', 'f', 'g'};
+      default:
+        return const <String>{};
     }
   }
 
@@ -618,6 +779,8 @@ class TerritoryOverlayPainter extends CustomPainter {
         !setEquals(oldDelegate.controlledContinents, controlledContinents) ||
         oldDelegate.isTransferMode != isTransferMode ||
         oldDelegate.mapZoom != mapZoom ||
+        oldDelegate.victoryOwnerId != victoryOwnerId ||
+        (oldDelegate.victoryPulse - victoryPulse).abs() > 0.01 ||
         oldDelegate.paintOwnership != paintOwnership ||
         oldDelegate.paintLabelsAndHighlights != paintLabelsAndHighlights;
   }

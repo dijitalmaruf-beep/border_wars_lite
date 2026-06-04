@@ -94,4 +94,79 @@ void main() {
       );
     },
   );
+
+  test('hard bot prioritizes completing a continent', () {
+    final baseState = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      seed: 11,
+    );
+    final combatState = baseState.copyWith(
+      currentPlayerIndex: 1,
+      phase: GamePhase.attack,
+      remainingReinforcements: 0,
+      difficulty: GameDifficulty.hard,
+      territories: baseState.territories.map((territory) {
+        if (territory.continent == 'South America' && territory.id != 'brazil') {
+          final armies = territory.id == 'amazon_basin' ? 5 : 3;
+          return territory.copyWith(ownerId: 'atlas_bot', armyCount: armies);
+        }
+        if (territory.id == 'brazil') {
+          return territory.copyWith(ownerId: 'human', armyCount: 1);
+        }
+        if (territory.id == 'western_us') {
+          return territory.copyWith(ownerId: 'atlas_bot', armyCount: 8);
+        }
+        if (territory.id == 'central_us') {
+          return territory.copyWith(ownerId: 'human', armyCount: 1);
+        }
+        return territory.copyWith(ownerId: null, armyCount: 2);
+      }).toList(),
+    );
+
+    final plan = botAI.chooseBestAttack(combatState, combatState.currentPlayer);
+
+    expect(plan, isNotNull);
+    expect(plan!.targetId, 'brazil');
+  });
+
+  test('hard bot reinforces a front that can unlock a continent', () {
+    final baseState = generator.createInitialState(
+      humanName: 'Alex',
+      humanColorValue: AppColors.humanBlueValue,
+      seed: 13,
+    );
+    final reinforceState = baseState.copyWith(
+      currentPlayerIndex: 1,
+      phase: GamePhase.reinforce,
+      remainingReinforcements: 3,
+      difficulty: GameDifficulty.hard,
+      territories: baseState.territories.map((territory) {
+        if (territory.continent == 'South America' && territory.id != 'brazil') {
+          return territory.copyWith(ownerId: 'atlas_bot', armyCount: 1);
+        }
+        if (territory.id == 'brazil') {
+          return territory.copyWith(ownerId: 'human', armyCount: 2);
+        }
+        if (territory.id == 'western_us') {
+          return territory.copyWith(ownerId: 'atlas_bot', armyCount: 4);
+        }
+        if (territory.id == 'central_us') {
+          return territory.copyWith(ownerId: 'human', armyCount: 2);
+        }
+        return territory.copyWith(ownerId: null, armyCount: 2);
+      }).toList(),
+    );
+
+    final target = botAI.chooseReinforcementTerritory(
+      reinforceState,
+      'atlas_bot',
+    );
+
+    expect(target, isNotNull);
+    expect(
+      target!.id,
+      isIn(<String>{'amazon_basin', 'southern_cone', 'northern_south_america'}),
+    );
+  });
 }
