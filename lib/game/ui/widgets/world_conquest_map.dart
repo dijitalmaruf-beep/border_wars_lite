@@ -123,7 +123,7 @@ class _WorldConquestMapState extends State<WorldConquestMap>
     _autoSpinController =
         AnimationController(
             vsync: this,
-            duration: const Duration(milliseconds: 11000),
+            duration: const Duration(milliseconds: 16000),
           )
           ..addListener(_handleAutoSpinTick);
     _transformationController.addListener(_handleTransformChanged);
@@ -162,15 +162,19 @@ class _WorldConquestMapState extends State<WorldConquestMap>
       return;
     }
 
-    final scale = _transformationController.value
-        .getMaxScaleOnAxis()
-        .clamp(0.92, 1.18)
-        .toDouble();
+    final scale = widget.victoryOwnerId == null
+        ? _transformationController.value
+              .getMaxScaleOnAxis()
+              .clamp(0.92, 1.18)
+              .toDouble()
+        : 0.94;
     final normalizedCenterX =
-        (_portraitOpeningCenterX + _autoSpinController.value * 0.88) % 1.0;
+        (_portraitOpeningCenterX + _autoSpinController.value * 0.72) % 1.0;
+    final normalizedCenterY =
+        widget.victoryOwnerId == null ? _portraitOpeningCenterY : 0.485;
     final center = Offset(
       mapSize.width * (_middleMapCopy + normalizedCenterX),
-      mapSize.height * _portraitOpeningCenterY,
+      mapSize.height * normalizedCenterY,
     );
     _isRecenteringMap = true;
     _transformationController.value = Matrix4.identity()
@@ -213,7 +217,7 @@ class _WorldConquestMapState extends State<WorldConquestMap>
         final highlightPaths = _highlightPathsFor(mapSize);
         final labelAnchors = _labelAnchorsFor(mapSize, paths);
         _syncInitialView(viewportSize, mapSize);
-        final paintZoom = _quantizedZoom(_currentMapZoom());
+        final paintZoom = math.max(1.22, _quantizedZoom(_currentMapZoom()));
 
         return Stack(
           fit: StackFit.expand,
@@ -236,7 +240,10 @@ class _WorldConquestMapState extends State<WorldConquestMap>
                     scaleEnabled: !widget.autoSpin,
                     constrained: false,
                     clipBehavior: Clip.none,
-                    boundaryMargin: const EdgeInsets.all(24),
+                    boundaryMargin: EdgeInsets.symmetric(
+                      horizontal: mapSize.width * 0.60,
+                      vertical: mapSize.height * 0.48,
+                    ),
                     child: GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTapDown: (details) {

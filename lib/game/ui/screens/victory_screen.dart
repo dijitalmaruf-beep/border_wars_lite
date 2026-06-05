@@ -263,35 +263,40 @@ class _FinalMapScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: winnerColor.withValues(alpha: 0.70),
-                      ),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: winnerColor.withValues(alpha: 0.22),
-                          blurRadius: 24,
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: winnerColor.withValues(alpha: 0.70),
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: winnerColor.withValues(alpha: 0.22),
+                              blurRadius: 24,
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.44),
+                              blurRadius: 22,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
                         ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.44),
-                          blurRadius: 22,
-                          offset: const Offset(0, 12),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: TerritoryMap(
+                            state: state,
+                            validSourceIds: const <String>{},
+                            validTargetIds: const <String>{},
+                            controlledContinents: controlledContinents,
+                            isTransferMode: false,
+                            victoryOwnerId: winner.id,
+                            victoryPulse: 1,
+                            onTerritoryTap: (_) {},
+                          ),
                         ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: TerritoryMap(
-                        state: state,
-                        validSourceIds: const <String>{},
-                        validTargetIds: const <String>{},
-                        controlledContinents: controlledContinents,
-                        isTransferMode: false,
-                        victoryOwnerId: winner.id,
-                        victoryPulse: 1,
-                        onTerritoryTap: (_) {},
                       ),
                     ),
                   ),

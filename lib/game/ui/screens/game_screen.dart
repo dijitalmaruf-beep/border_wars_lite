@@ -1512,9 +1512,9 @@ class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 6800),
+      duration: const Duration(milliseconds: 10000),
     )..forward();
-    _finishTimer = Timer(const Duration(milliseconds: 7600), _openVictory);
+    _finishTimer = Timer(const Duration(milliseconds: 10800), _openVictory);
   }
 
   @override
@@ -1546,6 +1546,7 @@ class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
         .controlledContinentBonuses(widget.state, widget.winner.id)
         .map((bonus) => bonus.continent)
         .toSet();
+    final winnerClaim = '${widget.winner.name} FETHETTİ';
 
     return Scaffold(
       body: PremiumBackground(
@@ -1561,31 +1562,37 @@ class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
                     final glow = Curves.easeOut.transform(_controller.value);
                     return Column(
                       children: <Widget>[
-                        Text(
-                          'FETİH TAMAMLANDI',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.premiumText,
-                            fontSize: 25,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0,
-                            shadows: <Shadow>[
-                              Shadow(
-                                color: winnerColor.withValues(
-                                  alpha: 0.35 + glow * 0.30,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            winnerClaim,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            style: TextStyle(
+                              color: AppColors.premiumText,
+                              fontSize: 25,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0,
+                              shadows: <Shadow>[
+                                Shadow(
+                                  color: winnerColor.withValues(
+                                    alpha: 0.35 + glow * 0.30,
+                                  ),
+                                  blurRadius: 18 + glow * 12,
                                 ),
-                                blurRadius: 18 + glow * 12,
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          widget.winner.name,
+                          'Dünya artık ${widget.winner.name} renginde.',
                           textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: winnerColor,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -1595,49 +1602,54 @@ class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
                 ),
                 const SizedBox(height: 14),
                 Expanded(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: winnerColor.withValues(alpha: 0.70),
-                      ),
-                      boxShadow: <BoxShadow>[
-                        BoxShadow(
-                          color: winnerColor.withValues(alpha: 0.24),
-                          blurRadius: 28,
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.42),
-                          blurRadius: 22,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: AnimatedBuilder(
-                        animation: _controller,
-                        builder: (context, _) {
-                          final pulse = Curves.easeInOutCubic.transform(
-                            _controller.value,
-                          );
-                          final scale =
-                              1 + sin(_controller.value * pi) * 0.018;
-                          return Transform.scale(
-                            scale: scale,
-                            child: TerritoryMap(
-                              state: widget.state,
-                              validSourceIds: const <String>{},
-                              validTargetIds: const <String>{},
-                              controlledContinents: controlledContinents,
-                              isTransferMode: false,
-                              autoSpin: true,
-                              victoryOwnerId: widget.winner.id,
-                              victoryPulse: pulse,
-                              onTerritoryTap: (_) {},
+                  child: Center(
+                    child: AspectRatio(
+                      aspectRatio: 1,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: winnerColor.withValues(alpha: 0.70),
+                          ),
+                          boxShadow: <BoxShadow>[
+                            BoxShadow(
+                              color: winnerColor.withValues(alpha: 0.24),
+                              blurRadius: 28,
                             ),
-                          );
-                        },
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.42),
+                              blurRadius: 22,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: AnimatedBuilder(
+                            animation: _controller,
+                            builder: (context, _) {
+                              final pulse = Curves.easeInOutCubic.transform(
+                                _controller.value,
+                              );
+                              final scale =
+                                  1 + sin(_controller.value * pi) * 0.006;
+                              return Transform.scale(
+                                scale: scale,
+                                child: TerritoryMap(
+                                  state: widget.state,
+                                  validSourceIds: const <String>{},
+                                  validTargetIds: const <String>{},
+                                  controlledContinents: controlledContinents,
+                                  isTransferMode: false,
+                                  autoSpin: true,
+                                  victoryOwnerId: widget.winner.id,
+                                  victoryPulse: pulse,
+                                  onTerritoryTap: (_) {},
+                                ),
+                              );
+                            },
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1661,7 +1673,7 @@ class _VictoryRevealScreenState extends State<_VictoryRevealScreen>
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Kazanan bölgeler vurgulanıyor...',
+                          'Fethedilen bölgeler dünya üzerinde parlıyor...',
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             color: AppColors.premiumMutedText,

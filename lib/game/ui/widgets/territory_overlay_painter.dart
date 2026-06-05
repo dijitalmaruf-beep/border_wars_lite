@@ -210,6 +210,19 @@ class TerritoryOverlayPainter extends CustomPainter {
     final wave = 0.5 + math.sin(progress * math.pi * 5) * 0.5;
     final glowAlpha = 0.16 + wave * 0.24;
     final liftAlpha = 0.08 + progress * 0.10;
+    canvas.save();
+    canvas.translate(1.2 / _effectiveZoom, 1.6 / _effectiveZoom);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.fill
+        ..color = Colors.black.withValues(alpha: 0.10 + progress * 0.05)
+        ..maskFilter = ui.MaskFilter.blur(
+          ui.BlurStyle.normal,
+          2.8 / _effectiveZoom,
+        ),
+    );
+    canvas.restore();
     canvas.drawPath(
       path,
       Paint()
